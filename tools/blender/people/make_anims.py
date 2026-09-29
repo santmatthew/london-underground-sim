@@ -177,6 +177,7 @@ for name, c in clips.items():
     out["clips"][name] = dict(frames=F, length=(F - 1) / FPS, loop=c["loop"], tracks=tracks,
                               pelvis=np.round(pos_local, 5).tolist())
     m = dict(c["meta"])
+    m["fingers"] = len(c["overrides"]) > 0
     m["duration"] = (F - 1) / FPS
     m["frames"] = F
     meta["clips"][name] = m

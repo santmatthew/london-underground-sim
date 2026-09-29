@@ -74,7 +74,7 @@ def render_moving(kind, seconds, rng, with_tones=True, tone_mode=None, squeal=Fa
     xs = xn[:, None] - OFFSETS[None, :]                       # (n, 3) cluster positions
     r = np.sqrt(xs ** 2 + LAT ** 2)
     tunnel = sstep((np.abs(xs) - 65.0) / 15.0)                # (n, 3)
-    pan = np.clip(xs / 50.0, -1, 1)
+    pan = np.clip(xs / 80.0, -0.85, 0.85)
     out = np.zeros((n, 2))
     vr = np.clip(v / V_REF, 0, 2.5)
     for b, (lo, hi) in enumerate(BANDS):
@@ -112,11 +112,11 @@ def render_moving(kind, seconds, rng, with_tones=True, tone_mode=None, squeal=Fa
         if tone_mode == "regen":
             gate = sstep((t - info["t_brake"]) / 0.6) * sstep(v / 1.4)
             f_base = 120 + 65 * (np.round(v / 0.9) * 0.9)
-            amp = 0.30
+            amp = 1.6
         elif tone_mode == "accel":
             gate = sstep((t - info["t_go"] + 0.3) / 0.5)
             f_base = 110 + 68 * (np.floor(v / 1.7) * 1.7)
-            amp = 0.34
+            amp = 2.0
         else:
             gate = np.zeros(n)
             f_base = np.zeros(n)
@@ -129,7 +129,7 @@ def render_moving(kind, seconds, rng, with_tones=True, tone_mode=None, squeal=Fa
             f = f_base * dop * (1 + 0.004 * smooth_random(n, rng, 6))
             ph = 2 * np.pi * np.cumsum(f) / SR
             tw = np.sin(ph) + 0.5 * np.sin(2 * ph + 0.7) + 0.28 * np.sin(3 * ph + 1.9) + 0.12 * np.sin(5 * ph)
-            prox = (LAT / r[:, 0]) ** 0.7 * (1 - 0.6 * tunnel[:, 0])
+            prox = (LAT / r[:, 0]) ** 0.5 * (1 - 0.6 * tunnel[:, 0])
             a_t = amp * gate * prox * np.clip(0.4 + 0.6 * np.minimum(v / 6.0, 1.0), 0, 1)
             l, rr = pan_gains(np.clip(pan[:, 0], -1, 1))
             out[:, 0] += tw * a_t * l

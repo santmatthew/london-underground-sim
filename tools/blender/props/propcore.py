@@ -108,7 +108,7 @@ def build_prop(name, export=True):
         mb = p['mb']
         if not mb.F:
             continue
-        ob = to_blender(mb, bpy, M, p['name'], pivot=p['pivot'])
+        ob = to_blender(mb, bpy, M, p['name'], pivot=p['pivot'], dirty=DIRTY)
         for k, v in p['extras'].items():
             ob[k] = v
         bpy.context.scene.collection.objects.link(ob)
@@ -126,6 +126,8 @@ def build_prop(name, export=True):
             ob = to_blender(cm, bpy, {'mat_col': colmat}, cname)
             bpy.context.scene.collection.objects.link(ob)
     stats['tris'] = tris
+    stats['surfaces'] = sum(len(p['mb'].materials_used()) for p in ctx.parts if p['mb'].F)
+    stats['meshes'] = sum(1 for p in ctx.parts if p['mb'].F)
     stats['bbox_lo'] = [round(v, 4) for v in lo]
     stats['bbox_hi'] = [round(v, 4) for v in hi]
     stats['size'] = [round(hi[i] - lo[i], 4) for i in range(3)]

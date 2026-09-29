@@ -115,7 +115,7 @@ detect_3d/compress_to=0
 """
 
 
-HQ = os.environ.get("PEOPLE_HQ", "1") == "1"
+HQ = os.environ.get("PEOPLE_HQ", "0") == "1"
 
 
 def write_import(path, normal=False, alpha=False, hq=None):
@@ -229,6 +229,8 @@ def build_char(spec):
     im = load_rgba(skin_png, (SKIN_RES, SKIN_RES))[..., :3]
     if spec["tone"]:
         lin = to_lin(im) * np.array(spec["tone"])[None, None, :] ** 2.2
+        lum = (lin @ np.array([0.2126, 0.7152, 0.0722], np.float32))[..., None]
+        lin = lin * 0.8 + lum * 0.2          # slightly desaturate: multiplying a bronze skin gets too orange-red
         im = to_srgb(lin)
     p = os.path.join(tex_dir, cid + "_skin.png")
     save_png(im, p)

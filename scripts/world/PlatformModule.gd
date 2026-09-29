@@ -71,7 +71,7 @@ func build(p_spec: Dictionary) -> void:
 	_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 
 	var mats := {}
-	for n in ["tile_white", "tile_cream", "panel_white", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "metal", "rail", "yellow_paint", "black", "light_emissive"]:
+	for n in ["tile_white", "tile_cream", "panel_white", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "black", "light_emissive"]:
 		mats[n] = Mats.get_mat(n)
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
@@ -145,11 +145,8 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 		kit.box("rail", Vector3((xa + xb) * 0.5, RAIL_Y - 0.08, s * ztrack + dz), Vector3(xb - xa, 0.16, 0.07), BED_Y)
 	kit.box("rail", Vector3((xa + xb) * 0.5, RAIL_Y - 0.07, s * ztrack + s * 0.0), Vector3(xb - xa, 0.10, 0.06), BED_Y)          # centre (negative) rail
 	kit.box("rail", Vector3((xa + xb) * 0.5, RAIL_Y - 0.07, s * ztrack - s * 1.05), Vector3(xb - xa, 0.10, 0.06), BED_Y)         # outer (positive) rail
-	# sleepers (one merged quad-set every 0.65 m within +-45 m of the platform: cheap boxes)
-	var sx := xa
-	while sx < xb:
-		kit.box("concrete", Vector3(sx, BED_Y + 0.06, s * ztrack), Vector3(0.24, 0.12, 2.5), BED_Y)
-		sx += 0.65 * 2.0            # every other sleeper visually; rails hide the gap
+	# sleepers: a textured strip under the rails (2.6 m wide)
+	kit.horiz("track_sleepers", xa, xb, s * ztrack - 1.3, s * ztrack + 1.3, BED_Y + 0.004, true, BED_Y)
 	# --- wall stripes / dado (station style) on the track-side wall and the platform wall ---
 	var stripes: Array = spec.get("stripes", [{"y0": 1.15, "y1": 1.42, "color": band}])
 	for st in stripes:

@@ -32,6 +32,9 @@ var _ride_line := ""
 var _ride_dest := ""
 var font_b: Font
 var font_r: Font
+var bot_skip := false
+var autopilot: Autopilot
+var cli := {}
 
 
 func _ready() -> void:
@@ -56,6 +59,19 @@ func _ready() -> void:
 	_build_menu()
 	_show_menu()
 	_preload()
+	_parse_cli()
+	if cli.has("autopilot") or cli.has("auto-start"):
+		call_deferred("start_journey")
+
+
+func _parse_cli() -> void:
+	for a in OS.get_cmdline_user_args():
+		var kv := a.lstrip("-").split("=", true, 1)
+		cli[kv[0]] = kv[1] if kv.size() > 1 else "1"
+	if cli.has("time"):
+		opts["time"] = cli["time"]
+	if cli.has("length"):
+		opts["length"] = cli["length"]
 
 
 func _preload() -> void:
@@ -184,7 +200,7 @@ func start_journey() -> void:
 	_ui.add_child(_loading)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var seed := int(Time.get_unix_time_from_system()) ^ randi()
+	var seed := int(cli["seed"]) if cli.has("seed") else (int(Time.get_unix_time_from_system()) ^ randi())
 	Timetable.build(seed)
 	_loading.text = "Choosing your journey..."
 	await get_tree().process_frame
@@ -207,6 +223,9 @@ func start_journey() -> void:
 	player.face(Vector3(sin(yaw), 0, cos(yaw)))
 	_loading.queue_free()
 	_show_briefing()
+	if cli.has("autopilot") or cli.has("auto-start"):
+		await get_tree().create_timer(float(cli.get("brief-secs", "2.5"))).timeout
+		_begin_play()
 
 
 func _enter_station(idx: int) -> void:
@@ -223,6 +242,7 @@ func _hook_station(st: Station) -> void:
 	st.trains.setup(st, player)
 	st.trains.doors_closing.connect(_on_doors_closing)
 	st.trains.doors_opened.connect(_on_doors_opened)
+	st.attach_crowd(player)
 	_last_station_idx = st.plan.idx
 
 
@@ -258,6 +278,10 @@ func _begin_play() -> void:
 	hud.dest_label.text = "To: %s" % Net.station_name(journey["dest"])
 	_last_pos = player.global_position
 	hud.toast("Find the way to %s" % Net.station_name(journey["dest"]), 5.0)
+	if cli.has("autopilot"):
+		autopilot = Autopilot.new()
+		add_child(autopilot)
+		autopilot.setup(self)
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -286,7 +310,7 @@ func _process(delta: float) -> void:
 		else:
 			stats["walk"] += delta * Clock.time_scale
 	var skip := Input.is_key_pressed(KEY_TAB) and (riding or player.last_speed < 0.3)
-	Clock.time_scale = 8.0 if skip else 1.0
+	Clock.time_scale = 8.0 if (skip or bot_skip) else 1.0
 
 
 func _describe_location() -> String:
@@ -516,6 +540,10 @@ func _finish_journey() -> void:
 	vb.add_child(_mk_button("New journey", func(): _result.queue_free(); _result = null; start_journey()))
 	vb.add_child(_mk_button("Main menu", func(): _show_menu()))
 	_save_score(score, elapsed)
+	print("RESULT %s -> %s  time %s  par %s  score %d%%" % [Net.station_name(journey["start"]), Net.station_name(journey["dest"]), Clock.fmt_dur(elapsed), Clock.fmt_dur(par), int(round(score))])
+	if cli.has("autopilot") and cli.has("quit-when-done"):
+		await get_tree().create_timer(float(cli.get("end-secs", "4.0"))).timeout
+		get_tree().quit()
 
 
 func _save_score(score: float, elapsed: float) -> void:

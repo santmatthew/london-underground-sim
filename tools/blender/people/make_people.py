@@ -151,7 +151,9 @@ def set_vcol_scalp(body_obj, cat, rough):
             loc, nor, idx, dist = tree.find_nearest(v.co)
             if dist is None:
                 continue
-            t = min(max((0.024 - dist) / (0.024 - 0.010), 0.0), 1.0)
+            if v.co.z < zeye + 0.035:
+                continue
+            t = min(max((0.016 - dist) / (0.016 - 0.006), 0.0), 1.0)
             mask[v.index] = t * t * (3 - 2 * t)
         bm.free()
     for ca in list(me.color_attributes):
@@ -440,12 +442,18 @@ def build(spec):
     cover_cats = ("top", "bottom", "main", "outer")
     cloth_trees = []
     from mathutils.bvhtree import BVHTree
+    from mathutils.kdtree import KDTree
     for o, c in cat.items():
         if c in cover_cats:
             bmc = bmesh.new()
             bmc.from_mesh(o.data)
             bmc.faces.ensure_lookup_table()
-            cloth_trees.append((BVHTree.FromBMesh(bmc), bmc))
+            bverts = [v.co.copy() for v in bmc.verts if any(e.is_boundary for e in v.link_edges)]
+            kd = KDTree(max(len(bverts), 1))
+            for bi, co in enumerate(bverts):
+                kd.insert(co, bi)
+            kd.balance()
+            cloth_trees.append((BVHTree.FromBMesh(bmc), bmc, kd, len(bverts)))
     if cloth_trees:
         bnames = {g.index: g.name for g in body.vertex_groups}
 
@@ -454,10 +462,12 @@ def build(spec):
             dom = max(bw, key=bw.get) if bw else ""
             if dom in ("head", "neck_01") or dom.startswith(("hand_", "index_", "middle_", "ring_", "pinky_", "thumb_")):
                 return False
-            for tree, _b in cloth_trees:
+            for tree, _b, kd, nb_ in cloth_trees:
                 loc, nor, fidx, dist = tree.find_nearest(v.co, 0.03)
                 if loc is None or dist is None:
                     continue
+                if nb_ and kd.find(v.co)[2] < 0.035:
+                    continue      # near the garment's open edge (neckline / cuff / hem): keep the skin
                 d = (v.co - loc).dot(nor)
                 if abs(abs(d) - dist) < 0.002 and d < 0.010:
                     return True
@@ -465,7 +475,7 @@ def build(spec):
         nb2 = len(body.data.vertices)
         bmesh_delete_verts(body, under_cloth)
         print("  body verts under cloth removed:", nb2 - len(body.data.vertices))
-    for _t, _b in cloth_trees:
+    for _t, _b, _k, _n in cloth_trees:
         _b.free()
 
     # ---- garment layout

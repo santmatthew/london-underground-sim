@@ -46,6 +46,11 @@ for (kind, name) in sorted(used):
     lines.append(line)
     if "by" in lic.lower():
         ccby.append((kind, name, meta.get("author", "?"), lic))
+packs_used = sorted({lookup(n)[0] for (k, n) in used if lookup(n)[0]})
+ccby_packs = sorted({lookup(c[1])[0] for c in ccby})
+lines.append("")
+lines.append("Packs used: " + ", ".join(packs_used))
+lines.append("CC-BY packs among them (attribution required): " + ", ".join(ccby_packs))
 lines.append("")
 lines.append("CC-BY assets require attribution (Creative Commons Attribution 4.0/3.0): %d used, authors:" % len(ccby))
 for a in sorted({c[2] for c in ccby}):

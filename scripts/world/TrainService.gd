@@ -4,6 +4,7 @@ extends Node
 
 signal doors_opened(visit: Dictionary)
 signal doors_closing(visit: Dictionary)
+signal train_spawned(train: Train, visit: Dictionary)
 
 const APPROACH_S := 26.0
 const AFTER_S := 32.0
@@ -146,6 +147,7 @@ func _spawn(vkey: String, fkey: String, f: Dictionary, module: PlatformModule, i
 	train.set_meta("visit", v)
 	visits[vkey] = v
 	train.position.x = x_at(v, Clock.now)
+	train_spawned.emit(train, v)
 
 
 func _despawn(vkey: String) -> void:

@@ -325,7 +325,7 @@ def _clack(rng, size=1.0, bright=1.0):
     """Single rail-joint hit as felt inside a car."""
     return sum_pad(damped_sine(0.22, rng.uniform(62, 88), 0.09, amp=1.6 * size),
                    damped_sine(0.18, rng.uniform(170, 240), 0.05, amp=0.7 * size),
-                   noise_burst(0.12, rng, 450, 2800 * bright, 0.035, amp=0.9 * size),
+                   noise_burst(0.12, rng, 450, 2800 * bright, 0.035, amp=1.9 * size),
                    noise_burst(0.03, rng, 2500, 7000, 0.008, amp=0.25 * size * bright))
 
 
@@ -339,7 +339,7 @@ def train_interior_run(kind="slow"):
     rng = rng_for("train_interior_run_" + kind)
     seconds = n / SR
     ch = []
-    lv = dict(rumble=1.0, roar=0.5 if fast else 0.30, hiss=0.05 if fast else 0.035)
+    lv = dict(rumble=1.0, roar=0.38 if fast else 0.22, hiss=0.05 if fast else 0.035)
     for c in range(2):
         rumble = spec_noise(n, rng, lambda f: f ** -0.4 * bp_mag(f, 35, 380, 3))
         rumble *= mod_gain(n, rng, 0.35, 2.0)
@@ -371,7 +371,7 @@ def train_interior_run(kind="slow"):
             l, r = pan_gains(pan + rng.normal(0, 0.08))
             add_at(ev[:, 0], e, pos, l, wrap=True)
             add_at(ev[:, 1], e, pos, r, wrap=True)
-    y += (0.30 if fast else 0.26) * ev
+    y += (1.0 if fast else 0.9) * ev
     # occasional rattles
     for _ in range(6 if fast else 4):
         d = rng.uniform(0.12, 0.3)

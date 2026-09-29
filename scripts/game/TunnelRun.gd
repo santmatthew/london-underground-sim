@@ -38,10 +38,7 @@ func setup(wall_mat := "tile_white") -> void:
 		kit.box("rail", Vector3(0, PlatformModule.RAIL_Y - 0.08, ztrack + dz), Vector3(SEG_LEN, 0.16, 0.07), PlatformModule.BED_Y)
 	kit.box("rail", Vector3(0, PlatformModule.RAIL_Y - 0.07, ztrack), Vector3(SEG_LEN, 0.10, 0.06), PlatformModule.BED_Y)
 	kit.box("rail", Vector3(0, PlatformModule.RAIL_Y - 0.07, ztrack - 1.05), Vector3(SEG_LEN, 0.10, 0.06), PlatformModule.BED_Y)
-	var sx := -SEG_LEN * 0.5 + 0.3
-	while sx < SEG_LEN * 0.5:
-		kit.box("concrete", Vector3(sx, PlatformModule.BED_Y + 0.06, ztrack), Vector3(0.24, 0.12, 2.5), PlatformModule.BED_Y)
-		sx += 0.65 * 2.0
+	kit.horiz("track_sleepers", -SEG_LEN * 0.5, SEG_LEN * 0.5, ztrack - 1.3, ztrack + 1.3, PlatformModule.BED_Y + 0.004, true, PlatformModule.BED_Y)
 	# cable trays on the track-side wall and crown lights
 	kit.box("metal", Vector3(0, 0.9, zfar - 0.15), Vector3(SEG_LEN, 0.08, 0.3), 0.0)
 	kit.box("metal", Vector3(0, 0.45, zfar - 0.15), Vector3(SEG_LEN, 0.08, 0.3), 0.0)

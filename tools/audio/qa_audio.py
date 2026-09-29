@@ -89,7 +89,7 @@ def analyse(key, entry):
         steps = np.abs(np.diff(a, axis=0)).mean(axis=1)
         ref = np.percentile(steps, 99.5) + 1e-9
         res["seam"] = float(d / ref)
-        n100 = int(0.1 * dsp.SR)
+        n100 = int(0.5 * dsp.SR)
         r0 = 20 * np.log10(np.sqrt(np.mean(a[:n100] ** 2)) + 1e-9)
         r1 = 20 * np.log10(np.sqrt(np.mean(a[-n100:] ** 2)) + 1e-9)
         res["edge_db"] = float(r0 - r1)
@@ -183,7 +183,7 @@ def main():
         print(f"{c:18s} {n:6d} {sz / 1e6:8.2f} {d / 60:8.1f}")
     loops = [r for r in rows if "seam" in r]
     if loops:
-        print("\nloops (seam = seam step / 99.5th-percentile sample step, should be <2.5; edge = RMS(first 100 ms) - RMS(last 100 ms)):")
+        print("\nloops (seam = seam step / 99.5th-percentile sample step, should be <2.5; edge = RMS(first 500 ms) - RMS(last 500 ms)):")
         for r in sorted(loops, key=lambda r: r["key"]):
             print(f"  {r['key']:34s} {r['dur']:6.1f}s seam={r['seam']:.2f} edge={r['edge_db']:+.1f}dB "
                   f"lufs={r['lufs']:.1f} peak={r['peak_db']:.1f}")

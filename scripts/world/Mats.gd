@@ -68,6 +68,8 @@ static func get_mat(name: String) -> Material:
 			m = _surface("Concrete030", "jpg", 1.0 / 2.0, Color(0.7, 0.7, 0.7), {"dirt": 0.6})
 		"trackbed":
 			m = _surface("Concrete036", "jpg", 1.0 / 1.5, Color(0.28, 0.27, 0.25), {"dirt": 0.9, "floor_dirt_height": 0.0})
+		"track_sleepers":
+			m = _surface("gen/trackbed_sleepers", "png", 1.0 / 1.3, Color(1, 1, 1), {"dirt": 0.5, "floor_dirt_height": 0.0})
 		"rubber":
 			m = _surface("Rubber004", "jpg", 1.0 / 0.8, Color(0.6, 0.6, 0.6), {"dirt": 0.4, "floor_dirt_height": 0.0})
 		"metal":

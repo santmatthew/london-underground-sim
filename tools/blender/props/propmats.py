@@ -34,7 +34,7 @@ def glTF_group():
 
 
 def make_mat(name, c=None, n=None, orm=None, color=(1, 1, 1, 1), rough=0.5, metal=0.0, emit=None, emit_strength=0.0,
-             emit_tex=False, alpha=None, double=False, spec=0.5, ior=None):
+             emit_tex=False, alpha=None, double=False, spec=0.5, ior=None, aniso=None):
     m = bpy.data.materials.new(name)
     m.use_nodes = True
     nt = m.node_tree
@@ -51,6 +51,8 @@ def make_mat(name, c=None, n=None, orm=None, color=(1, 1, 1, 1), rough=0.5, meta
         bsdf.inputs['Specular IOR Level'].default_value = spec
     if ior is not None and 'IOR' in bsdf.inputs:
         bsdf.inputs['IOR'].default_value = ior
+    if aniso is not None and 'Anisotropic' in bsdf.inputs:
+        bsdf.inputs['Anisotropic'].default_value = aniso
     used = []
     x = -700
     if c:

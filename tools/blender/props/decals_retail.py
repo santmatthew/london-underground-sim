@@ -133,3 +133,15 @@ def _(c):
         c.rect(0, y, 256, y + 2, fill=(210, 214, 220, 255))
         for j in range(4):
             c.rect(10 + j * 64, y + 5, 26 + j * 64, y + 9, fill=(120, 126, 134, 255), r=2)
+
+
+@decal('vend_side', 512, 768)
+def _(c):
+    W, H = 512, 768
+    c.rect(0, 0, W, H, fill=(20, 80, 190, 255))
+    for k in range(8):
+        c.circle(60 + k * 60, 700 - (k % 3) * 40, 120, fill=(255, 255, 255, 12))
+    c.text(W / 2, 150, 'FIZZO', 'head', 150, WHITE, anchor='mm')
+    _can(c, 196, 240, 120, 300, (250, 200, 30, 255), 'ZEST', (20, 40, 100, 255))
+    c.text(W / 2, 640, 'Ice cold. Always.', 'bold', 52, (250, 214, 70, 255), anchor='mm')
+    c.text(W / 2, 700, 'fizzo.example', 'reg', 30, (200, 225, 255, 255), anchor='mm')

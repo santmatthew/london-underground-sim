@@ -161,89 +161,9 @@ func _replan() -> void:
 
 func _waypoints_for(st: Station, names: Array) -> Array:
 	var out: Array = []
-	var plan := st.plan
-	var i := 0
-	while i < names.size():
-		var n: String = names[i]
-		var nxt: String = names[i + 1] if i + 1 < names.size() else ""
-		var prv: String = names[i - 1] if i > 0 else ""
-		if n == "gate_in" and nxt == "gate_out":
-			var lx := _gate_x(st, 1)
-			out.append(st.to_global(Vector3(lx, 0, plan.gates["z"] - 1.6)))
-			out.append(st.to_global(Vector3(lx, 0, plan.gates["z"] + 1.8)))
-			i += 2
-			continue
-		if n == "gate_out" and nxt == "gate_in":
-			var lx2 := _gate_x(st, -1)
-			out.append(st.to_global(Vector3(lx2, 0, plan.gates["z"] + 1.6)))
-			out.append(st.to_global(Vector3(lx2, 0, plan.gates["z"] - 1.8)))
-			i += 2
-			continue
-		if n.begins_with("esc") and n.ends_with("_top") and nxt.begins_with("esc") and nxt.ends_with("_bot"):
-			var ei := int(n.substr(3, n.find("_") - 3))
-			var esc: Escalator = st.escalators[ei]
-			var li := _lane(esc, 1)
-			var lz := esc.lane_z(li)
-			out.append(esc.to_global(Vector3(0.5, 0.0, lz)))
-			out.append(esc.to_global(Vector3(esc.length - 0.8, -esc.rise, lz)))
-			i += 2
-			continue
-		if n.begins_with("esc") and n.ends_with("_bot") and nxt.begins_with("esc") and nxt.ends_with("_top"):
-			var ej := int(n.substr(3, n.find("_") - 3))
-			var esc2: Escalator = st.escalators[ej]
-			var li2 := _lane(esc2, -1)
-			var lz2 := esc2.lane_z(li2)
-			out.append(esc2.to_global(Vector3(esc2.length - 0.5, -esc2.rise, lz2)))
-			out.append(esc2.to_global(Vector3(0.8, 0.0, lz2)))
-			i += 2
-			continue
-		# landing <-> module corridor: go through the opening in the landing's E wall
-		if n.begins_with("landing") and nxt.contains("_spine"):
-			var mi := int(nxt.substr(1, nxt.find("_") - 1))
-			var m: Dictionary = plan.modules[mi]
-			var lname := "landing%d" % int(m["level"])
-			var lr: Array = []
-			for rm in plan.rooms:
-				if rm["name"] == lname:
-					lr = rm["rect"]
-			out.append(st.to_global(Vector3(lr[1] - 2.5, m["pos"].y, m["lane_z"])))
-			out.append(st.to_global(Vector3(lr[1] + 1.5, m["pos"].y, m["lane_z"])))
-			i += 1
-			continue
-		if n.contains("_spine") and prv.begins_with("landing"):
-			var mj := int(n.substr(1, n.find("_") - 1))
-			var m2: Dictionary = plan.modules[mj]
-			var pos_sp: Vector3 = plan.nodes[plan.node_idx[n]]["pos"]
-			out.append(st.to_global(pos_sp))
-			i += 1
-			continue
-		var p: Vector3 = plan.nodes[plan.node_idx[n]]["pos"]
-		out.append(st.to_global(p))
-		i += 1
+	for wp in st.plan.walk_points(names, 0):
+		out.append(st.to_global(wp["pos"]))
 	return out
-
-
-func _gate_x(st: Station, kind: int) -> float:
-	var best := 0.0
-	var bd := 1e9
-	for gd in st.gate_nodes:
-		if gd["kind"] == kind:
-			var x: float = (gd["node"] as Node3D).position.x
-			if absf(x) < bd:
-				bd = absf(x)
-				best = x
-	return best
-
-
-func _lane(esc: Escalator, want: int) -> int:
-	# choose the lane whose direction matches; prefer the outer (right-hand standing) lane
-	var idxs: Array = []
-	for i in esc.lanes.size():
-		if esc.lanes[i] == want:
-			idxs.append(i)
-	if idxs.is_empty():
-		return 0
-	return idxs[0]
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -300,9 +220,11 @@ func _wait_train(delta: float) -> void:
 	if st == null:
 		return
 	var lg: Dictionary = legs[leg_i]
-	# look along the platform and at the indicator
+	# look along the platform towards where the train will come from
 	var f: Dictionary = st.plan.faces[target_face]
-	player.bot_yaw_target = atan2(-(-1.0 if f["side"] > 0.0 else 1.0) * 0.0, -f["side"]) if false else atan2(0.0, f["side"]) * 0.0 + (PI * 0.5 if f["face"] == 0 else -PI * 0.5) * 0.0 + _look_yaw(f)
+	var from_dir := -1.0 if f["face"] == 0 else 1.0
+	var dirv: Vector3 = st.global_transform.basis * Vector3(from_dir, 0, 0.0)
+	player.bot_yaw_target = atan2(-dirv.x, -dirv.z)
 	player.bot_pitch_target = 0.04
 	var vkey := "%d:%d" % [target_run, lg["k"]]
 	if st.trains.visits.has(vkey):
@@ -318,12 +240,6 @@ func _wait_train(delta: float) -> void:
 	# skip time while the train is far away
 	if lg["arr"] - Clock.now > 25.0:
 		game.bot_skip = true
-
-
-func _look_yaw(f: Dictionary) -> float:
-	# face the direction the train arrives from, slightly toward the track
-	var from_dir := -1.0 if f["face"] == 0 else 1.0     # train comes from -x on face 0
-	return atan2(-from_dir, 0.0) * 0.0 + (PI * 0.5 if from_dir < 0.0 else -PI * 0.5)
 
 
 func _start_boarding(v: Dictionary) -> void:

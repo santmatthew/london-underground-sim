@@ -435,7 +435,7 @@ def _reg():
     add("ui_success_chime", ui_success_chime, "sfx/ui", "ui", (P, -9.0), 0.0, "Rising three-note success chime", bitrate=64, spatial="2d")
     add("ui_error_soft", ui_error_soft, "sfx/ui", "ui", (P, -11.0), 0.0, "Soft falling error tones", bitrate=64, spatial="2d")
     add("phone_notification", phone_notification, "sfx/ui", "ui", (P, -9.0), 0.0, "Phone message ping", bitrate=64, spatial="2d")
-    add("pa_chime", pa_chime, "sfx/pa", "speech_pa", (P, -8.0), -3.0, "Platform PA two-tone attention chime", bitrate=64)
+    add("pa_chime", pa_chime, "sfx/pa", "sfx_pa", (P, -8.0), -3.0, "Platform PA two-tone attention chime", bitrate=64)
     for k, fn in zip("abcd", (distant_train_a, distant_train_b, distant_train_c, distant_train_d)):
         add(f"distant_train_rumble_{k}", fn, "sfx/train", "sfx_train", (L, -27.0), -3.0, "Train passing in another tunnel, heard through walls", spatial="2d")
     add("wind_gust_tunnel_air_push", wind_push, "sfx/train", "sfx_train", (P, -6.0), -3.0, "Air pushed ahead of an arriving train (long)", spatial="2d")

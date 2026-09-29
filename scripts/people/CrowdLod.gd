@@ -51,9 +51,15 @@ func _process(delta: float) -> void:
 	var count := mini(slice, n)
 	for i in count:
 		_cursor = (_cursor + 1) % n
-		var p: PersonModel = people[_cursor]
-		if not is_instance_valid(p):
+		var pv = people[_cursor]
+		if not is_instance_valid(pv):
+			people.remove_at(_cursor)
+			n = people.size()
+			if n == 0:
+				return
+			_cursor = _cursor % n
 			continue
+		var p: PersonModel = pv
 		var d := p.global_position - cp
 		var dist := d.length()
 		var level := PersonModel.DETAIL_NEAR

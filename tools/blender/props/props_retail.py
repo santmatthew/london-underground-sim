@@ -17,13 +17,14 @@ def _dm(P, name, tex, emit=None, rough=0.4, **kw):
       origin='floor_centre', front='front faces -Z',
       nodes={'body': 'cabinet, keypad, glazing', 'flap': 'delivery flap, origin = top hinge (-0.115, 0.335, -0.40); swing open by open_rotation_x_deg=-40',
              'col_body-convcolonly': 'collision'},
-      slots={'mat_vend_front': 'product window print (retarget)', 'mat_vend_header': 'emissive header sign', 'mat_vend_display': 'emissive display', 'mat_glass': 'window glass'},
+      slots={'mat_vend_front': 'product window print (retarget)', 'mat_vend_header': 'emissive header sign', 'mat_vend_display': 'emissive display', 'mat_vend_side': 'side panel prints', 'mat_glass': 'window glass'},
       anim={'flap': {'open_rotation_x_deg': -40.0}}, mount_height=0.0,
       notes=['0.85 x 0.80 x 1.85 m.'])
 def vending_machine(P):
     _dm(P, 'mat_vend_front', 'vend_front', emit=0.6, rough=0.3)
     _dm(P, 'mat_vend_header', 'vend_header', emit=1.4, rough=0.3)
     _dm(P, 'mat_vend_display', 'vend_display', emit=1.6, rough=0.15)
+    _dm(P, 'mat_vend_side', 'vend_side', rough=0.35)
     P.mat('mat_gate_reader', c='decals/gate_reader_c.png', rough=0.22, spec=0.6)
     P.mat('mat_key', color=(0.78, 0.8, 0.83, 1), rough=0.3, metal=0.6)
     mb = P.mb('body')
@@ -32,8 +33,16 @@ def vending_machine(P):
     zf = -hz
     mb.box('mat_charcoal', (-hx + 0.015, 0.0, -hz + 0.015), (hx - 0.015, 0.07, hz - 0.015), bevel=0.006)
     mb.box('mat_blue', (-hx, 0.06, -hz), (hx, H, hz), bevel=0.022, seg=2)
-    mb.box('mat_white', (hx - 0.002, 0.55, -hz + 0.1), (hx + 0.003, 1.45, hz - 0.1))             # side print bands
-    mb.box('mat_white', (-hx - 0.003, 0.55, -hz + 0.1), (-hx + 0.002, 1.45, hz - 0.1))
+    sw_, sh_ = 0.60, 0.60 * 768 / 512
+    mb.qdecal('mat_vend_side', (hx + 0.0015, 0.42, sw_ / 2), (0, 0, -1), (0, 1, 0), sw_, sh_, hint=(1, 0, 0))       # side prints
+    mb.qdecal('mat_vend_side', (-hx - 0.0015, 0.42, -sw_ / 2), (0, 0, 1), (0, 1, 0), sw_, sh_, hint=(-1, 0, 0))
+    # service door on the back: seam outline + lock
+    for (a, b) in (((-0.33, 0.35), (-0.327, 1.55)), ((0.327, 0.35), (0.33, 1.55))):
+        mb.box('mat_black_plastic', (a[0], a[1], hz), (b[0], b[1], hz + 0.0015))
+    mb.box('mat_black_plastic', (-0.33, 0.35, hz), (0.33, 0.353, hz + 0.0015))
+    mb.box('mat_black_plastic', (-0.33, 1.547, hz), (0.33, 1.55, hz + 0.0015))
+    mb.cyl('mat_steel_polished', (0.26, 1.0, hz), (0.26, 1.0, hz + 0.012), 0.016, seg=12)
+    mb.box('mat_black_gloss', (0.2575, 0.99, hz + 0.012), (0.2625, 1.01, hz + 0.0125))
     mb.fdecal('mat_vend_header', 0.0, 1.60, 0.85, 0.85 * 241 / 1024, zf - 0.0015)
     # product window
     wcx, ww, wy0, wy1 = -0.115, 0.56, 0.38, 1.585

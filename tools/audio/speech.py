@@ -249,7 +249,7 @@ def finish(x, style, lufs_target=-16.0):
     x = style_chain(x, style)
     x = trim(x, -50.0, 0.02, 0.12)
     x = np.concatenate([np.zeros(int(0.04 * SR)), x, np.zeros(int(0.10 * SR))])
-    x = dsp.normalize(x, lufs_target=lufs_target, ceiling_db=-1.5)
+    x = dsp.normalize(x, lufs_target=lufs_target, ceiling_db=-2.5)   # Vorbis overshoots ~1 dB
     return x.astype(np.float32)
 
 

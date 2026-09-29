@@ -92,6 +92,12 @@ def ticket_machine(P):
         for k in range(7):
             x = sx * (hx + 0.0005)
             mb.box('mat_black_plastic', (min(x, x + sx * 0.0015), 0.30 + k * 0.03, -0.09), (max(x, x + sx * 0.0015), 0.312 + k * 0.03, 0.09))
+    # service door on the back: seam outline + lock
+    for (a, b) in (((-0.30, 0.30), (-0.297, 1.50)), ((0.297, 0.30), (0.30, 1.50))):
+        mb.box('mat_black_plastic', (a[0], a[1], hz), (b[0], b[1], hz + 0.0015))
+    mb.box('mat_black_plastic', (-0.30, 0.30, hz), (0.30, 0.303, hz + 0.0015))
+    mb.box('mat_black_plastic', (-0.30, 1.497, hz), (0.30, 1.50, hz + 0.0015))
+    mb.cyl('mat_steel_polished', (0.22, 0.95, hz), (0.22, 0.95, hz + 0.012), 0.016, seg=12)
     # amber status lamp on top of header
     mb.box('mat_led_amber', (-0.03, 1.665, zf - 0.0025), (0.03, 1.673, zf))
     P.col_box('col_body-convcolonly', (-hx, 0, -hz), (hx, 1.70, hz))
@@ -205,9 +211,12 @@ def fire_cabinet(P):
     mb = P.mb('body')
     W, H, D = 0.55, 0.95, 0.20
     zf = -D
-    # carcass + door
-    mb.box('mat_red', (-W / 2, 0, -D + 0.02), (W / 2, H, 0.0), bevel=0.008, seg=1)
-    mb.box('mat_black_plastic', (-W / 2 + 0.04, 0.04, -D + 0.021), (W / 2 - 0.04, H - 0.04, -D + 0.022))       # dark inner shadow gap
+    # carcass (hollow: back plate + 4 walls) + door
+    mb.box('mat_red', (-W / 2, 0, -0.02), (W / 2, H, 0.0), bevel=0.004, seg=1)
+    mb.box('mat_red', (-W / 2, 0, zf + 0.02), (-W / 2 + 0.02, H, -0.02), bevel=0.0)
+    mb.box('mat_red', (W / 2 - 0.02, 0, zf + 0.02), (W / 2, H, -0.02), bevel=0.0)
+    mb.box('mat_red', (-W / 2, 0, zf + 0.02), (W / 2, 0.02, -0.02), bevel=0.0)
+    mb.box('mat_red', (-W / 2, H - 0.02, zf + 0.02), (W / 2, H, -0.02), bevel=0.0)
     # door = frame around the window opening (x +-0.20, y 0.26..0.775)
     mb.box('mat_red', (-W / 2 - 0.005, 0.0, zf), (-0.20, H, zf + 0.022), bevel=0.006, seg=1)
     mb.box('mat_red', (0.20, 0.0, zf), (W / 2 + 0.005, H, zf + 0.022), bevel=0.006, seg=1)
@@ -217,14 +226,14 @@ def fire_cabinet(P):
     mb.fdecal('mat_fire_label_top', 0.0, 0.79, 0.45, 0.45 * 128 / 512, zf - 0.0012)
     mb.fdecal('mat_fire_label_bottom', 0.0, 0.055, 0.45, 0.45 * 192 / 512, zf - 0.0012)
     # window: white backing + extinguisher inside, glass in front
-    mb.box('mat_white', (-0.20, 0.26, zf + 0.022), (0.20, 0.775, zf + 0.030))
+    mb.box('mat_white', (-0.20, 0.26, -0.03), (0.20, 0.775, -0.022))
     mb.box('mat_steel', (-0.21, 0.255, zf - 0.002), (0.21, 0.27, zf + 0.02), bevel=0.003)
     mb.box('mat_steel', (-0.21, 0.765, zf - 0.002), (0.21, 0.78, zf + 0.02), bevel=0.003)
     for sx in (-1, 1):
         mb.box('mat_steel', (sx * 0.20 - 0.007 + (0.007 * sx), 0.255, zf - 0.002), (sx * 0.20 + 0.007 + (0.007 * sx), 0.78, zf + 0.02), bevel=0.003)
     mb.box('mat_glass', (-0.20, 0.27, zf + 0.005), (0.20, 0.765, zf + 0.008))
     # extinguisher
-    ex = 0.0; ez = zf + 0.075
+    ex = 0.0; ez = -0.09
     mb.lathe('mat_red', [(0.0, 0.29), (0.045, 0.29), (0.056, 0.30), (0.056, 0.60), (0.045, 0.655), (0.02, 0.675), (0.0, 0.675)], seg=20, cx=ex, cz=ez)
     mb.box('mat_black_plastic', (ex - 0.03, 0.675, ez - 0.03), (ex + 0.03, 0.71, ez + 0.02), bevel=0.005)
     mb.box('mat_steel_polished', (ex - 0.008, 0.71, ez - 0.05), (ex + 0.008, 0.725, ez + 0.02), bevel=0.003)
@@ -240,7 +249,7 @@ def fire_cabinet(P):
 # ============================================================================================ cctv dome
 @prop('cctv_dome',
       desc='Ceiling-mounted CCTV dome camera: white base, smoked dome with visible camera block, tiny status LED.',
-      origin='mount_point (ceiling)', front='dome hangs towards -Y from origin', nodes={'body': 'base + dome + camera', 'led': 'emissive red LED (own material)'},
+      origin='mount_point', origin_note='point on the ceiling; the dome hangs towards -Y from the origin', front='camera dome hangs below the origin', nodes={'body': 'base + dome + camera', 'led': 'emissive red LED (own material)'},
       slots={'mat_glass_smoked': 'dome', 'mat_led_red': 'status LED'}, anim={}, mount_height=2.6,
       notes=['Origin is the point on the ceiling. Diameter 0.16 m, hangs 0.11 m.'])
 def cctv_dome(P):
@@ -266,7 +275,7 @@ def cctv_dome(P):
 # ============================================================================================ PA speaker
 @prop('pa_speaker',
       desc='Public-address box speaker on a swivel wall/ceiling bracket: grey rounded box, perforated grille, steel U-bracket.',
-      origin='mount_point (wall)', front='grille faces -Z; wall/mount plane at z=0', nodes={'body': 'bracket + speaker'},
+      origin='mount_point', origin_note='centre of the wall plate (wall plane z=0); box hangs toward -Z', front='grille faces -Z', nodes={'body': 'bracket + speaker'},
       slots={'mat_pa_grille': 'grille print'}, anim={}, mount_height=2.4,
       notes=['0.32 x 0.20 x 0.24 m incl. bracket. Origin = centre of the wall plate. Tilted 12 degrees down.'])
 def pa_speaker(P):
@@ -288,7 +297,7 @@ def pa_speaker(P):
 # ============================================================================================ clock
 @prop('clock',
       desc='Round station clock: black case, white dial with numerals and minute ticks, glass, separate hour / minute / second hands pivoting at the dial centre.',
-      origin='mount_point (wall, dial centre)', front='dial faces -Z; wall plane at z=0',
+      origin='mount_point', origin_note='centre of the dial back plane on the wall (z=0); dial faces -Z', front='dial faces -Z',
       nodes={'body': 'case, dial, glass', 'hand_hour': 'origin = dial centre (0,0,-0.05)', 'hand_min': 'origin = dial centre', 'hand_sec': 'origin = dial centre'},
       slots={'mat_clock_face': 'dial print'},
       anim={'hand_hour': {'axis': 'z', 'rotation_z_rad': 'TAU*((h%12)+m/60)/12'}, 'hand_min': {'axis': 'z', 'rotation_z_rad': 'TAU*(m+s/60)/60'},

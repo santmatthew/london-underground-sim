@@ -133,6 +133,27 @@ def tactile_paving(name, size=1024, seed=3, size_m=0.6):
     save(name, color, rough, ao, ndi.gaussian_filter(dome, 1.0) * 5, size_m, normal_strength=2.5)
 
 
+def trackbed_sleepers(name, size=1024, seed=6):
+    """1.3 m x 1.3 m tile: ballast with two concrete sleepers (run across u; repeat along v every 0.65 m)"""
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32)
+    v = (yy / size) % 1.0
+    # sleeper bands: 0.25 m wide every 0.65 m  (tile = 1.3 m)
+    per = 0.65 / 1.3
+    ph = (v % per) / per
+    band = smoothstep(0.02, 0.06, ph) * (1 - smoothstep(0.38, 0.42, ph))     # 0.4*0.65 = 0.26 m
+    noise = tileable_noise((size, size), 24, rng, 4)
+    fine = rng.random((size, size)).astype(np.float32)
+    ballast = 0.10 + 0.14 * noise + 0.10 * (fine > 0.86)
+    conc = 0.34 + 0.10 * tileable_noise((size, size), 64, rng, 3)
+    val = ballast * (1 - band) + conc * band
+    color = np.stack([val * 1.0, val * 0.98, val * 0.94], -1)
+    rough = 0.9 - 0.15 * band
+    ao = 0.75 + 0.25 * band
+    height = ndi.gaussian_filter(band * 0.35 + 0.25 * fine * (1 - band), 1.0)
+    save(name, color, rough, ao, height * 6.0, 1.3, normal_strength=1.6)
+
+
 def grime_mask(name, size=1024, seed=4):
     """tileable greyscale grime (vertical streaks + blotches) used by the surface shader"""
     rng = np.random.default_rng(seed)
@@ -152,4 +173,5 @@ if __name__ == "__main__":
     metro_tile("metro_cream", (0.90, 0.86, 0.74), seed=5, dirt=0.06)
     panel_cladding("panel_white", (0.88, 0.89, 0.88))
     tactile_paving("tactile_yellow")
+    trackbed_sleepers("trackbed_sleepers")
     grime_mask("grime")

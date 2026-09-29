@@ -121,13 +121,13 @@ def _glass_flap(P, name, hinge_x, hinge_z, dirx, length, y0, y1, extras):
       slots={'mat_endwrap': 'printed vinyl wrap on both pedestal entry ends (retarget for adverts)',
              'mat_lamp_go': 'emissive - toggle node visibility or emission_energy', 'mat_lamp_stop': 'emissive',
              'mat_gate_display': 'emissive small display next to the reader', 'mat_glass': 'flap glass (alpha blend)'},
-      anim={'flap_L': {'closed': [0, 0, 0], 'open_rotation_y_deg': 90.0, 'slide_alt': [0.13, 0, 0]},
-            'flap_R': {'closed': [0, 0, 0], 'open_rotation_y_deg': -90.0, 'slide_alt': [-0.13, 0, 0]}},
+      anim={'flap_L': {'closed_rotation_y_deg': 0.0, 'open_rotation_y_deg': 90.0, 'alt_open_scale': [0.04, 1, 1]},
+            'flap_R': {'closed_rotation_y_deg': 0.0, 'open_rotation_y_deg': -90.0, 'alt_open_scale': [0.04, 1, 1]}},
       notes=['Flaps OPEN by swinging about the vertical hinge: flap_L rotation.y = +90 deg, flap_R rotation.y = -90 deg '
-             '(each panel folds flat against its pedestal, towards the exit). Alternative visual: tween scale.x 1 -> 0.05 (panel '
-             'retracts into the pedestal slot). A pure translation cannot hide a 0.29 m panel in a 0.16 m pedestal.',
-             'Lane clear width 0.60 m (x -0.30..+0.30). Unit footprint 0.92 x 1.50 m. Tile units at 0.92 m spacing '
-             '(adjacent pedestals sit side by side) or 0.76 m to share a pedestal by deleting one.'])
+             '(each panel folds flat against its pedestal, towards the exit). Alternative visual: tween scale.x 1 -> 0.04 (panel '
+             'collapses into the pedestal slot; extras alt_open_scale). A pure translation cannot hide a 0.29 m panel in a 0.16 m pedestal.',
+             'Lane clear width 0.60 m (x -0.30..+0.30). Unit footprint 0.93 x 1.50 m: place lanes at 0.93 m pitch '
+             '(neighbouring pedestals touch, giving a double-width dividing pedestal).'])
 def gate_unit(P):
     LANE = 0.60
     _gate_mats(P)
@@ -137,8 +137,8 @@ def gate_unit(P):
     pedestal(body, -cx, -1, lane_lamp=False)
     _lamps(P, cx)
     lf = (LANE - 0.02) / 2
-    _glass_flap(P, 'flap_L', -LANE / 2, -0.10, +1, lf, 0.12, 0.90, {'open_rotation_y_deg': 90.0})
-    _glass_flap(P, 'flap_R', +LANE / 2, -0.10, -1, lf, 0.12, 0.90, {'open_rotation_y_deg': -90.0})
+    _glass_flap(P, 'flap_L', -LANE / 2, -0.10, +1, lf, 0.12, 0.90, {'open_rotation_y_deg': 90.0, 'alt_open_scale': [0.04, 1.0, 1.0]})
+    _glass_flap(P, 'flap_R', +LANE / 2, -0.10, -1, lf, 0.12, 0.90, {'open_rotation_y_deg': -90.0, 'alt_open_scale': [0.04, 1.0, 1.0]})
     P.col_box('col_ped_R-convcolonly', (cx - PW / 2, 0, ZX), (cx + PW / 2, 1.0, ZE))
     P.col_box('col_ped_L-convcolonly', (-cx - PW / 2, 0, ZX), (-cx + PW / 2, 1.0, ZE))
 
@@ -151,7 +151,7 @@ def gate_unit(P):
              'lamp_go': 'emissive green arrow', 'lamp_stop': 'emissive red cross', 'col_ped_L/col_ped_R': 'collision'},
       slots={'mat_endwrap': 'entry-end print', 'mat_lamp_go': 'emissive', 'mat_lamp_stop': 'emissive',
              'mat_glass': 'door glass', 'mat_gate_display': 'emissive'},
-      anim={'door_L': {'open_rotation_y_deg': 90.0}, 'door_R': {'open_rotation_y_deg': -90.0}},
+      anim={'door_L': {'open_rotation_y_deg': 90.0, 'alt_open_scale': [0.04, 1, 1]}, 'door_R': {'open_rotation_y_deg': -90.0, 'alt_open_scale': [0.04, 1, 1]}},
       notes=['Doors swing about the vertical hinge: door_L rotation.y = +90 deg, door_R = -90 deg (fold against pedestals, '
              'towards the exit). Lane clear width 0.90 m. Doors are 1.25 m tall.'])
 def gate_wide(P):
@@ -164,7 +164,7 @@ def gate_wide(P):
     _lamps(P, cx)
     lf = (LANE - 0.02) / 2
     for nm, side in (('door_L', -1), ('door_R', +1)):
-        mb = _glass_flap(P, nm, side * LANE / 2, -0.10, -side, lf, 0.12, 1.28, {'open_rotation_y_deg': -90.0 * side})
+        mb = _glass_flap(P, nm, side * LANE / 2, -0.10, -side, lf, 0.12, 1.28, {'open_rotation_y_deg': -90.0 * side, 'alt_open_scale': [0.04, 1.0, 1.0]})
         # push handle bar on the free end
         hx = side * LANE / 2 - side * (lf - 0.05)
         mb.cyl('mat_steel_polished', (hx, 0.86, -0.10 - 0.02), (hx, 1.14, -0.10 - 0.02), 0.009, seg=10)

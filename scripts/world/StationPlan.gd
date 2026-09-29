@@ -465,6 +465,118 @@ func path(a: String, b: String) -> Array:
 	return out
 
 
+## plan-space point from an escalator-local point
+func esc_point(ei: int, local: Vector3) -> Vector3:
+	var e: Dictionary = escs[ei]
+	return (e["pos"] as Vector3) + Basis(Vector3.UP, e["yaw"]) * local
+
+
+func esc_lane_z(ei: int, li: int) -> float:
+	var n: int = (escs[ei]["lanes"] as Array).size()
+	return (li - (n - 1) * 0.5) * Escalator.PITCH
+
+
+## which lane of escalator `ei` moves in direction `dir` (+1 down / -1 up); `pick` chooses among several
+func esc_lane_for(ei: int, dir: int, pick := 0) -> int:
+	var idxs: Array = []
+	var lanes: Array = escs[ei]["lanes"]
+	for i in lanes.size():
+		if lanes[i] == dir:
+			idxs.append(i)
+	if idxs.is_empty():
+		return 0
+	return idxs[pick % idxs.size()]
+
+
+## x of a gate lane of the wanted kind (+1 entry, -1 exit); `pick` selects among lanes nearest the centre
+func gate_lane_x(kind: int, pick := 0) -> float:
+	var n: int = gates["n"]
+	var pitch: float = gates["pitch"]
+	var start := -n * pitch * 0.5
+	var xs: Array = []
+	for i in n:
+		var k := 1 if i < (n + 1) / 2 else -1
+		if k == kind:
+			xs.append(start + (i + 0.5) * pitch)
+	xs.sort_custom(func(a, b): return absf(a) < absf(b))
+	return xs[pick % xs.size()]
+
+
+## Waypoints (plan space) along a node path. Each: {pos, kind:"walk"|"gate"|"esc_in"|"esc_out", esc, lane, dir}
+## `pick` varies lane choices between agents.
+func walk_points(names: Array, pick := 0) -> Array:
+	var out: Array = []
+	var i := 0
+	while i < names.size():
+		var n: String = names[i]
+		var nxt: String = names[i + 1] if i + 1 < names.size() else ""
+		var prv: String = names[i - 1] if i > 0 else ""
+		if n == "gate_in" and nxt == "gate_out":
+			var lx := gate_lane_x(1, pick)
+			out.append({"pos": Vector3(lx, 0, gates["z"] - 1.6), "kind": "walk"})
+			out.append({"pos": Vector3(lx, 0, gates["z"] - 0.2), "kind": "gate"})
+			out.append({"pos": Vector3(lx, 0, gates["z"] + 1.8), "kind": "walk"})
+			i += 2
+			continue
+		if n == "gate_out" and nxt == "gate_in":
+			var lx2 := gate_lane_x(-1, pick)
+			out.append({"pos": Vector3(lx2, 0, gates["z"] + 1.6), "kind": "walk"})
+			out.append({"pos": Vector3(lx2, 0, gates["z"] + 0.2), "kind": "gate"})
+			out.append({"pos": Vector3(lx2, 0, gates["z"] - 1.8), "kind": "walk"})
+			i += 2
+			continue
+		if n.begins_with("esc") and n.ends_with("_top") and nxt.begins_with("esc") and nxt.ends_with("_bot"):
+			var ei := int(n.substr(3, n.find("_") - 3))
+			var li := esc_lane_for(ei, 1, pick)
+			var lz := esc_lane_z(ei, li)
+			var e: Dictionary = escs[ei]
+			out.append({"pos": esc_point(ei, Vector3(0.6, 0.0, lz)), "kind": "esc_in", "esc": ei, "lane": li, "dir": 1})
+			out.append({"pos": esc_point(ei, Vector3(e["length"] - 0.9, -e["rise"], lz)), "kind": "esc_out", "esc": ei, "lane": li, "dir": 1})
+			i += 2
+			continue
+		if n.begins_with("esc") and n.ends_with("_bot") and nxt.begins_with("esc") and nxt.ends_with("_top"):
+			var ej := int(n.substr(3, n.find("_") - 3))
+			var lj := esc_lane_for(ej, -1, pick)
+			var lzj := esc_lane_z(ej, lj)
+			var e2: Dictionary = escs[ej]
+			out.append({"pos": esc_point(ej, Vector3(e2["length"] - 0.6, -e2["rise"], lzj)), "kind": "esc_in", "esc": ej, "lane": lj, "dir": -1})
+			out.append({"pos": esc_point(ej, Vector3(0.9, 0.0, lzj)), "kind": "esc_out", "esc": ej, "lane": lj, "dir": -1})
+			i += 2
+			continue
+		if n.begins_with("landing") and nxt.contains("_spine"):
+			var mi := int(nxt.substr(1, nxt.find("_") - 1))
+			var m: Dictionary = modules[mi]
+			var lr: Array = _landing_rect(int(m["level"]))
+			out.append({"pos": Vector3(lr[1] - 2.5, m["pos"].y, m["lane_z"]), "kind": "walk"})
+			out.append({"pos": Vector3(lr[1] + 1.5, m["pos"].y, m["lane_z"]), "kind": "walk"})
+			i += 1
+			continue
+		if n.contains("_spine") and prv.begins_with("landing"):
+			out.append({"pos": nodes[node_idx[n]]["pos"], "kind": "walk"})
+			i += 1
+			continue
+		if n.contains("_spine") and not prv.is_empty() and prv.contains("_open") and nxt.begins_with("landing"):
+			# leaving a spine towards the landing: line up with the corridor first
+			var mk := int(n.substr(1, n.find("_") - 1))
+			var mm: Dictionary = modules[mk]
+			var lr2: Array = _landing_rect(int(mm["level"]))
+			out.append({"pos": nodes[node_idx[n]]["pos"], "kind": "walk"})
+			out.append({"pos": Vector3(lr2[1] + 1.5, mm["pos"].y, mm["lane_z"]), "kind": "walk"})
+			out.append({"pos": Vector3(lr2[1] - 2.5, mm["pos"].y, mm["lane_z"]), "kind": "walk"})
+			i += 1
+			continue
+		out.append({"pos": nodes[node_idx[n]]["pos"], "kind": "walk"})
+		i += 1
+	return out
+
+
+func _landing_rect(level: int) -> Array:
+	for rm in rooms:
+		if rm["name"] == "landing%d" % level:
+			return rm["rect"]
+	return [-11.0, 11.0, 0.0, 12.0]
+
+
 var _dcache: Dictionary = {}
 
 

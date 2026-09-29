@@ -40,6 +40,7 @@ BUILD = ROOT / "build" / "audio"
 MANIFEST = OUT / "manifest.json"
 SPEECH_CACHE = BUILD / "speech_cache.json"
 CODE_VERSION = "speech-v1"
+ALIASES = {"train_interior_run_loop": "train_interior_run_slow_loop"}
 
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
@@ -121,14 +122,16 @@ def run_speech(jobs_n, force, name_filter):
     jobs = speech.build_jobs(net, pron)
     if name_filter:
         jobs = [j for j in jobs if any(f in j["key"] for f in name_filter)]
-    cache = json.loads(SPEECH_CACHE.read_text()) if SPEECH_CACHE.exists() and not force else {}
+    cache = json.loads(SPEECH_CACHE.read_text()) if SPEECH_CACHE.exists() else {}
     manifest = load_manifest()
+    updates = {}
     groups = {}
     for j in jobs:
         sig = hashlib.sha1(json.dumps([CODE_VERSION, j["voice"], j["style"], j["text"],
                                        speech.VOICES[j["voice"]]], sort_keys=True).encode()).hexdigest()[:16]
         j["sig"] = sig
-        fresh = cache.get(j["file"]) == sig and (OUT / j["file"]).exists() and j["key"] in manifest["clips"]
+        fresh = (not force) and cache.get(j["file"]) == sig and (OUT / j["file"]).exists() \
+            and j["key"] in manifest["clips"]
         if fresh:
             continue
         g = groups.setdefault((j["voice"], j["style"], j["text"]), dict(voice=j["voice"], style=j["style"],
@@ -165,9 +168,11 @@ def run_speech(jobs_n, force, name_filter):
         for k in ("line", "dest", "via", "excluded_line"):
             if k in j:
                 e[k] = j[k]
-        manifest["clips"][j["key"]] = e
+        updates[j["key"]] = e
     SPEECH_CACHE.parent.mkdir(parents=True, exist_ok=True)
     SPEECH_CACHE.write_text(json.dumps(cache, indent=0))
+    manifest = load_manifest()          # re-read: other runs may have updated it meanwhile
+    manifest["clips"].update(updates)
     manifest["voices"] = {k: dict(model=f"en_GB-{v['name']}-{v['quality']}", role=r)
                           for (k, v), r in zip(speech.VOICES.items(), ("station / platform PA, on-train station announcements",
                                                                         "train driver"))}
@@ -213,12 +218,13 @@ def save_manifest(m):
                   "are seamless: set AudioStreamOggVorbis.loop = true at load time. spatial: '3d' = mono/spatial "
                   "emitters, '2d' = bed / UI / wide stereo. See index for lookups by station id and line/destination.")
     m["index"] = build_index(m["clips"])
+    m["aliases"] = {a: t for a, t in ALIASES.items() if t in m["clips"]}
     m["generated"] = time.strftime("%Y-%m-%d %H:%M:%S")
     m["totals"] = dict(clips=len(m["clips"]),
                        total_seconds=round(sum(c["duration"] for c in m["clips"].values()), 1),
                        total_bytes=sum((OUT / c["file"]).stat().st_size for c in m["clips"].values()))
     MANIFEST.parent.mkdir(parents=True, exist_ok=True)
-    order = ["format", "sample_rate", "generated", "totals", "notes", "voices", "index", "clips"]
+    order = ["format", "sample_rate", "generated", "totals", "notes", "voices", "aliases", "index", "clips"]
     out = {k: m[k] for k in order if k in m}
     MANIFEST.write_text(json.dumps(out, indent=1, ensure_ascii=False))
 
@@ -231,7 +237,7 @@ def run_procedural(kind, jobs_n, name_filter):
     if name_filter:
         names = [n for n in names if any(f in n for f in name_filter)]
     print(f"procedural: {len(names)} assets", flush=True)
-    manifest = load_manifest()
+    updates = {}
     ctx = mp.get_context("spawn")
     t0 = time.time()
     with cf.ProcessPoolExecutor(max_workers=jobs_n, mp_context=ctx) as ex:
@@ -242,8 +248,10 @@ def run_procedural(kind, jobs_n, name_filter):
             except Exception as e:  # keep going, report at the end
                 print("  FAILED:", repr(e)[:300], flush=True)
                 continue
-            manifest["clips"][name] = entry
+            updates[name] = entry
             print(f"  [{i}/{len(names)}] {name} ({dt:.1f}s)", flush=True)
+    manifest = load_manifest()
+    manifest["clips"].update(updates)
     save_manifest(manifest)
     print(f"procedural done in {time.time() - t0:.0f}s")
 

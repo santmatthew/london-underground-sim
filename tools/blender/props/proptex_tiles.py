@@ -15,11 +15,14 @@ def u8(a):
     return (np.clip(a, 0, 1) * 255 + 0.5).astype(np.uint8)
 
 
-def save(name, color, normal, orm):
+def save(name, color, normal, orm, size=None):
     os.makedirs(OUT, exist_ok=True)
-    Image.fromarray(u8(color)).save(os.path.join(OUT, name + '_c.jpg'), quality=90, subsampling=0)
-    Image.fromarray(u8(normal)).save(os.path.join(OUT, name + '_n.jpg'), quality=92, subsampling=0)
-    Image.fromarray(u8(orm)).save(os.path.join(OUT, name + '_orm.jpg'), quality=90, subsampling=0)
+    def im(a):
+        i = Image.fromarray(u8(a))
+        return i.resize((size, size), Image.LANCZOS) if size else i
+    im(color).save(os.path.join(OUT, name + '_c.jpg'), quality=90, subsampling=0)
+    im(normal).save(os.path.join(OUT, name + '_n.jpg'), quality=92, subsampling=0)
+    im(orm).save(os.path.join(OUT, name + '_orm.jpg'), quality=90, subsampling=0)
     print('wrote tile set', name)
 
 
@@ -119,7 +122,7 @@ def charcoal():
     rough = 0.52 + 0.10 * (peel - 0.5) + 0.12 * (grime - 0.5) - 0.18 * sc
     metal = np.clip(sc * 0.9, 0, 1)
     ao = np.ones((S, S), np.float32)
-    save('charcoal', col, n, np.stack([ao, np.clip(rough, 0.2, 0.95), metal], -1))
+    save('charcoal', col, n, np.stack([ao, np.clip(rough, 0.2, 0.95), metal], -1), size=256)
 
 
 def paint(name, rgb255, seed, wear=0.6, grime_amt=0.10, rough=0.34, peel_amt=1.0, shared=False):
@@ -188,7 +191,7 @@ def rubber():
     n = normal_from_height(fine * 0.02, 3.0)
     rough = 0.80 + 0.06 * fine + 0.1 * (grime - 0.5)
     ao = np.ones((S, S), np.float32)
-    save('rubber', col, n, np.stack([ao, np.clip(rough, 0.5, 1.0), np.zeros((S, S), np.float32)], -1))
+    save('rubber', col, n, np.stack([ao, np.clip(rough, 0.5, 1.0), np.zeros((S, S), np.float32)], -1), size=256)
 
 
 def galv_perf():

@@ -14,6 +14,7 @@ var light_nodes: Array = []
 var fitting_root: Node3D
 var stats := {"tris": 0, "lights": 0}
 var trains: TrainService
+var crowd: CrowdManager
 
 
 var async_mode := false
@@ -292,6 +293,16 @@ func _build_street_doors() -> void:
 		area.position = Vector3(pos.x, 1.25, pos.z + 0.2)
 		area.body_entered.connect(func(b): if b is Player: street_exit_reached.emit(sd["id"]))
 		fitting_root.add_child(area)
+
+
+func attach_crowd(p: Node3D) -> void:
+	if crowd != null:
+		crowd.player = p as Player
+		return
+	crowd = CrowdManager.new()
+	crowd.name = "Crowd"
+	add_child(crowd)
+	crowd.setup(self, p)
 
 
 ## world position of a platform face's boarding point given a fraction along the platform (0..1) — inside the platform, at the edge

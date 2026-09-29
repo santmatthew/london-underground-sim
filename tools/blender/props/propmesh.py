@@ -661,7 +661,7 @@ def sharp_edges(mb):
     return sharp, fn
 
 
-def to_blender(mb, bpy, mats_by_name, obj_name, pivot=(0.0, 0.0, 0.0), mesh_name=None):
+def to_blender(mb, bpy, mats_by_name, obj_name, pivot=(0.0, 0.0, 0.0), mesh_name=None, dirty=()):
     """create a Blender mesh object from the builder. Vertices are stored relative to `pivot` (Godot coords) and the
     object is located at the pivot."""
     me = bpy.data.meshes.new(mesh_name or obj_name)
@@ -669,6 +669,10 @@ def to_blender(mb, bpy, mats_by_name, obj_name, pivot=(0.0, 0.0, 0.0), mesh_name
     faces = [f['idx'] for f in mb.F]
     me.from_pydata(V, [], faces)
     used = mb.materials_used()
+    # Godot's glTF importer does not apply COLOR_0 to the FIRST primitive of a mesh: keep a material that does not
+    # use the dirt gradient (decal, glass, polished ...) in slot 0 when one exists.
+    if mb.colfn is not None and dirty:
+        used = sorted(used, key=lambda m: m in dirty)
     for m in used:
         me.materials.append(mats_by_name[m])
     mi = [used.index(f['mat']) for f in mb.F]

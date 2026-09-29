@@ -45,6 +45,10 @@ static var _bag_meshes: Dictionary = {}
 static var _bag_mat: ShaderMaterial
 static var _loaded := false
 
+## When the scene person_model.tscn is instanced directly (instead of PersonModel.create) set these in the inspector.
+@export var auto_index := -1
+@export var auto_seed := 0
+
 var index := 0
 var variation_seed := 0
 var info: Dictionary = {}
@@ -68,6 +72,12 @@ var _bag_hang := false
 var _bag_bone := -1
 var _bag_offset := Vector3.ZERO
 var _height_jitter := 1.0
+var _finger_bones: PackedInt32Array = PackedInt32Array()
+
+
+func _ready() -> void:
+	if auto_index >= 0 and model_root == null:
+		build(auto_index, auto_seed)
 
 
 # ------------------------------------------------------------------------------ static API
@@ -394,8 +404,12 @@ func _play_internal(anim: StringName, blend: float, speed: float) -> void:
 		if cl > 0.0:
 			phase = anim_player.current_animation_position / cl
 			keep_phase = true
+	var had_fingers: bool = _clips.get(String(current_clip), {}).get("fingers", false)
+	var has_fingers: bool = _clips.get(String(anim), {}).get("fingers", false)
 	current_clip = anim
 	anim_player.play(anim, blend, speed)
+	if had_fingers and not has_fingers:
+		_release_fingers(blend + 0.05)
 	_speed_scale = speed
 	if keep_phase:
 		anim_player.seek(phase * anim_player.current_animation_length, false)
@@ -403,6 +417,25 @@ func _play_internal(anim: StringName, blend: float, speed: float) -> void:
 		set_process(true)
 	# make sure the first frame is applied even at low tick rates
 	_dirty = true
+
+
+## grip clips (holds / phone) animate finger bones; other clips do not, so return them to the relaxed rest pose
+func _release_fingers(delay: float) -> void:
+	if delay > 0.0 and is_inside_tree():
+		await get_tree().create_timer(delay).timeout
+	if skeleton == null or not is_instance_valid(skeleton):
+		return
+	if _clips.get(String(current_clip), {}).get("fingers", false):
+		return
+	if _finger_bones.is_empty():
+		for f in ["index", "middle", "ring", "pinky", "thumb"]:
+			for k in ["01", "02", "03"]:
+				for side in ["l", "r"]:
+					var b := skeleton.find_bone("%s_%s_%s" % [f, k, side])
+					if b >= 0:
+						_finger_bones.append(b)
+	for b in _finger_bones:
+		skeleton.reset_bone_pose(b)
 
 
 func _is_loco(n: StringName) -> bool:
@@ -476,6 +509,9 @@ func tick(delta: float) -> void:
 	if hz > 0.0 and _accum < 1.0 / hz and not _dirty:
 		return
 	anim_player.advance(_accum)
+	var ca := anim_player.current_animation
+	if ca != "" and StringName(ca) != current_clip:
+		current_clip = StringName(ca)      # a queued clip has started
 	if _bag_hang:
 		_update_bag()
 	_accum = 0.0

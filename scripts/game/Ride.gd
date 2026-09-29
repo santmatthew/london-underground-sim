@@ -35,6 +35,7 @@ var car_offset := 0.0               # distance of the player's car centre ahead 
 var fwd := Vector3.RIGHT            # train forward in world
 var origin_base := Vector3.ZERO
 var _handoff_done := false
+var rider_state: Dictionary = {}
 var _building := false
 var sway_t := 0.0
 var speed_now := 0.0
@@ -179,6 +180,8 @@ func _start_tunnel(travelled: float) -> void:
 	tunnel.global_transform = origin_frame
 	tunnel.scale.z = (train.get_meta("visit", {}) as Dictionary).get("side", 1.0)
 	tunnel.direction = 1.0 if train.facing > 0 else -1.0
+	if origin.crowd != null:
+		rider_state = origin.crowd.train_state.get(train, {})
 	# match the fixture phase: origin fixtures sit at x1 + 6 + 12k (module frame)
 	tunnel.offset = travelled
 	tunnel.advance(0.0)
@@ -203,8 +206,9 @@ func _build_destination() -> void:
 	var f: Dictionary = dest_plan.faces[dest_face_key]
 	dest_face_length = f["length"]
 	# pre-register the visit so the service does not spawn a duplicate train
-	dest_station.trains.setup(dest_station, null)
+	dest_station.trains.setup(dest_station, (game as Game).player)
 	dest_station.trains.external[dest_vkey] = true
+	dest_station.attach_crowd((game as Game).player)
 	dest_station.trains.paused = true
 	dest_ready = true
 
@@ -249,6 +253,8 @@ func _finish() -> void:
 	train.position = Vector3(0, PlatformModule.RAIL_Y, side * (PlatformModule.GAP * 0.5 + module.meta["pw"] + PlatformModule.TRACK_TO_EDGE))
 	train.rotation = Vector3(0, 0.0 if canon > 0 else PI, 0)
 	train.setup_orientation(train.facing, -side)
+	if dest_station.crowd != null:
+		dest_station.crowd.adopt_train(train, rider_state)
 	var svc := dest_station.trains
 	svc.paused = false
 	var stops: PackedInt32Array = Timetable.run_stops[run]

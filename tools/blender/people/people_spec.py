@@ -55,8 +55,8 @@ RACE = {  # (asian, caucasian, african)
 }
 
 # skin tone multipliers (linear-ish, applied to the sRGB albedo in make_textures.py)
-TONE_BROWN = (0.86, 0.72, 0.60)      # turns a light/bronze skin into a South-Asian brown
-TONE_BROWN_D = (0.78, 0.62, 0.50)
+TONE_BROWN = (0.84, 0.74, 0.66)      # turns a light/bronze skin into a South-Asian brown
+TONE_BROWN_D = (0.76, 0.66, 0.58)
 TONE_TAN = (0.94, 0.86, 0.78)
 
 # ------------------------------------------------------------------ atlas layouts
