@@ -24,6 +24,7 @@ const OPEN_W := 3.0
 const OPEN_H := 2.15
 const TUNNEL_EXT := 170.0    # running tunnel visible beyond the platform ends (must exceed a full train length)
 const BOX_H := 4.7          # ceiling height of "box" halls (sub-surface / surface stations)
+const HEAD := 2.15          # lowest underside allowed for anything hanging over a walkway
 const PW_RUN := 3.2          # platform width AND running-tunnel clearance: constant so every tunnel joins invisibly
 
 var spec: Dictionary = {}
@@ -470,6 +471,73 @@ func _add_collision() -> void:
 			body.add_child(cs)
 	add_child(body)
 	add_child(edge_body)
+
+
+# ---------------------------------------------------------------------------------------------------
+# Roof clearance (for signs)
+# ---------------------------------------------------------------------------------------------------
+func _arch() -> Dictionary:
+	var zw := GAP * 0.5
+	var zf: float = zw + float(meta["pw"]) + TRACK_TO_EDGE + TRACK_TO_WALL
+	var chord := zf - zw
+	var r := (chord * chord / 4.0 + RISE * RISE) / (2.0 * RISE)
+	return {"zw": zw, "zf": zf, "zc": (zw + zf) * 0.5, "r": r, "yc": SPRING_Y + RISE - r}
+
+
+## Roof height above the platform at module-local z (arch tunnels: circular arch over each tunnel, flat spine between; box halls: flat)
+func ceiling_at(z: float) -> float:
+	if box:
+		return BOX_H
+	var a := _arch()
+	var az := absf(z)
+	if az < float(a["zw"]):
+		return SPINE_H
+	if az > float(a["zf"]):
+		return SPRING_Y
+	var dz := az - float(a["zc"])
+	return float(a["yc"]) + sqrt(maxf(float(a["r"]) * float(a["r"]) - dz * dz, 0.0))
+
+
+## Box halls: move x sideways so a board hung at x clears the steel columns (every 7.2 m from x0 + 5)
+func clear_of_columns(x: float, half_w := 0.4) -> float:
+	if not box:
+		return x
+	var x0 := -float(meta["length"]) * 0.5
+	var k := roundf((x - (x0 + 5.0)) / 7.2)
+	var cx := x0 + 5.0 + k * 7.2
+	var need := half_w + 0.3
+	if absf(x - cx) < need:
+		return cx + need if x >= cx else cx - need
+	return x
+
+
+## Where a hanging blade (faces along x, spans z) of size w x h fits under the roof of the tunnel on side `s` (+1/-1).
+## Prefers z_want (signed) and a top edge at y_top_want; slides sideways / rises / shrinks until it clears the roof and walls.
+## Returns {"z": signed centre z, "y_top": top edge, "k": scale}.
+func fit_blade(s: float, z_want: float, w: float, h: float, y_top_want: float, margin := 0.12) -> Dictionary:
+	var a := _arch()
+	var zlo: float = float(a["zw"]) + 0.15
+	var zhi: float = float(a["zf"]) - 0.15
+	var za := absf(z_want)
+	var top_limit: float = (BOX_H if box else SPRING_Y + RISE) - 0.05
+	for k in [1.0, 0.88, 0.76, 0.66, 0.56]:
+		var wk: float = w * k
+		var hk: float = h * k
+		var y_top := maxf(y_top_want, HEAD + hk)
+		while y_top <= top_limit:
+			var lo := zlo
+			var hi := zhi
+			if not box:
+				var dy: float = y_top + margin - float(a["yc"])
+				if dy > float(a["r"]):
+					break
+				var d := sqrt(maxf(float(a["r"]) * float(a["r"]) - dy * dy, 0.0))
+				lo = maxf(lo, float(a["zc"]) - d)
+				hi = minf(hi, float(a["zc"]) + d)
+			if hi - lo >= wk:
+				return {"z": s * clampf(za, lo + wk * 0.5, hi - wk * 0.5), "y_top": y_top, "k": k}
+			y_top += 0.05
+	return {"z": s * float(a["zc"]), "y_top": top_limit - 0.1, "k": 0.5}
 
 
 ## Open/close the invisible platform-edge guard between x_from..x_to (module-local) on the face at `face_sign` (+1 = +z tunnel)

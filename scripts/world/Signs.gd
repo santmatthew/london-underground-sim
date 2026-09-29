@@ -113,7 +113,7 @@ static func _lum_text(col: Color) -> Color:
 ## Real Underground wayfinding: a white enamel panel with black text, a thin LINE-COLOURED RULE above each row and black arrows.
 ## A row whose text starts with "Way out" is drawn as the black box with yellow text.
 ## rows: [{text, color (line rule), arrow (0 right,1 up,2 left,3 down), arrow_side "left"/"right", bold, text_color}]
-static func board(rows: Array, width := 2.4, row_h := 0.34, _bg := Color.WHITE) -> Node3D:
+static func board(rows: Array, width := 2.4, row_h := 0.34, _bg := Color.WHITE, max_w := 0.0) -> Node3D:
 	var root := Node3D.new()
 	var gap := 0.03
 	# widen the panel for long text so nothing is clipped
@@ -179,6 +179,14 @@ static func board(rows: Array, width := 2.4, row_h := 0.34, _bg := Color.WHITE) 
 				a2.position = Vector3(width * 0.5 - row_h * 0.45, yc, 0.02)
 				root.add_child(a2)
 		y = top - row_h - gap * 0.0
+	# `size` = outer size in metres after any scaling; `max_w` shrinks the whole board (text included) instead of letting long text
+	# push it wider than the space it hangs in
+	var k := 1.0
+	if max_w > 0.0 and width + 0.06 > max_w:
+		k = max_w / (width + 0.06)
+		root.scale = Vector3(k, k, k)
+	root.set_meta("sign", true)
+	root.set_meta("size", Vector2(width + 0.06, h + 0.06) * k)
 	return root
 
 
@@ -288,9 +296,13 @@ class Indicator:
 
 	func setup(gp: int, width := 2.2) -> void:
 		platform_gp = gp
+		# everything scales with the width (the text is laid out for 2.9 m)
+		var f := width / 2.9
+		set_meta("sign", true)
+		set_meta("size", Vector2(width + 0.06 * f, 0.68 * f))
 		var panel := MeshInstance3D.new()
 		var q := QuadMesh.new()
-		q.size = Vector2(width, 0.62)
+		q.size = Vector2(width, 0.62 * f)
 		panel.mesh = q
 		var m := StandardMaterial3D.new()
 		m.albedo_color = Color(0.01, 0.01, 0.012)
@@ -300,7 +312,7 @@ class Indicator:
 		add_child(panel)
 		var back := MeshInstance3D.new()
 		var q2 := QuadMesh.new()
-		q2.size = Vector2(width + 0.06, 0.68)
+		q2.size = Vector2(width + 0.06 * f, 0.68 * f)
 		back.mesh = q2
 		var m2 := StandardMaterial3D.new()
 		m2.albedo_color = Color(0.4, 0.4, 0.42)
@@ -312,12 +324,12 @@ class Indicator:
 			var l := Label3D.new()
 			l.font = Signs.font_dot()
 			l.font_size = 64
-			l.pixel_size = 0.150 / 64.0
+			l.pixel_size = 0.150 / 64.0 * f
 			l.modulate = Color(1.0, 0.62, 0.06)
 			l.shaded = false
 			l.double_sided = false
 			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-			l.position = Vector3(-width * 0.5 + 0.08, 0.19 - i * 0.19, 0.02)
+			l.position = Vector3(-width * 0.5 + 0.08 * f, (0.19 - i * 0.19) * f, 0.02)
 			add_child(l)
 			labels.append(l)
 		refresh()
