@@ -29,6 +29,7 @@ var _side_dir := 1.0
 var _sidesteps := 0
 var _stuck_total := 0.0
 var _board_visit: Dictionary = {}
+var _dbg_t := -1
 var _route_from := ""
 var _repaths := 0
 var _unplanned := false         # carried off by a train we did not plan to take: get off at the next stop and replan
@@ -483,6 +484,13 @@ func _in_train(delta: float) -> void:
 		return
 	if st == null:
 		return
+	if OS.get_environment("BOT_DEBUG") != "" and int(Clock.now) % 3 == 0 and int(Clock.now) != _dbg_t and leg_i < legs.size():
+		_dbg_t = int(Clock.now)
+		for key in st.trains.visits:
+			var vv: Dictionary = st.trains.visits[key]
+			if int((vv["info"] as Dictionary)["run"]) == int(legs[leg_i]["run"]):
+				var tr: Train = vv["train"]
+				print("INTRAIN %s %s train-local %s train x %.1f doors %s vel %s" % [Clock.fmt(Clock.now, true), key, str(tr.to_local(player.global_position).snapped(Vector3(0.1, 0.1, 0.1))), tr.position.x, str(vv["doors"]), str(player.velocity.snapped(Vector3(0.1, 0.1, 0.1)))])
 	# at a station: alight if it is the leg's destination
 	var lg: Dictionary = legs[leg_i] if leg_i < legs.size() else {}
 	if wait_t > 2.0 and (_unplanned or (not lg.is_empty() and st.plan.idx == lg["to"])):

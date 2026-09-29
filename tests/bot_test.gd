@@ -28,9 +28,24 @@ func run():
 	while g.state != Game.State.PLAYING:
 		await get_tree().process_frame
 	var frames := 0
+	var y_prev: float = g.player.global_position.y
+	var drops := 0
 	while g.state == Game.State.PLAYING and frames < max_frames:
 		await get_tree().physics_frame
 		frames += 1
+		var y_now: float = g.player.global_position.y
+		if y_now < y_prev - 0.25 and drops < 6:
+			drops += 1
+			var ph := "-"
+			if g.ride != null:
+				ph = "phase %d t_arr-now %.1f dest_ready %s speed %.1f" % [g.ride.phase, g.ride.t_arr - Clock.now, str(g.ride.dest_ready), g.ride.speed_now]
+			print("DROP y %.2f -> %.2f at %s clock %s riding=%s ride[%s] station=%s on_floor=%s mode=%s" % [y_prev, y_now, str(g.player.global_position.snapped(Vector3(0.1, 0.1, 0.1))), Clock.fmt(Clock.now, true), str(g.riding), ph, g.station.plan.name if g.station else "null", str(g.player.is_on_floor()), g.autopilot.mode if g.autopilot else "-"])
+			if drops == 1 and g.station != null:
+				for key in g.station.trains.visits:
+					var vv: Dictionary = g.station.trains.visits[key]
+					var tr: Train = vv["train"]
+					print("   visit %s train at %s (x_local %.1f) doors %s player-in-train-coords %s ext %s info arr %s dep %s" % [key, str(tr.global_position.snapped(Vector3(0.1, 0.1, 0.1))), tr.position.x, str(vv["doors"]), str(tr.to_local(g.player.global_position).snapped(Vector3(0.1, 0.1, 0.1))), str(g.station.trains.external.has(key)), Clock.fmt(vv["info"]["arr"], true), Clock.fmt(vv["info"]["dep"], true)])
+		y_prev = y_now
 		if frames % every == 0 and g.autopilot:
 			print("  f=%d clock %s mode %s wp %d/%d pos %s local %s mv %s crowd %s" % [frames, Clock.fmt(Clock.now, true), g.autopilot.mode, g.autopilot.wp_i, g.autopilot.wps.size(), str(g.player.global_position), str(g.station.to_local(g.player.global_position).snapped(Vector3(0.1, 0.1, 0.1))) if g.station else "-", str(g.player.bot_move.snapped(Vector2(0.1, 0.1))), str(g.station.crowd.stats) if g.station and g.station.crowd else ""])
 	print("state ", g.state, " frames ", frames, " sim end ", Clock.fmt(Clock.now, true))

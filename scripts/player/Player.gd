@@ -3,6 +3,7 @@ extends CharacterBody3D
 ## First-person commuter. Layers: 1 = world, 2 = people, 3 = platform-edge guard (blocks the player only).
 
 signal interact_pressed
+signal fell(from_pos: Vector3, safe: Vector3)     # emitted just before the fall-safety respawn (diagnostics)
 
 const WALK_SPEED := 1.55        # m/s, ordinary commuter pace
 const HURRY_SPEED := 2.6        # brisk walk (Shift), drains stamina
@@ -123,6 +124,7 @@ func _physics_process(delta: float) -> void:
 			_safe_t = 0.4
 			safe_pos = global_position
 	elif safe_pos != Vector3.ZERO and global_position.y < safe_pos.y - 30.0:
+		fell.emit(global_position, safe_pos)
 		global_position = safe_pos + Vector3(0, 0.3, 0)
 		velocity = Vector3.ZERO
 		push_warning("Player fell out of the world at %s (safe %s) - respawned" % [str(global_position.snapped(Vector3(0.01, 0.01, 0.01))), str(safe_pos.snapped(Vector3(0.01, 0.01, 0.01)))])

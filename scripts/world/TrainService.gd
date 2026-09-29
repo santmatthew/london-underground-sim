@@ -122,6 +122,9 @@ func _spawn_pass(now: float) -> void:
 			if now > info["dep"] + AFTER_S or now < info["arr"] - APPROACH_S - 3.0:
 				if not info["origin"]:
 					continue
+			# already gone (would be despawned again on the very next frame, after building a whole train): skip
+			if now > info["dep"] and absf(x_at({"info": info, "origin": info["origin"], "dir_arr": 1, "dir_dep": 1}, now)) > 280.0:
+				continue
 			_spawn(vkey, fkey, f, module, info)
 
 
@@ -170,6 +173,9 @@ func length_front(train: Train) -> float:
 
 func _despawn(vkey: String) -> void:
 	var v: Dictionary = visits[vkey]
+	if player != null and is_instance_valid(v["train"]) and (v["train"] as Train).contains_world_point(player.global_position):
+		var inf: Dictionary = v["info"]
+		push_warning("DESPAWN of the player's own train %s: now %s arr %s dep %s x %.1f origin %s" % [vkey, Clock.fmt(Clock.now, true), Clock.fmt(inf["arr"], true), Clock.fmt(inf["dep"], true), (v["train"] as Train).position.x, str(v["origin"])])
 	if is_instance_valid(v["train"]):
 		(v["train"] as Train).queue_free()
 	visits.erase(vkey)

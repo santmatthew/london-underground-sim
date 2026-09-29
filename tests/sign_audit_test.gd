@@ -16,6 +16,9 @@ func run():
 	var total_signs := 0
 	var total_bad := 0
 	for nm in names:
+		if not Net.name_to_idx.has(nm):
+			print("SKIP unknown station name: ", nm)
+			continue
 		var idx: int = Net.name_to_idx[nm]
 		var st := Station.new()
 		add_child(st)

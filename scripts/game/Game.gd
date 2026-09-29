@@ -49,6 +49,7 @@ func _ready() -> void:
 	player = Player.new()
 	player.enabled = false
 	add_child(player)
+	player.fell.connect(_on_player_fell)
 	hud = Hud.new()
 	add_child(hud)
 	hud.set_visible_hud(false)
@@ -729,6 +730,23 @@ func _begin_ride(train: Train, v: Dictionary) -> void:
 	Sfx.say_terminates(_ride_line, info["dest"], info["via"])
 	Sfx.say_next(next_idx)
 	Sfx.play_at("train_depart_platform", train, Vector3(0, 1.0, 0), -2.0, 60.0)
+
+
+## diagnostics for the fall-safety net: where in which station the floor was missing
+func _on_player_fell(_from: Vector3, safe: Vector3) -> void:
+	if station == null:
+		push_warning("fell while no station is active (riding=%s)" % str(riding))
+		return
+	var lp := station.to_local(safe)
+	var space := player.get_world_3d().direct_space_state
+	var msg := "fell near %s station-local %s;" % [station.plan.name, str(lp.snapped(Vector3(0.1, 0.1, 0.1)))]
+	for dx in [-1.5, -0.75, 0.0, 0.75, 1.5]:
+		var from := safe + Vector3(dx, 0.5, 0)
+		var q := PhysicsRayQueryParameters3D.create(from, from + Vector3(0, -3.0, 0))
+		q.collision_mask = 1
+		var hit := space.intersect_ray(q)
+		msg += " dx%+.2f:%s" % [dx, ("floor@%.2f %s" % [hit["position"].y, (hit["collider"] as Node).get_parent().name]) if not hit.is_empty() else "NONE"]
+	push_warning(msg)
 
 
 func _on_ride_arrived(dest_station: Station, vkey: String) -> void:

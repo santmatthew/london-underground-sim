@@ -66,6 +66,7 @@ func start(p_game: Node3D, p_train: Train, p_run: int, p_k: int, p_origin: Stati
 	if v.has("module"):
 		origin_frame = (v["module"] as Node3D).global_transform
 	origin.trains.external[v.get("vkey", "")] = true
+	_mute(origin)
 	segment_started.emit(stops[k_from], stops[k_from + 1])
 	# destination station is built in the background while riding
 	dest_plan = StationPlan.for_station(stops[k_from + 1])
@@ -218,6 +219,24 @@ func _dest_base() -> Vector3:
 
 
 var dest_base_pos := Vector3.ZERO
+var _muted: Array = []          # [CollisionObject3D, original layer] of station geometry that must not touch the player while it slides past
+
+
+## While a station slides past the (static) train, parts of it (a landing or corridor beyond the platform end) can pass straight through the
+## carriage and drag the player along. Nothing of the moving station may collide until it has stopped.
+func _mute(root: Node) -> void:
+	for n in root.find_children("*", "CollisionObject3D", true, false):
+		var co := n as CollisionObject3D
+		if co.collision_layer != 0:
+			_muted.append([co, co.collision_layer])
+			co.collision_layer = 0
+
+
+func _unmute() -> void:
+	for pair in _muted:
+		if is_instance_valid(pair[0]):
+			(pair[0] as CollisionObject3D).collision_layer = pair[1]
+	_muted.clear()
 
 
 func _start_arrive(remaining: float) -> void:
@@ -235,6 +254,7 @@ func _start_arrive(remaining: float) -> void:
 	dest_station.global_transform = dest_global
 	dest_base_pos = dest_global.origin
 	dest_station.global_position = dest_base_pos + fwd * remaining
+	_mute(dest_station)
 	dest_station.visible = true
 	if tunnel:
 		tunnel.queue_free()
@@ -246,6 +266,7 @@ func _finish() -> void:
 	var f: Dictionary = dest_plan.faces[dest_face_key]
 	var module: PlatformModule = dest_station.modules[f["module"]]
 	dest_station.global_position = dest_base_pos
+	_unmute()
 	# adopt the train into the destination module at its slot
 	var side: float = f["side"]
 	train.reparent(module, true)
@@ -259,6 +280,15 @@ func _finish() -> void:
 	svc.paused = false
 	var stops: PackedInt32Array = Timetable.run_stops[run]
 	var info := Timetable.train_info(run, k_from + 1)
+	# The train service places a train from the timetable (approaching before `arr`, departing after `dep`). If the ride ended a little
+	# early/late, that would teleport the player's train along the track while the player stands still (and falls). Hold it at the platform.
+	var now := Clock.now
+	if now < float(info["arr"]) or now > float(info["dep"]) - 10.0:
+		if now < float(info["arr"]) - 1.5 or now > float(info["dep"]) - 10.0:
+			push_warning("Ride ended out of sync with the timetable (now %s, arr %s, dep %s): holding the train at the platform" % [Clock.fmt(now, true), Clock.fmt(float(info["arr"]), true), Clock.fmt(float(info["dep"]), true)])
+		info = info.duplicate()
+		info["arr"] = minf(float(info["arr"]), now - 4.0)
+		info["dep"] = maxf(float(info["dep"]), now + 20.0)
 	var v := {"train": train, "key": dest_face_key, "info": info, "dir_arr": canon, "dir_dep": canon, "origin": false, "doors": false, "module": module, "side": side, "vkey": dest_vkey}
 	train.set_meta("visit", v)
 	svc.visits[dest_vkey] = v
