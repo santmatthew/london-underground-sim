@@ -37,7 +37,7 @@ func run():
 		var y_now: float = g.player.global_position.y
 		if frames % 10 == 0:
 			var sc0 := g.player.get_last_slide_collision()
-			trail.append("%s pos %s vfloor %s slide %s mode %s" % [Clock.fmt(Clock.now, true), str(g.player.global_position.snapped(Vector3(0.1, 0.1, 0.1))), str(g.player.is_on_floor()), (sc0.get_collider() as Node).get_parent().name + "/" + (sc0.get_collider() as Node).name if sc0 else "-", g.autopilot.mode if g.autopilot else "-"])
+			trail.append("%s pos %s vfloor %s slide %s mode %s" % [Clock.fmt(Clock.now, true), str(g.player.global_position.snapped(Vector3(0.1, 0.1, 0.1))), str(g.player.is_on_floor()), ((sc0.get_collider() as Node).get_parent().name + "/" + (sc0.get_collider() as Node).name if sc0 and sc0.get_collider() != null and is_instance_valid(sc0.get_collider()) else "-"), g.autopilot.mode if g.autopilot else "-"])
 			if trail.size() > 24:
 				trail.pop_front()
 		if y_now < y_prev - 0.25 and drops < 6:
