@@ -16,6 +16,11 @@ Licensed CC-BY (attribution required); source: makehumancommunity.org asset pack
 
 Full per-asset list with links is generated to `assets/people/CREDITS.txt` by `tools/blender/people/make_credits.py`.
 
+## Real-station data
+- `data/stations_real.json`: entrances/exits, platform outlines, stairs/escalators and corridors near each station come from **OpenStreetMap** (© OpenStreetMap contributors, ODbL, https://www.openstreetmap.org/copyright) via the Geofabrik Greater London extract; gate/escalator/ticket-hall counts come from the TfL Unified API (Open Government Licence v3).
+- `data/platform_numbers.json`: platform numbers per line and direction, sampled from TfL live arrivals (OGL v3).
+- `data/station_layouts.json`: platform depths (metres below street level) read from TfL's official station layout diagrams released under a Freedom of Information request (2015). The drawings are TfL copyright and are **not** included in this repository; only the depth figures are recorded.
+
 ## Other
 - Speech: synthesised with Piper TTS (rhasspy/piper-voices). Female PA voice `en_GB-cori-high`; male driver voice `en_GB-vctk-medium` (speaker p243), trained on the CSTR VCTK Corpus, © University of Edinburgh, licensed CC-BY 4.0 (https://datashare.ed.ac.uk/handle/10283/3443). Speech quality was screened with OpenAI Whisper (`tools/audio/asr_check.py`).
 - All other audio (ambience, train/door/gate/footstep sounds, chimes) is synthesised procedurally by `tools/audio/make_audio.py`.

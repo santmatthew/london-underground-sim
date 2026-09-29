@@ -16,6 +16,7 @@ const CARS := {   # line -> [cars, car length m]
 const BASE_DEPTH := {  # metres below the ticket hall
 	"bakerloo": 21.0, "central": 22.0, "jubilee": 29.0, "northern": 25.0, "piccadilly": 27.0, "victoria": 24.0, "waterloo-city": 23.0, "ss": 9.0,
 }
+const MAX_STREET_DOORS := 5
 const HALL_H := 4.2
 const LANDING_H := 3.9
 const SPINE_H := 2.6
@@ -84,6 +85,14 @@ func generate(station_idx: int) -> void:
 	imp = Net.importance(idx)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
+	# real-world facts (optional): entrances with their real exit numbers/names, gate and escalator counts, real platform numbers
+	var naptan: String = Net.station_ids[idx]
+	var real: Dictionary = RealData.station(naptan)
+	var fac: Dictionary = real.get("facility", {})
+	var real_ents: Array = RealData.entrances(naptan)
+	var layout: Dictionary = RealData.layout(naptan)
+	var real_depths: Dictionary = layout.get("depths", {})
+	var hall_drop: float = float(layout.get("hall_depth", 4.0 if kind == "deep" else 3.0))     # ticket hall below street level
 
 	# ---- 1. platform modules: group faces per line group (max 2 faces per module) --------------------------------
 	var groups := {}    # group -> [pid...]
@@ -110,6 +119,7 @@ func generate(station_idx: int) -> void:
 			mod_defs.append({"group": g, "faces": fl})
 			i += 2
 	# ---- 2. depth per module, sorted shallow -> deep, min 7 m apart -----------------------------------------------
+	var nth_of_group := {}
 	for md in mod_defs:
 		var d: float = BASE_DEPTH.get(md["group"], 24.0) + rng.randf_range(-2.0, 2.5)
 		if imp < 1.6:
@@ -118,6 +128,13 @@ func generate(station_idx: int) -> void:
 			d = rng.randf_range(5.0, 6.5)
 		elif kind == "sub":
 			d = rng.randf_range(8.0, 10.5)
+		# measured depth (TfL layout diagram): metres below street level -> below the ticket hall
+		var g: String = md["group"]
+		if real_depths.has(g):
+			var lst: Array = real_depths[g]
+			var nth: int = nth_of_group.get(g, 0)
+			nth_of_group[g] = nth + 1
+			d = maxf(float(lst[mini(nth, lst.size() - 1)]) - hall_drop, 3.5)
 		md["depth"] = d
 	mod_defs.sort_custom(func(a, b): return a["depth"] < b["depth"])
 	# cluster modules into levels: those within 4 m share a level (max 2 per level)
@@ -130,16 +147,23 @@ func generate(station_idx: int) -> void:
 			lvl.append({"depth": md["depth"], "mods": [md]})
 	var prev_depth := 0.0
 	for L in lvl:
-		var min_d: float = prev_depth + (7.0 if prev_depth > 0.0 else (5.0 if kind == "surface" else 8.0))
+		var gap_between := 4.5 if not real_depths.is_empty() else 7.0      # a real flight can be shorter than the generator's minimum
+		var min_d: float = prev_depth + (gap_between if prev_depth > 0.0 else (3.5 if not real_depths.is_empty() else (5.0 if kind == "surface" else 8.0)))
 		L["depth"] = maxf(L["depth"], min_d)
 		prev_depth = L["depth"]
 
 	# ---- 3. ticket hall -----------------------------------------------------------------------------------------------
+	var n_real_doors := clampi(real_ents.size(), 0, MAX_STREET_DOORS)
 	var hx := clampf(9.0 + 2.2 * imp, 10.0, 21.0)
+	if n_real_doors > 3:
+		hx = maxf(hx, 2.6 * n_real_doors + 3.0)         # room for the doors (3.2 m wide, at least 5 m apart)
 	var hz0 := -clampf(9.0 + 1.6 * imp, 10.0, 16.0)
 	var hz1 := 9.0
 	hall = {"rect": [-hx, hx, hz0, hz1], "y": 0.0, "h": HALL_H}
 	var n_lanes := 3 if imp >= 1.5 else 2
+	var real_esc := int(fac.get("escalators", 0))
+	if real_esc > 0 and kind == "deep":
+		n_lanes = clampi(int(round(float(real_esc) / (float(lvl.size()) + 0.5))), 2, 4)
 	# ---- 4. escalators & landings chain (south along +z from the hall's S wall) --------------------------------
 	var chain_z := hz1
 	var chain_y := 0.0
@@ -153,7 +177,7 @@ func generate(station_idx: int) -> void:
 		var lanes := lanes_pattern.duplicate()
 		var esc_len := Escalator.PLATE * 2.0 + rise / tan(Escalator.ANGLE)
 		var esc_id := "esc%d" % li
-		var use_stairs := kind != "deep" and rise < 11.5
+		var use_stairs := rise < 6.0 or (kind != "deep" and rise < 11.5)     # short flights are stairs, not escalators
 		if use_stairs:
 			lanes = [1, -1]
 		var esc_w: float = lanes.size() * Escalator.PITCH + 0.6
@@ -225,6 +249,8 @@ func generate(station_idx: int) -> void:
 
 	# ---- 6. hall fittings: street doors, gateline ------------------------------------------------------------------------
 	var n_doors := clampi(int(round(1.0 + imp * 0.6)), 1, 3)
+	if n_real_doors > 0:
+		n_doors = n_real_doors
 	var door_cs: Array = []
 	for i in n_doors:
 		var c: float = 0.0 if n_doors == 1 else lerpf(-hx * 0.55, hx * 0.55, float(i) / (n_doors - 1))
@@ -233,10 +259,18 @@ func generate(station_idx: int) -> void:
 	var street_len := 6.0 + rng.randf() * 4.0
 	for i in n_doors:
 		var c: float = door_cs[i]
-		street_doors.append({"id": "street%d" % i, "pos": Vector3(c, 0.0, hz0 - street_len + 0.4), "dir": Vector3(0, 0, -1), "c": c, "len": street_len})
+		var sdoor := {"id": "street%d" % i, "pos": Vector3(c, 0.0, hz0 - street_len + 0.4), "dir": Vector3(0, 0, -1), "c": c, "len": street_len}
+		if i < n_real_doors:
+			var re: Dictionary = real_ents[i]
+			sdoor["exit_ref"] = str(re.get("ref", ""))
+			sdoor["exit_name"] = RealData.street_of(re)
+		street_doors.append(sdoor)
 		rooms.append({"name": "street_passage%d" % i, "rect": [c - 1.6, c + 1.6, hz0 - street_len, hz0], "y": 0.0, "h": 3.0, "open_ends": ["S"], "wall": "tile_white", "floor": "floor_hall", "lights": "strip_z", "light_dz": 3.5, "seed": seed_value + 90 + i})
 	var gate_z := hz0 + 8.0
 	var n_gates := clampi(int(4 + imp * 1.8), 4, 14)
+	var real_gates := int(fac.get("gates", 0))
+	if real_gates > 0:
+		n_gates = clampi(int(round(float(real_gates) / maxf(1.0, float(fac.get("ticket_halls", 1))))), 3, 16)
 	var lane_defs: Array = []
 	var total_w := 0.0
 	for gi in n_gates:
@@ -328,6 +362,21 @@ func generate(station_idx: int) -> void:
 			if not platform_no.has(fd["pid"]):
 				platform_no[fd["pid"]] = pn
 				pn += 1
+	# real platform numbers where TfL data has them (only if they are all distinct: the signage relies on unique numbers)
+	var real_no := {}
+	var used := {}
+	for pid in platform_no:
+		var pl: Dictionary = st["platforms"][pid]
+		var best := 0
+		for lid in pl["lines"]:
+			var n := RealData.platform_number(naptan, lid, pl["dir"])
+			if n > 0 and (best == 0 or n < best):
+				best = n
+		if best > 0 and not used.has(best):
+			used[best] = true
+			real_no[pid] = best
+	if real_no.size() == platform_no.size():
+		platform_no = real_no
 	_add_start_spots(rng)
 
 
@@ -390,6 +439,9 @@ func _stripes_for(sd: int, line_col: Color) -> Array:
 func _lane_pattern(rng: RandomNumberGenerator, n: int) -> Array:
 	if n == 2:
 		return [1, -1]
+	if n >= 4:
+		var pats4 := [[1, -1, 1, -1], [1, 1, -1, 1], [-1, 1, 1, -1]]
+		return pats4[rng.randi() % pats4.size()]
 	var pats := [[1, -1, 1], [-1, 1, -1], [1, 1, -1]]
 	return pats[rng.randi() % pats.size()]
 
@@ -550,6 +602,8 @@ func walk_points(names: Array, pick := 0) -> Array:
 			var li := esc_lane_for(ei, 1, pick)
 			var lz := esc_lane_z(ei, li)
 			var e: Dictionary = escs[ei]
+			# line up with the lane before the plate: a diagonal approach hits the balustrade fronts of the outer lanes
+			out.append({"pos": esc_point(ei, Vector3(-1.4, 0.0, lz)), "kind": "walk"})
 			out.append({"pos": esc_point(ei, Vector3(0.6, 0.0, lz)), "kind": "esc_in", "esc": ei, "lane": li, "dir": 1})
 			out.append({"pos": esc_point(ei, Vector3(e["length"] - 0.9, -e["rise"], lz)), "kind": "esc_out", "esc": ei, "lane": li, "dir": 1})
 			i += 2
@@ -559,6 +613,7 @@ func walk_points(names: Array, pick := 0) -> Array:
 			var lj := esc_lane_for(ej, -1, pick)
 			var lzj := esc_lane_z(ej, lj)
 			var e2: Dictionary = escs[ej]
+			out.append({"pos": esc_point(ej, Vector3(e2["length"] + 1.4, -e2["rise"], lzj)), "kind": "walk"})
 			out.append({"pos": esc_point(ej, Vector3(e2["length"] - 0.6, -e2["rise"], lzj)), "kind": "esc_in", "esc": ej, "lane": lj, "dir": -1})
 			out.append({"pos": esc_point(ej, Vector3(0.9, 0.0, lzj)), "kind": "esc_out", "esc": ej, "lane": lj, "dir": -1})
 			i += 2

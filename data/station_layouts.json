@@ -1,0 +1,532 @@
+{
+"940GZZLUASL": {
+"depths": {
+"piccadilly": [
+18.3
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUBDS": {
+"depths": {
+"piccadilly": [
+16.5
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUBLG": {
+"depths": {
+"central": [
+15.9
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUBMY": {
+"depths": {
+"jubilee": [
+5.0
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUBNK": {
+"depths": {
+"central": [
+20.7
+],
+"ss": [
+8.2
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUCGN": {
+"depths": {
+"piccadilly": [
+56.0
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUCPC": {
+"depths": {
+"northern": [
+20.1
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUCPN": {
+"depths": {
+"northern": [
+3.5
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUCPS": {
+"depths": {
+"northern": [
+17.7
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUCSD": {
+"depths": {
+"northern": [
+3.4
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUERB": {
+"depths": {
+"ss": [
+5.1
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUEUS": {
+"depths": {
+"northern": [
+20.4,
+29.8
+],
+"victoria": [
+29.8
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUFCN": {
+"depths": {
+"ss": [
+4.3
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUGDG": {
+"depths": {
+"northern": [
+28.5
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUGPK": {
+"depths": {
+"jubilee": [
+31.1
+],
+"victoria": [
+23.4
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUGTH": {
+"depths": {
+"central": [
+12.8
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUHBN": {
+"depths": {
+"central": [
+27.4
+],
+"piccadilly": [
+33.8,
+39.6
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUHGT": {
+"depths": {
+"northern": [
+42.0
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUHNX": {
+"depths": {
+"piccadilly": [
+4.3
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUHPC": {
+"depths": {
+"piccadilly": [
+21.0
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUHPK": {
+"depths": {
+"central": [
+18.3
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUHTD": {
+"depths": {
+"northern": [
+58.5
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUHWT": {
+"depths": {
+"piccadilly": [
+4.9
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUHWY": {
+"depths": {
+"piccadilly": [
+18.3
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUKNG": {
+"depths": {
+"northern": [
+17.0,
+18.8
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUKSH": {
+"depths": {
+"northern": [
+20.4,
+23.8
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUKSX": {
+"depths": {
+"northern": [
+27.0
+],
+"piccadilly": [
+21.3
+],
+"ss": [
+7.0
+],
+"victoria": [
+15.7
+]
+},
+"hall_depth": 4.5,
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLULNB": {
+"depths": {
+"jubilee": [
+27.3
+],
+"northern": [
+24.1
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLULSQ": {
+"depths": {
+"northern": [
+27.4
+],
+"piccadilly": [
+32.3
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLULVT": {
+"depths": {
+"central": [
+15.8
+],
+"ss": [
+7.6
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUMBA": {
+"depths": {
+"central": [
+26.2
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUMSH": {
+"depths": {
+"ss": [
+7.3
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUMVL": {
+"depths": {
+"bakerloo": [
+19.2
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUMYB": {
+"depths": {
+"bakerloo": [
+25.3
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUNHG": {
+"depths": {
+"central": [
+25.9
+],
+"ss": [
+8.8
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUODS": {
+"depths": {
+"northern": [
+15.5
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUOVL": {
+"depths": {
+"northern": [
+14.3
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUOXC": {
+"depths": {
+"bakerloo": [
+23.1
+],
+"central": [
+24.6
+],
+"victoria": [
+23.1
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUPAC": {
+"depths": {
+"bakerloo": [
+9.7
+],
+"ss": [
+5.2
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUPCC": {
+"depths": {
+"piccadilly": [
+32.3
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUQWY": {
+"depths": {
+"central": [
+24.4
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLURSQ": {
+"depths": {
+"piccadilly": [
+3.0
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUSBC": {
+"depths": {
+"central": [
+18.3
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUSGN": {
+"depths": {
+"ss": [
+7.0
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUSGT": {
+"depths": {
+"piccadilly": [
+12.8
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUSKW": {
+"depths": {
+"northern": [
+14.6
+],
+"victoria": [
+14.6
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUSWC": {
+"depths": {
+"jubilee": [
+13.7
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUSWN": {
+"depths": {
+"northern": [
+12.5
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUTBC": {
+"depths": {
+"northern": [
+5.9
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUTBY": {
+"depths": {
+"northern": [
+12.5
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUTCR": {
+"depths": {
+"central": [
+26.2
+],
+"northern": [
+29.8
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUTFP": {
+"depths": {
+"northern": [
+22.0,
+25.0
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUTPN": {
+"depths": {
+"piccadilly": [
+5.2
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUVXL": {
+"depths": {
+"victoria": [
+17.5
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUWKA": {
+"depths": {
+"bakerloo": [
+16.2
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUWLO": {
+"depths": {
+"bakerloo": [
+16.4,
+19.5
+],
+"waterloo-city": [
+12.2
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUWOG": {
+"depths": {
+"piccadilly": [
+12.8
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUWSM": {
+"depths": {
+"jubilee": [
+33.0
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+},
+"940GZZLUWWL": {
+"depths": {
+"victoria": [
+16.5
+]
+},
+"source": "TfL station layout diagram (FOI 2015), depth table"
+}
+}

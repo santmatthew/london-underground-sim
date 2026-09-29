@@ -191,7 +191,12 @@ static func _hall_signs(station: Station, root: Node3D, plan: StationPlan, lines
 	hang_room(root, Signs.board([{"text": "Way out", "bold": true, "arrow": 1}], 2.2, 0.42), Vector3(0, h - 1.1, gz + 6.0), Vector3(0, 0, 1), 0.0, h, 3.0)
 	# 5. street passages: exit boards over the N wall openings (visible from inside the hall)
 	for sd in plan.street_doors:
-		hang_room(root, Signs.board([{"text": "Way out", "bold": true, "arrow": 1}], 1.9, 0.38), Vector3(sd["c"], 3.35, r[2] + 0.4), Vector3(0, 0, 1), 0.0, h, 2.6)
+		var rows5: Array = [{"text": "Way out", "bold": true, "arrow": 1}]
+		if str(sd.get("exit_ref", "")) != "":
+			# real exit number and street (OpenStreetMap), first street only to keep the board readable
+			var st1: String = str(sd["exit_name"]).split(" / ")[0]
+			rows5.append({"text": "Exit %s  %s" % [sd["exit_ref"], st1], "text_color": Color(0.8, 0.8, 0.8)})
+		hang_room(root, Signs.board(rows5, 1.9, 0.34), Vector3(sd["c"], 3.35, r[2] + 0.4), Vector3(0, 0, 1), 0.0, h, 3.6 if plan.street_doors.size() > 3 else 3.0)
 
 
 static func _landing_signs(station: Station, root: Node3D, plan: StationPlan, li: int) -> void:
