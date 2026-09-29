@@ -440,7 +440,15 @@ func _build_spine(x0: float, x1: float, sx0: float, sx1: float, zwall: float, wa
 	while l2 < sx1:
 		_lights.append([Vector3(l2, SPINE_H - 0.5, 0.0), 1.4, 9.0])
 		l2 += 7.0
-	# spine collision
+	# spine collision. The side walls stop the player stepping off the spine floor; the stretch beside the platform (x0..x1) already gets
+	# wall segments from _build_tunnel, so only the part of the spine outside it needs its own (the west stretch, and any east overhang)
+	for s2 in [1.0, -1.0]:
+		if sx0 < x0 - 0.01:
+			var xe := minf(x0, sx1)
+			_cols.append([Vector3((sx0 + xe) * 0.5, 1.5, s2 * zwall), Vector3(xe - sx0, 3.0, 0.3)])
+		if sx1 > x1 + 0.01:
+			var xs := maxf(x1, sx0)
+			_cols.append([Vector3((xs + sx1) * 0.5, 1.5, s2 * zwall), Vector3(sx1 - xs, 3.0, 0.3)])
 	_cols.append([Vector3((sx0 + sx1) * 0.5, -0.5, 0.0), Vector3(sx1 - sx0, 1.0, GAP)])
 	_cols.append([Vector3(sx1 + 0.15, 1.3, 0.0), Vector3(0.3, 2.6, GAP)])
 	_cols.append([Vector3((sx0 + sx1) * 0.5, 3.0, 0.0), Vector3(sx1 - sx0, 0.4, GAP)])
