@@ -111,7 +111,7 @@ func _balustrade(z: float) -> void:
 	var rot := Basis(Vector3(0, 0, 1), -ANGLE)
 	var mid := Vector3(PLATE + run * 0.5, -rise * 0.5, z)
 	# sloped inner panel (black glossy), steel top cover, handrail (offsets follow the slope normal)
-	kit.box_xf({"*": "black", "top": "metal"}, Transform3D(rot, mid + rot * Vector3(0, 0.45, 0)), Vector3(slope_len, 0.9, t), floor_y)
+	kit.box_xf({"*": "metal", "top": "metal"}, Transform3D(rot, mid + rot * Vector3(0, 0.45, 0)), Vector3(slope_len, 0.9, t), floor_y)
 	kit.box_xf("black", Transform3D(rot, mid + rot * Vector3(0, 0.97, 0)), Vector3(slope_len + 0.02, 0.07, 0.09), floor_y)
 	# under-lit skirt strip
 	kit.box_xf("light_emissive", Transform3D(rot, mid + rot * Vector3(0, 0.03, 0)), Vector3(slope_len, 0.04, t + 0.02), floor_y)
@@ -119,7 +119,7 @@ func _balustrade(z: float) -> void:
 	for xr in [[0.0, PLATE, 0.0], [PLATE + run, length, -rise]]:
 		var cx: float = (xr[0] + xr[1]) * 0.5
 		var w: float = xr[1] - xr[0]
-		kit.box({"*": "black", "top": "metal"}, Vector3(cx, xr[2] + 0.45, z), Vector3(w, 0.9, t), floor_y)
+		kit.box({"*": "metal", "top": "metal"}, Vector3(cx, xr[2] + 0.45, z), Vector3(w, 0.9, t), floor_y)
 		kit.box("black", Vector3(cx, xr[2] + 0.98, z), Vector3(w, 0.07, 0.09), floor_y)
 	# newel at each end (rounded cap approximated by a box)
 	kit.box("metal", Vector3(0.0, 0.5, z), Vector3(0.2, 1.0, t + 0.04), floor_y)

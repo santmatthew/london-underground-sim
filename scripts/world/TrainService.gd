@@ -143,6 +143,11 @@ func _spawn(vkey: String, fkey: String, f: Dictionary, module: PlatformModule, i
 	train.position = Vector3(0, PlatformModule.RAIL_Y, side * (PlatformModule.GAP * 0.5 + module.meta["pw"] + PlatformModule.TRACK_TO_EDGE))
 	var facing: int = dir_dep if origin else dir_arr
 	train.setup_orientation(facing, -side)    # platform lies toward the tunnel centre (-side)
+	var dest_txt: String = Net.station_name(info["dest"]).replace(" (H&C)", "").replace(" (D&P)", "").replace(" (Circle)", "")
+	if info["via"] != "":
+		dest_txt += " " + info["via"]
+	train.set_destination("NOT IN SERVICE" if info["final"] else dest_txt)
+	train.set_linemap(lid, Timetable.run_dir[info["run"]])
 	var v := {"train": train, "key": fkey, "info": info, "dir_arr": dir_arr, "dir_dep": dir_dep, "origin": origin, "doors": false, "module": module, "side": side, "vkey": vkey}
 	train.set_meta("visit", v)
 	visits[vkey] = v

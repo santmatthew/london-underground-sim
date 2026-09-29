@@ -93,7 +93,7 @@ static func get_mat(name: String) -> Material:
 			gr.albedo_color = Color(0.75, 0.85, 0.95)
 			gr.emission_enabled = true
 			gr.emission = Color(0.80, 0.90, 1.0)
-			gr.emission_energy_multiplier = 0.4 + 3.2 * day
+			gr.emission_energy_multiplier = 0.35 + 1.1 * day
 			gr.roughness = 0.2
 			m = gr
 		"light_emissive":

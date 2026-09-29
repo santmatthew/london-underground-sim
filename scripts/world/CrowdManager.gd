@@ -85,7 +85,7 @@ func _prefill() -> void:
 		_advance_random(a, rng.randf())
 	# people waiting on platforms
 	for fkey in plan.faces:
-		var n_wait := int(round(rng.randf_range(0.3, 1.0) * (1.5 + cf * plan.imp * 5.5) * density))
+		var n_wait := int(round(rng.randf_range(0.55, 1.0) * (2.0 + cf * plan.imp * 15.0) * density))
 		for k in n_wait:
 			_new_waiter(fkey)
 	# people walking out (arrived earlier)
@@ -183,6 +183,12 @@ func _open_node(fk: String) -> String:
 func _platform_spot(fk: String) -> Vector3:
 	var f: Dictionary = plan.faces[fk]
 	var x: float = lerpf(f["x0"] + 5.0, f["x1"] - 5.0, rng.randf())
+	if rng.randf() < 0.5:
+		# people cluster near the ways in/out of the platform
+		var spec: Dictionary = plan.modules[f["module"]]["spec"]
+		var ox: Array = spec["openings_x"]
+		var mx: float = plan.modules[f["module"]]["pos"].x
+		x = clampf(mx + ox[rng.randi() % ox.size()] + rng.randfn(0.0, 7.0), f["x0"] + 3.0, f["x1"] - 3.0)
 	var inset := rng.randf_range(1.15, 2.6)
 	return Vector3(x, f["y"], f["edge_z"] - f["side"] * inset)
 

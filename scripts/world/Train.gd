@@ -167,3 +167,42 @@ func car_index_at(p: Vector3) -> int:
 func set_lights(on: bool) -> void:
 	for c in cars:
 		CarUtil.set_lights_lit(c, on)
+
+
+## dot-matrix destination on the cab-front displays (rendered once into a texture)
+func set_destination(text: String) -> void:
+	for ci in [0, cars.size() - 1]:
+		var car: Node3D = cars[ci]
+		var vp := SubViewport.new()
+		vp.size = Vector2i(512, 96)
+		vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+		vp.disable_3d = true
+		var bg := ColorRect.new()
+		bg.color = Color(0.01, 0.01, 0.01)
+		bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+		vp.add_child(bg)
+		var l := Label.new()
+		l.text = text.to_upper()
+		l.add_theme_font_override("font", Signs.font_dot())
+		l.add_theme_font_size_override("font_size", 54 if text.length() < 16 else 40)
+		l.add_theme_color_override("font_color", Color(1.0, 0.62, 0.06))
+		l.set_anchors_preset(Control.PRESET_FULL_RECT)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		vp.add_child(l)
+		add_child(vp)
+		var tex := vp.get_texture()
+		CarUtil.edit_material(car, "mat_dest_display", func(m: StandardMaterial3D):
+			m.albedo_texture = tex
+			m.emission_texture = tex
+			m.emission_enabled = true
+			m.emission_energy_multiplier = 1.6)
+
+
+func set_linemap(line: String, direction: int) -> void:
+	var path := "res://assets/textures/linemaps/%s_%d.png" % [line, clampi(direction, 0, 1)]
+	if not ResourceLoader.exists(path):
+		return
+	var tex: Texture2D = load(path)
+	for car in cars:
+		CarUtil.set_line_diagram(car, tex)
