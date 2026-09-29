@@ -202,8 +202,15 @@ func _build_destination() -> void:
 	dest_vkey = "%d:%d" % [run, j]
 	dest_station = Station.new()
 	game.add_child(dest_station)
+	# Built while the player rides: keep it far from the carriage from the very first frame (its colliders appear while it is built, and
+	# a body appearing inside the player's capsule launches the player out of the train)
+	dest_station.global_position = Vector3(0.0, -5000.0, 0.0)
 	dest_station.visible = false
 	await dest_station.build_async(dest_plan)
+	# The new station is built at the world origin, which can overlap the moving train. Until it is slid into place it must be far away
+	# and inert (colliders, its own service trains and triggers would otherwise hit the player inside the carriage).
+	dest_station.global_position = Vector3(0.0, -5000.0, 0.0)
+	_mute(dest_station)
 	var f: Dictionary = dest_plan.faces[dest_face_key]
 	dest_face_length = f["length"]
 	# pre-register the visit so the service does not spawn a duplicate train
