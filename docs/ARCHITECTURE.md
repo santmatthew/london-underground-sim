@@ -31,6 +31,29 @@ The planner and the world share the same `StationPlan`, so the "par" time and th
 - **Audio**: `Sfx` autoload reads `assets/audio/manifest.json`; ambience layers crossfade per location; announcements are queued with subtitles.
 - **Autopilot**: `Autopilot` plays the game by following the planner's route (also multi-stop) — end-to-end test and video recorder.
 
+## Riding: things that must hold (each was a real bug)
+- The player's train is static in the world; stations slide past it. Anything of a *moving* station that could touch the carriage must be inert:
+  `Ride` builds the destination **parked at y=-5000 from the first frame**, mutes the colliders of both the origin and the destination while
+  they slide (`_mute`/`_unmute`), and only restores them (`_finish`) once the destination has stopped in its final place.
+- A service-driven train is only solid while it stands at the platform (`Train.set_solid`, driven by `TrainService`): approaching/departing
+  trains pass straight through landings and corridors that share their tunnel line.
+- `TrainService.x_at` places a train from the timetable; when a ride ends slightly early/late, `Ride._finish` widens the visit's `arr`/`dep`
+  so the player's train is held at the platform instead of teleporting away from under the player.
+- World-space assumptions break after a ride (the destination is placed with an arbitrary rotation/offset): use `station.to_global/to_local`
+  (e.g. `Station.platform_point` is station-LOCAL), and gate-local coordinates for the gate approach side.
+- `Player` has a fall safety net; `Game._respawn_point` only respawns at the last standing position if floor still exists there.
+
+## Signage
+Every sign is tagged (`meta "sign"`, `meta "size"`), hung through `StationSigns.hang_room / hang_blade / mount_wall` and fitted by
+`PlatformModule.ceiling_at / fit_blade` (roof arch, walls, columns, headroom `HEAD` = 2.15 m). `tests/sign_audit_test.gd` checks every sign of
+a list of stations against the real colliders and the analytic roof. Real Tube proportions: blades/indicators ~1-2.6 m wide on short stems,
+roundels and names flat on the tile wall.
+
+## Tests worth knowing
+`walkbot_test` (real capsule along routes; `--reverse`, `--rot=180`, `--trace`), `walk_test` (floor audit), `spine_wall_test`, `sign_audit_test`,
+`bot_test` (autopilot journey; `--seed`, `--multi=N`, `--start/--dest/--spot/--hour`, `--every`, `--frames`; prints DROP/TRAIL diagnostics
+when the player falls), `shots_test` (autopilot journey with screenshots), `overlap_test`.
+
 ## Conventions
 - Station-local frame: hall at y=0; platforms below. `PlatformModule` local frame: x along the track, z across, y=0 at platform level, rail head y=-0.9.
 - Faces of a module: face 0 at +z (trains travel +x), face 1 at -z (travel -x). Terminus platforms have two faces (visits alternate).

@@ -39,6 +39,8 @@ See `docs/ARCHITECTURE.md` and `docs/ASSETS.md`. Code: `scripts/autoload` (Net, 
 
 ## Known issues / roadmap
 - Surface (outer-zone) stations are glass-roofed halls; rides between them still show a tunnel rather than open-air scenery.
+- Station layouts are procedural per station (stable between runs); matching the real stations' layouts is a planned next step.
+- The autopilot's multi-stop mode is slower than the planner's par (85-90%) and can wander into the wrong platform strip in crowds; it recovers by re-routing.
 - Escalators use a simple shader for treads; no lifts or fixed stairs yet; buskers are audio-only.
 - Performance was measured on an RTX 3050 Ti laptop under a virtual display only; use F3 and the Graphics setting to tune on your machine.
 - Real-station specifics (tile patterns, exact layouts) are generic; only names, lines, zones, depth class and line colours are per-station.
