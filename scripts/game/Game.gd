@@ -85,6 +85,8 @@ func _apply_settings() -> void:
 	e.ssao_enabled = q >= 1
 	e.ssil_enabled = q >= 2
 	e.ssr_enabled = q >= 2
+	e.sdfgi_enabled = q >= 3
+	e.volumetric_fog_enabled = q >= 3
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(opts["volume"]), 0.0001)))
 	if player:
 		player.mouse_sens = opts["sens"]
@@ -202,7 +204,7 @@ func _build_menu() -> void:
 	grid.add_child(cb)
 	grid.add_child(_mk_label("Graphics", 18, Color.WHITE, false, false))
 	var ob_q := OptionButton.new()
-	for t in [["Fast (no screen-space effects)", 0], ["Balanced", 1], ["High (SSAO, SSIL, reflections)", 2]]:
+	for t in [["Fast (no screen-space effects)", 0], ["Balanced", 1], ["High (SSAO, SSIL, reflections)", 2], ["Ultra (+ global illumination, haze)", 3]]:
 		ob_q.add_item(t[0])
 		ob_q.set_item_metadata(ob_q.item_count - 1, t[1])
 	ob_q.select(2)

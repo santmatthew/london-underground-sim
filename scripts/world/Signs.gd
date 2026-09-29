@@ -116,6 +116,14 @@ static func _lum_text(col: Color) -> Color:
 static func board(rows: Array, width := 2.4, row_h := 0.34, _bg := Color.WHITE) -> Node3D:
 	var root := Node3D.new()
 	var gap := 0.03
+	# widen the panel for long text so nothing is clipped
+	var longest := 0
+	for r in rows:
+		var txt_len: int = String(r.get("text", "")).length()
+		if r.has("color") or r.has("arrow"):
+			txt_len += 4
+		longest = maxi(longest, txt_len)
+	width = maxf(width, longest * row_h * 0.43 + 0.5)
 	var h := 0.0
 	for r in rows:
 		h += row_h + (0.05 if r.has("color") else 0.0)

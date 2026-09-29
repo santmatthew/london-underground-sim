@@ -22,6 +22,7 @@ var kit := MeshKit.new()
 var _cols: Array = []
 var _bodies: Array = []           # [AnimatableBody3D, dir(+1 down/-1 up)]
 var wall_mat := "tile_white"
+var stairs := false             # fixed stairs instead of moving treads
 var floor_y := 0.0
 
 
@@ -43,8 +44,9 @@ func path_length() -> float:
 	return PLATE * 2.0 + run / cos(ANGLE)
 
 
-func build(p_rise: float, p_lanes: Array, p_wall_mat := "tile_white") -> void:
+func build(p_rise: float, p_lanes: Array, p_wall_mat := "tile_white", p_stairs := false) -> void:
 	rise = p_rise
+	stairs = p_stairs
 	lanes = p_lanes
 	wall_mat = p_wall_mat
 	run = rise / tan(ANGLE)
@@ -81,6 +83,11 @@ func build(p_rise: float, p_lanes: Array, p_wall_mat := "tile_white") -> void:
 		var ca: Vector2 = ceil_pts[i]
 		var cb: Vector2 = ceil_pts[i + 1]
 		kit.quad("ceiling", Vector3(ca.x, ca.y, -hw), Vector3(cb.x, cb.y, -hw), Vector3(cb.x, cb.y, hw), Vector3(ca.x, ca.y, hw), floor_y)
+	if stairs:
+		_stairs_geometry(hw)
+		_stairs_collision(hw)
+		_finish()
+		return
 	# --- lanes ---
 	for li in lanes.size():
 		var zc := lane_z(li)
@@ -103,6 +110,52 @@ func build(p_rise: float, p_lanes: Array, p_wall_mat := "tile_white") -> void:
 		_balustrade(zb)
 	_collision()
 	_finish()
+
+
+func _stairs_geometry(hw: float) -> void:
+	var n := int(round(rise / 0.173))
+	var riser := rise / n
+	var tread := riser / tan(ANGLE)
+	# flat landings at the top and bottom
+	kit.horiz("floor_hall", 0.0, PLATE, -hw, hw, 0.0, true, floor_y)
+	kit.horiz("floor_hall", PLATE + n * tread, length, -hw, hw, -rise, true, floor_y)
+	# each step is a box (tread top + riser face) with a yellow nosing strip
+	for i in n:
+		var x0 := PLATE + i * tread
+		var y_top := -i * riser
+		kit.box({"*": "concrete", "top": "floor_hall"}, Vector3(x0 + tread * 0.5, y_top - riser * 0.5, 0.0), Vector3(tread, riser, hw * 2.0), floor_y, true)
+		kit.horiz("yellow_paint", x0, x0 + 0.05, -hw, hw, y_top + 0.003, true, floor_y)
+	# side handrails + a central rail with posts
+	var slope_len := run / cos(ANGLE)
+	var rot := Basis(Vector3(0, 0, 1), -ANGLE)
+	var mid := Vector3(PLATE + run * 0.5, -rise * 0.5, 0.0)
+	for zz in [-hw + 0.08, 0.0, hw - 0.08]:
+		kit.box_xf("metal", Transform3D(rot, mid + rot * Vector3(0, 0.95, 0) + Vector3(0, 0, zz)), Vector3(slope_len, 0.05, 0.05), floor_y)
+		for k in 7:
+			var t := (k + 0.5) / 7.0
+			kit.box("metal", Vector3(PLATE + run * t, -rise * t + 0.47, zz), Vector3(0.04, 0.95, 0.04), floor_y)
+
+
+func _stairs_collision(hw: float) -> void:
+	# a smooth ramp over the steps (walkable), landings, and side rails
+	var slope_len := run / cos(ANGLE)
+	var body := AnimatableBody3D.new()
+	body.name = "StairRamp"
+	var cs := CollisionShape3D.new()
+	var sh := BoxShape3D.new()
+	sh.size = Vector3(slope_len, 0.4, hw * 2.0)
+	cs.shape = sh
+	body.add_child(cs)
+	body.position = Vector3(PLATE + run * 0.5, -rise * 0.5, 0.0) + Basis(Vector3(0, 0, 1), -ANGLE) * Vector3(0, -0.2, 0)
+	body.rotation = Vector3(0, 0, -ANGLE)
+	add_child(body)
+	_cols.append([Vector3(PLATE * 0.5, -0.5, 0.0), Vector3(PLATE, 1.0, hw * 2.0), null])
+	_cols.append([Vector3(PLATE + run + PLATE * 0.5, -rise - 0.5, 0.0), Vector3(PLATE, 1.0, hw * 2.0), null])
+	for sgn in [-1.0, 1.0]:
+		var n := 8
+		for k in n:
+			var x := PLATE + run * (float(k) + 0.5) / n
+			_cols.append([Vector3(x, slope_y(x) + 0.7, sgn * (hw - 0.05)), Vector3(run / n + 0.05, 1.4, 0.12), null])
 
 
 func _balustrade(z: float) -> void:
@@ -188,6 +241,8 @@ func _finish() -> void:
 		_bodies.append([ab, lanes[li]])
 	# lights along the shaft ceiling
 	var n := maxi(2, int(length / 6.0))
+	if stairs:
+		pass
 	for k in n:
 		var x := (k + 0.5) * length / n
 		var y := (CLEARANCE if x < PLATE else (CLEARANCE - rise if x > PLATE + run else CLEARANCE - (x - PLATE) * tan(ANGLE)))

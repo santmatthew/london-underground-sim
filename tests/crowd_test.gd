@@ -12,7 +12,7 @@ func _ready() -> void:
 	Clock.running = false
 	var idx: int = Net.name_to_idx[sname]
 	var plan := StationPlan.for_station(idx)
-	add_child(Env.make())
+	add_child(Env.make(int(_arg("quality", "2"))))
 	var st := Station.new()
 	add_child(st)
 	st.build(plan)

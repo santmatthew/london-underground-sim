@@ -141,7 +141,6 @@ func generate(station_idx: int) -> void:
 	hall = {"rect": [-hx, hx, hz0, hz1], "y": 0.0, "h": HALL_H}
 	var n_lanes := 3 if imp >= 1.5 else 2
 	# ---- 4. escalators & landings chain (south along +z from the hall's S wall) --------------------------------
-	var esc_w := n_lanes * 1.5 + 0.6
 	var chain_z := hz1
 	var chain_y := 0.0
 	var prev_room := "hall"
@@ -154,7 +153,11 @@ func generate(station_idx: int) -> void:
 		var lanes := lanes_pattern.duplicate()
 		var esc_len := Escalator.PLATE * 2.0 + rise / tan(Escalator.ANGLE)
 		var esc_id := "esc%d" % li
-		escs.append({"id": esc_id, "pos": Vector3(0, chain_y, chain_z), "yaw": -PI / 2.0, "rise": rise, "lanes": lanes, "length": esc_len, "width": esc_w})
+		var use_stairs := kind != "deep" and rise < 11.5
+		if use_stairs:
+			lanes = [1, -1]
+		var esc_w: float = lanes.size() * Escalator.PITCH + 0.6
+		escs.append({"id": esc_id, "pos": Vector3(0, chain_y, chain_z), "yaw": -PI / 2.0, "rise": rise, "lanes": lanes, "length": esc_len, "width": esc_w, "stairs": use_stairs})
 		var n_mod: int = lvl[li]["mods"].size()
 		var lz0 := chain_z + esc_len
 		var lzlen := 12.0 + 16.0 * (n_mod - 1)

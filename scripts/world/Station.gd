@@ -50,13 +50,14 @@ func build_async(p: StationPlan, use_async := true) -> void:
 	_t0 = _t("rooms", _t0)
 	for e in plan.escs:
 		var esc := Escalator.new()
-		esc.build(e["rise"], e["lanes"])
+		esc.build(e["rise"], e["lanes"], "tile_white", e.get("stairs", false))
 		esc.position = e["pos"]
 		esc.rotation.y = e["yaw"]
 		esc.name = e["id"]
 		add_child(esc)
 		escalators.append(esc)
-		Sfx.loop_at("escalator_loop", esc, Vector3(esc.length * 0.5, -esc.rise * 0.5 + 1.5, 0), -4.0, 26.0)
+		if not e.get("stairs", false):
+			Sfx.loop_at("escalator_loop", esc, Vector3(esc.length * 0.5, -esc.rise * 0.5 + 1.5, 0), -4.0, 26.0)
 		await _yield()
 	_t0 = _t("escalators", _t0)
 	for mi in plan.modules.size():

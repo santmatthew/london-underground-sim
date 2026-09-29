@@ -513,7 +513,8 @@ func _enter_escalator(a: Agent, idx_in: int) -> void:
 	var slope: float = float(e["rise"]) / sin(Escalator.ANGLE)
 	var total: float = Escalator.PLATE * 2.0 + slope
 	a.state = "esc"
-	a.esc = {"idx": wp["esc"], "lane": wp["lane"], "dir": wp["dir"], "len": total, "s": 0.0 if wp["dir"] > 0 else total, "walk": rng.randf() < 0.2}
+	var is_stairs: bool = e.get("stairs", false)
+	a.esc = {"idx": wp["esc"], "lane": wp["lane"], "dir": wp["dir"], "len": total, "s": 0.0 if wp["dir"] > 0 else total, "walk": is_stairs or rng.randf() < 0.2, "stairs": is_stairs}
 	a.cur = 0.0
 
 
@@ -532,7 +533,7 @@ func _esc_local(e: Dictionary, li: int, s: float, rise: float, lanes: int) -> Ve
 func _step_escalator(a: Agent, delta: float) -> void:
 	var info: Dictionary = a.esc
 	var e: Dictionary = plan.escs[info["idx"]]
-	var spd := Escalator.SPEED + (0.9 if info["walk"] else 0.0)
+	var spd: float = 1.05 if info.get("stairs", false) else (Escalator.SPEED + (0.9 if info["walk"] else 0.0))
 	info["s"] += spd * delta * (1.0 if info["dir"] > 0 else -1.0)
 	var lanes: int = (e["lanes"] as Array).size()
 	var s: float = info["s"]
