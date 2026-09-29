@@ -25,6 +25,7 @@ var look_target := Vector3.ZERO
 var last_speed := 0.0
 var hurrying := false
 var safe_pos := Vector3.ZERO
+var respawn_provider := Callable()      # (safe_pos) -> Vector3: where to put the player after a fall (the game knows what floor still exists)
 var _safe_t := 0.0
 var sway := 0.0                  # carriage sway amount (0 = off), set while riding
 var _sway_t := 0.0
@@ -125,7 +126,7 @@ func _physics_process(delta: float) -> void:
 			safe_pos = global_position
 	elif safe_pos != Vector3.ZERO and global_position.y < safe_pos.y - 30.0:
 		fell.emit(global_position, safe_pos)
-		global_position = safe_pos + Vector3(0, 0.3, 0)
+		global_position = respawn_provider.call(safe_pos) if respawn_provider.is_valid() else safe_pos + Vector3(0, 0.3, 0)
 		velocity = Vector3.ZERO
 		push_warning("Player fell out of the world at %s (safe %s) - respawned" % [str(global_position.snapped(Vector3(0.01, 0.01, 0.01))), str(safe_pos.snapped(Vector3(0.01, 0.01, 0.01)))])
 	last_speed = Vector2(get_real_velocity().x, get_real_velocity().z).length()

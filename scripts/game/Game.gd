@@ -50,6 +50,7 @@ func _ready() -> void:
 	player.enabled = false
 	add_child(player)
 	player.fell.connect(_on_player_fell)
+	player.respawn_provider = _respawn_point
 	hud = Hud.new()
 	add_child(hud)
 	hud.set_visible_hud(false)
@@ -730,6 +731,25 @@ func _begin_ride(train: Train, v: Dictionary) -> void:
 	Sfx.say_terminates(_ride_line, info["dest"], info["via"])
 	Sfx.say_next(next_idx)
 	Sfx.play_at("train_depart_platform", train, Vector3(0, 1.0, 0), -2.0, 60.0)
+
+
+## Fall safety net: the last standing position can have lost its floor (e.g. it was inside a train that has left). Use it only while
+## something solid is still under it, otherwise the nearest platform spot of the current station.
+func _respawn_point(safe: Vector3) -> Vector3:
+	var space := player.get_world_3d().direct_space_state
+	var q := PhysicsRayQueryParameters3D.create(safe + Vector3(0, 0.6, 0), safe + Vector3(0, -1.5, 0))
+	q.collision_mask = 1
+	if not space.intersect_ray(q).is_empty() or station == null:
+		return safe + Vector3(0, 0.3, 0)
+	var best := safe + Vector3(0, 0.3, 0)
+	var bd := 1e9
+	for fk in station.plan.faces:
+		var p: Vector3 = station.to_global(station.platform_point(fk, 0.5, 1.4))
+		var d := p.distance_to(safe)
+		if d < bd:
+			bd = d
+			best = p + Vector3(0, 0.3, 0)
+	return best
 
 
 ## diagnostics for the fall-safety net: where in which station the floor was missing
