@@ -652,9 +652,9 @@ func _wake(a: Agent) -> void:
 	b.collision_mask = 0
 	b.sync_to_physics = false
 	var cs := CollisionShape3D.new()
-	var cap := CapsuleShape3D.new()
-	cap.radius = 0.24
-	cap.height = 1.72
+	var cap := CylinderShape3D.new()      # flat top: the player cannot stand on people's heads
+	cap.radius = 0.25
+	cap.height = 1.75
 	cs.shape = cap
 	b.add_child(cs)
 	add_child(b)
