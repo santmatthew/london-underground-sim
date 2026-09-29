@@ -137,7 +137,13 @@ func _station() -> Station:
 	return game.station
 
 
+## the plan node we are actually at: nearest one with a clear line of sight (the geometrically nearest can be a face node of the
+## neighbouring platform module, on the far side of a wall)
 func _nearest_node(st: Station) -> String:
+	return _nearest_visible_node(st)
+
+
+func _nearest_node_raw(st: Station) -> String:
 	var lp := st.to_local(player.global_position)
 	var best := "hall_unpaid"
 	var bd := 1e9
@@ -175,7 +181,7 @@ func _nearest_visible_node(st: Station) -> String:
 				break
 		if clear:
 			return c[1]
-	return _nearest_node(st)
+	return _nearest_node_raw(st)
 
 
 ## rebuild the waypoint list from where we really are (we were pushed off the route and are wedged against something)
