@@ -221,7 +221,7 @@ static func fascia(station_name: String, length: float, wayout_x: Array = [], wa
 ## Tile-mosaic station name in a framed panel (seen on many platform walls): ":NAME:" in bold serif on cream with black border
 static func tile_name(station_name: String, height := 0.85) -> Node3D:
 	var root := Node3D.new()
-	var nm := station_name.to_upper().replace(" ", " : ")
+	var nm := station_name.to_upper()
 	var w := maxf(2.4, nm.length() * height * 0.36 + 0.5)
 	var frame := _quad(Vector2(w + 0.16, height + 0.16), _mat(Color(0.03, 0.03, 0.03), 0.0, 0.25))
 	frame.position = Vector3(0, 0, 0.006)
