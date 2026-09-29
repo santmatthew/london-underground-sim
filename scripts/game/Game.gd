@@ -511,6 +511,9 @@ func _describe_location() -> String:
 	if station == null:
 		return ""
 	var p := player.global_position
+	for vv in station.trains.visits.values():
+		if (vv["train"] as Train).contains_world_point(p):
+			return "aboard the %s line train to %s" % [Net.line_name((vv["info"] as Dictionary)["line"]), Net.station_name((vv["info"] as Dictionary)["dest"])]
 	for mi in station.modules.size():
 		var m: PlatformModule = station.modules[mi]
 		var lp := m.to_local(p)
