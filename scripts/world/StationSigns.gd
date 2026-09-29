@@ -217,7 +217,7 @@ static func _hall_signs_at(root: Node3D, plan: StationPlan, gl: Dictionary, line
 		if str(sd.get("exit_ref", "")) != "":
 			# real exit number and street (OpenStreetMap), first street only to keep the board readable
 			var st1: String = str(sd["exit_name"]).split(" / ")[0]
-			rows5.append({"text": "Exit %s  %s" % [sd["exit_ref"], st1], "text_color": Color(0.8, 0.8, 0.8)})
+			rows5.append({"text": ("Exit %s  %s" % [sd["exit_ref"], st1]).strip_edges(), "text_color": Color(0.8, 0.8, 0.8)})
 		hang_room(root, Signs.board(rows5, 1.9, 0.34), Vector3(sd["c"], 3.35, r[2] + 0.4), Vector3(0, 0, 1), 0.0, h, 3.6 if plan.street_doors.size() > 3 else 3.0)
 
 

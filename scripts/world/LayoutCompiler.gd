@@ -160,6 +160,8 @@ static func compile(p: StationPlan, spec: Dictionary) -> bool:
 			return _err(p, "module attaches to unknown room %s" % str(md["attach"]))
 		var rect: Array = room["rect"]
 		var lane_z: float = md["lane_z"]
+		if md.get("lane_rel", false):
+			lane_z += (float(rect[2]) + float(rect[3])) * 0.5          # relative to the room's centre line
 		var group: String = md["group"]
 		var faces_def: Array = md["faces"]
 		var pid0: String = faces_def[0][0]
@@ -211,6 +213,8 @@ static func compile(p: StationPlan, spec: Dictionary) -> bool:
 		p.rooms.append(cr)
 	p.escs = escs_out
 
+	if not _check_overlaps(p):
+		return false
 	_build_graph(p, rooms, order, conns, esc_of)
 	return true
 
@@ -255,6 +259,16 @@ static func _place_esc(p: StationPlan, rooms: Dictionary, cn: Dictionary, escs_o
 		var end_at: float = end.z if (dir == "S" or dir == "N") else end.x
 		if absf(wall_at - end_at) > 0.4:
 			return _err(p, "escalator %s ends at %.2f but room %s has its wall at %.2f" % [str(d.get("id", "")), end_at, str(d["to"]), wall_at])
+	var trr: Array = to["rect"]
+	var lo: float = trr[0] if (dir == "S" or dir == "N") else trr[2]
+	var hi: float = trr[1] if (dir == "S" or dir == "N") else trr[3]
+	if c - width * 0.5 < lo + 0.2 or c + width * 0.5 > hi - 0.2:
+		return _err(p, "escalator %s lands outside room %s (across range %.1f..%.1f, escalator at %.1f, width %.1f)" % [str(d.get("id", "")), str(d["to"]), lo, hi, c, width])
+	var frr: Array = from["rect"]
+	var flo: float = frr[0] if (dir == "S" or dir == "N") else frr[2]
+	var fhi: float = frr[1] if (dir == "S" or dir == "N") else frr[3]
+	if c - width * 0.5 < flo + 0.2 or c + width * 0.5 > fhi - 0.2:
+		return _err(p, "escalator %s starts outside room %s (across range %.1f..%.1f, escalator at %.1f, width %.1f)" % [str(d.get("id", "")), str(d["from"]), flo, fhi, c, width])
 	var eid := "esc%d" % escs_out.size()
 	esc_of[str(d.get("id", eid))] = escs_out.size()
 	escs_out.append({"id": eid, "pos": top, "yaw": YAW[dir], "rise": rise, "lanes": lanes, "length": length, "width": width, "stairs": stairs,
@@ -400,3 +414,75 @@ static func _build_graph(p: StationPlan, rooms: Dictionary, order: Array, conns:
 				p._edge("m%d_open%d" % [mi, oi], pn2)
 				p._edge(pn2, mid)
 	p.finish_common()
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------
+# Authoring aid: everything that occupies space (rooms, corridors, escalator shafts, platform modules) must not intersect anything else.
+static func _check_overlaps(p: StationPlan) -> bool:
+	var boxes: Array = []      # {name, aabb}
+	for rm in p.rooms:
+		if String(rm["name"]).begins_with("street_passage"):
+			continue
+		var r: Array = rm["rect"]
+		boxes.append({"name": rm["name"], "aabb": AABB(Vector3(r[0], rm["y"] - 0.4, r[2]), Vector3(r[1] - r[0], float(rm["h"]) + 0.8, r[3] - r[2])), "kind": "room"})
+	for e in p.escs:
+		var dirv: Vector3 = DIRS[e["dir"]]
+		var pos: Vector3 = e["pos"]
+		var length: float = e["length"]
+		var width: float = e["width"]
+		var run: float = float(e["rise"]) / tan(Escalator.ANGLE)
+		var steps := int(ceil(length / 2.0))
+		for i in steps:
+			var t0: float = length * float(i) / steps
+			var t1: float = length * float(i + 1) / steps
+			var yf0 := _esc_floor(t0, run, float(e["rise"]))
+			var yf1 := _esc_floor(t1, run, float(e["rise"]))
+			var ylo := minf(yf0, yf1) - 0.3
+			var yhi := maxf(yf0, yf1) + Escalator.CLEARANCE + 0.3
+			var a: Vector3 = pos + dirv * t0
+			var b: Vector3 = pos + dirv * t1
+			var across := Vector3(absf(dirv.z), 0, absf(dirv.x)) * (width * 0.5)
+			var lo := Vector3(minf(a.x, b.x), 0, minf(a.z, b.z)) - across
+			var hi := Vector3(maxf(a.x, b.x), 0, maxf(a.z, b.z)) + across
+			boxes.append({"name": "%s (segment %d)" % [e["id"], i], "aabb": AABB(Vector3(lo.x, pos.y + ylo, lo.z), Vector3(hi.x - lo.x, yhi - ylo, hi.z - lo.z)), "kind": "esc", "esc": e["id"]})
+	for mi in p.modules.size():
+		var m: Dictionary = p.modules[mi]
+		var mp: Vector3 = m["pos"]
+		var L: float = m["spec"]["length"]
+		boxes.append({"name": "module%d" % mi, "aabb": AABB(Vector3(mp.x - L * 0.5 - 1.0, mp.y - 1.4, mp.z - 8.6), Vector3(L + 2.0, 5.8, 17.2)), "kind": "module"})
+	var ok := true
+	for i in boxes.size():
+		for j in range(i + 1, boxes.size()):
+			var bi: Dictionary = boxes[i]
+			var bj: Dictionary = boxes[j]
+			if bi["kind"] == "esc" and bj["kind"] == "esc" and bi["esc"] == bj["esc"]:
+				continue
+			# an escalator legitimately touches the two rooms it connects; shrink the test a little
+			var a: AABB = (bi["aabb"] as AABB).grow(-0.35)
+			var b: AABB = (bj["aabb"] as AABB).grow(-0.35)
+			if a.size.x <= 0.0 or a.size.y <= 0.0 or a.size.z <= 0.0 or b.size.x <= 0.0 or b.size.y <= 0.0 or b.size.z <= 0.0:
+				continue
+			if a.intersects(b):
+				if bi["kind"] == "esc" and bj["kind"] == "room" and _esc_touches(p, str(bi["esc"]), str(bj["name"])):
+					continue
+				if bj["kind"] == "esc" and bi["kind"] == "room" and _esc_touches(p, str(bj["esc"]), str(bi["name"])):
+					continue
+				push_error("Layout %s: %s overlaps %s" % [p.name, bi["name"], bj["name"]])
+				ok = false
+	return ok
+
+
+static func _esc_touches(p: StationPlan, esc_id: String, room_name: String) -> bool:
+	for e in p.escs:
+		if e["id"] == esc_id:
+			return e["from"] == room_name or e["to"] == room_name
+	return false
+
+
+## floor height (relative to the top plate) at distance t along an escalator run
+static func _esc_floor(t: float, run: float, rise: float) -> float:
+	if t <= Escalator.PLATE:
+		return 0.0
+	if t >= Escalator.PLATE + run:
+		return -rise
+	return -(t - Escalator.PLATE) * tan(Escalator.ANGLE)

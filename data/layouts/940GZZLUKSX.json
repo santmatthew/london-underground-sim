@@ -1,0 +1,232 @@
+{
+ "note": "King's Cross St. Pancras from TfL diagram N123 (topology; dimensions estimated). Comb layout: all escalators west of all modules.",
+ "rooms": [
+  {
+   "id": "hall_tube",
+   "kind": "hall",
+   "rect": [
+    -14,
+    14,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 14
+   },
+   "doors": [
+    {
+     "c": -9,
+     "ref": "1"
+    },
+    {
+     "c": 0,
+     "ref": "2"
+    },
+    {
+     "c": 9,
+     "ref": "3"
+    }
+   ]
+  },
+  {
+   "id": "hall_west",
+   "kind": "hall",
+   "rect": [
+    -44,
+    -24,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 9
+   },
+   "doors": [
+    {
+     "c": -41,
+     "ref": "6"
+    },
+    {
+     "c": -34,
+     "ref": "7"
+    },
+    {
+     "c": -27,
+     "ref": "8"
+    }
+   ]
+  },
+  {
+   "id": "land_mc",
+   "kind": "landing",
+   "size": [
+    62,
+    12
+   ],
+   "depth": 2.6
+  },
+  {
+   "id": "land_vic",
+   "kind": "landing",
+   "size": [
+    50,
+    16
+   ],
+   "depth": 11.2
+  },
+  {
+   "id": "land_pic",
+   "kind": "landing",
+   "size": [
+    36,
+    16
+   ],
+   "depth": 16.8
+  },
+  {
+   "id": "land_nor",
+   "kind": "landing",
+   "size": [
+    36,
+    16
+   ],
+   "depth": 22.5
+  }
+ ],
+ "esc": [
+  {
+   "id": "w1",
+   "from": "hall_west",
+   "to": "land_mc",
+   "dir": "S",
+   "c": -34,
+   "lanes": [
+    1,
+    -1
+   ],
+   "to_off": 19
+  },
+  {
+   "id": "t1",
+   "from": "hall_tube",
+   "to": "land_mc",
+   "dir": "S",
+   "c": 0,
+   "lanes": [
+    1,
+    -1
+   ]
+  },
+  {
+   "id": "v1",
+   "from": "land_mc",
+   "to": "land_vic",
+   "dir": "S",
+   "c": -10,
+   "lanes": [
+    1,
+    -1,
+    1,
+    -1
+   ],
+   "to_off": -5
+  },
+  {
+   "id": "p1",
+   "from": "land_vic",
+   "to": "land_pic",
+   "dir": "S",
+   "c": -10,
+   "lanes": [
+    1,
+    -1,
+    1
+   ]
+  },
+  {
+   "id": "n1",
+   "from": "land_pic",
+   "to": "land_nor",
+   "dir": "S",
+   "c": -10,
+   "lanes": [
+    1,
+    -1,
+    1
+   ]
+  }
+ ],
+ "modules": [
+  {
+   "attach": "land_mc",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 10,
+   "group": "ss",
+   "faces": [
+    [
+     "ss:Westbound",
+     0
+    ],
+    [
+     "ss:Eastbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "land_vic",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "victoria",
+   "faces": [
+    [
+     "victoria:Northbound",
+     0
+    ],
+    [
+     "victoria:Southbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "land_pic",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "piccadilly",
+   "faces": [
+    [
+     "piccadilly:Northbound",
+     0
+    ],
+    [
+     "piccadilly:Southbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "land_nor",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "northern",
+   "faces": [
+    [
+     "northern:Northbound",
+     0
+    ],
+    [
+     "northern:Southbound",
+     0
+    ]
+   ]
+  }
+ ]
+}
