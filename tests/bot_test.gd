@@ -7,9 +7,11 @@ func run():
 	await get_tree().process_frame
 	var seed := 1
 	var every := 3600
+	var max_frames := 60 * 60 * 70        # --frames=N (physics frames); the GTEST timeout is the real limit
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--seed="): seed = int(a.substr(7))
 		if a.begins_with("--every="): every = int(a.substr(8))
+		if a.begins_with("--frames="): max_frames = int(a.substr(9))
 		if a.begins_with("--time="): g.opts["time"] = a.substr(7)
 		if a.begins_with("--length="): g.opts["length"] = a.substr(9)
 		if a.begins_with("--multi="): g.opts["mode"] = "multi"; g.opts["stops"] = int(a.substr(8))
@@ -26,7 +28,7 @@ func run():
 	while g.state != Game.State.PLAYING:
 		await get_tree().process_frame
 	var frames := 0
-	while g.state == Game.State.PLAYING and frames < 60 * 60 * 25:
+	while g.state == Game.State.PLAYING and frames < max_frames:
 		await get_tree().physics_frame
 		frames += 1
 		if frames % every == 0 and g.autopilot:

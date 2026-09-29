@@ -156,8 +156,11 @@ func _spawn(vkey: String, fkey: String, f: Dictionary, module: PlatformModule, i
 		var lead: float = info["arr"] - Clock.now         # seconds until it stops
 		if lead > -2.0 and lead < 26.0 and Sfx.has("train_arrive_platform"):
 			Sfx.play_at("train_arrive_platform", train, Vector3(length_front(train), 1.0, 0), 0.0, 90.0, maxf(0.0, 25.0 - lead))
-		if lead > 8.0 and player != null and player.global_position.distance_to(module.global_position) < 70.0:
-			Sfx.say_platform_approach(lid, info["dest"], info["via"])
+		if lead > 8.0 and player != null:
+			# the platform PA only speaks for the platform you are on (stations with several modules must not announce each other's trains)
+			var lp := module.to_local(player.global_position)
+			if absf(lp.x) < module.meta["length"] * 0.5 + 6.0 and absf(lp.z) < 9.0 and absf(lp.y) < 3.5:
+				Sfx.say_platform_approach(lid, info["dest"], info["via"])
 	train_spawned.emit(train, v)
 
 

@@ -237,7 +237,9 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 		var dt := plan.dest_text(pid2, 3)
 		if dt != "":
 			brd_rows.append({"text": dt, "text_color": Color(0.85, 0.85, 0.85)})
-		for ix2 in [-L * 0.5 + 34.0, L * 0.5 - 34.0]:
+		# the two faces' blades are staggered along the platform so they do not line up and hide each other
+		var stagger := (-2.8 if fi == 0 else 2.8)
+		for ix2 in [-L * 0.5 + 34.0 + stagger, L * 0.5 - 34.0 + stagger]:
 			var b := Signs.board(brd_rows, 4.0, 0.4)
 			var b2 := b.duplicate()
 			var holder2 := Node3D.new()

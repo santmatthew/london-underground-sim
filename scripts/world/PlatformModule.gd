@@ -104,9 +104,9 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	var xa := x0 - TUNNEL_EXT
 	var xb := x1 + TUNNEL_EXT
 	if not box:
-		kit.sweep_x(wall_mat, prof, x0, x1, 0.0, s < 0.0)
-	kit.sweep_x(wall_mat, prof_run, xa, x0, 0.0, s < 0.0)
-	kit.sweep_x(wall_mat, prof_run, x1, xb, 0.0, s < 0.0)
+		kit.sweep_x(wall_mat, prof, x0, x1, 0.0)
+	kit.sweep_x(wall_mat, prof_run, xa, x0, 0.0)
+	kit.sweep_x(wall_mat, prof_run, x1, xb, 0.0)
 	# platform-side wall, tunnel face. Full height under the platform (running tunnel) and above it at the platform.
 	# In the running tunnel (no platform) the wall goes down to the trackbed.
 	_wall_z(wall_mat, s * zwall_run, xa, x0, BED_Y, SPRING_Y, [], s < 0.0, true)

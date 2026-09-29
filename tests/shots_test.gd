@@ -42,7 +42,7 @@ func run():
 	while g.state != Game.State.PLAYING:
 		await get_tree().process_frame
 	for i in 90: await get_tree().physics_frame
-	snap("start")
+	snap("start", true, 0.0)
 	var frames := 0
 	var y_prev := g.player.global_position.y
 	var esc_shots := 0
