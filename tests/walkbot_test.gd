@@ -4,11 +4,13 @@ extends Node3D
 func run():
 	var sname := "King's Cross St. Pancras"
 	var maxr := 99
+	var rot_deg := 0.0       # --rot=180: place the station rotated/offset like the ride does (catches world-space assumptions, e.g. gates)
 	var reverse := false     # --reverse: walk from each platform face out to the street instead of hall -> platform
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--station="): sname = a.substr(10)
 		if a.begins_with("--max="): maxr = int(a.substr(6))
 		if a == "--reverse": reverse = true
+		if a.begins_with("--rot="): rot_deg = float(a.substr(6))
 	Timetable.build(1)
 	Clock.set_time(11.0 * 3600.0)
 	add_child(Env.make(0))
@@ -17,6 +19,9 @@ func run():
 	var st := Station.new()
 	add_child(st)
 	st.build(plan)
+	if rot_deg != 0.0:
+		st.rotation.y = deg_to_rad(rot_deg)
+		st.position = Vector3(37.0, -3.0, 91.0)
 	var player := Player.new()
 	add_child(player)
 	player.bot_active = true
@@ -43,6 +48,8 @@ func run():
 		else:
 			wps = plan.walk_points(names, 0)
 			wps.append({"pos": st.platform_point(fk, 0.5, 1.4), "kind": "walk"})
+		for w in wps:
+			w["pos"] = st.to_global(w["pos"])
 		player.global_position = wps[0]["pos"] + Vector3(0, 0.1, 0)
 		player.velocity = Vector3.ZERO
 		await get_tree().physics_frame

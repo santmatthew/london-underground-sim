@@ -762,13 +762,13 @@ func _on_street_exit(_door: String) -> void:
 			_reenter()
 		else:
 			hud.toast("%s is not one of your remaining stops. Head back down." % station.plan.name, 4.0)
-			player.global_position += Vector3(0, 0, 3.0)
+			player.global_position = station.to_global(station.to_local(player.global_position) + Vector3(0, 0, 3.0))
 		return
 	if idx == journey["dest"]:
 		_finish_journey()
 	else:
 		hud.toast("That's not your destination — this is %s. Head back down to the platforms." % station.plan.name, 4.0)
-		player.global_position += Vector3(0, 0, 3.0)
+		player.global_position = station.to_global(station.to_local(player.global_position) + Vector3(0, 0, 3.0))
 
 
 ## after a stop in multi-stop mode: step back in through the entrance (costs 25 s)

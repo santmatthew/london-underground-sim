@@ -72,7 +72,7 @@ func build(p_spec: Dictionary) -> void:
 			"x0": x0, "x1": x1, "rail_y": RAIL_Y, "label": f.get("label", ""), "line": f.get("line", ""),
 		})
 	if box:
-		_build_box_hall(x0, x1, zwall, zedge, ztrack, zfar, wall_mat)
+		_build_box_hall(x0, x1, zwall, zedge, ztrack, zfar, wall_mat, openings)
 	else:
 		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 
@@ -214,7 +214,7 @@ func _box_track_wall(s: float, x0: float, x1: float, zfar: float, wall_mat: Stri
 		kit.wall(wall_mat, Vector3(x0, 0, -zfar), Vector3(x1, 0, -zfar), BED_Y, BOX_H, 0.0)
 
 
-func _build_box_hall(x0: float, x1: float, zwall: float, zedge: float, ztrack: float, zfar: float, wall_mat: String) -> void:
+func _build_box_hall(x0: float, x1: float, zwall: float, zedge: float, ztrack: float, zfar: float, wall_mat: String, openings: Array) -> void:
 	var surface: bool = spec.get("roof", "flat") == "glass"
 	# island median floor between the two platforms
 	kit.horiz("floor_platform", x0, x1, -zwall, zwall, 0.0, true, 0.0)
@@ -247,12 +247,18 @@ func _build_box_hall(x0: float, x1: float, zwall: float, zedge: float, ztrack: f
 		_lights.append([Vector3(lx2, BOX_H - 0.9, 3.2), 2.2 if not surface else 1.3, 13.0])
 		_lights.append([Vector3(lx2, BOX_H - 0.9, -3.2), 2.2 if not surface else 1.3, 13.0])
 		lx2 += 8.0
-	# steel columns down the two platforms
+	# steel columns down the two platforms: on the wall side, well clear of the walking lane (edge - 1.0) and of the wall openings
 	var cx := x0 + 5.0
+	var col_z := zwall + 0.85
 	while cx < x1 - 3.0:
-		for zz in [-(zwall + 1.9), (zwall + 1.9)]:
-			kit.box("metal", Vector3(cx, BOX_H * 0.5, zz), Vector3(0.42, BOX_H, 0.42), 0.0)
-			_cols.append([Vector3(cx, BOX_H * 0.5, zz), Vector3(0.44, BOX_H, 0.44)])
+		var at_opening := false
+		for ox in openings:
+			if absf(cx - ox) < 2.6:
+				at_opening = true
+		if not at_opening:
+			for zz in [-col_z, col_z]:
+				kit.box("metal", Vector3(cx, BOX_H * 0.5, zz), Vector3(0.42, BOX_H, 0.42), 0.0)
+				_cols.append([Vector3(cx, BOX_H * 0.5, zz), Vector3(0.44, BOX_H, 0.44)])
 		cx += 7.2
 	# end walls: track portals on both sides, plus a doorway at the west end leading to the corridor
 	_box_end_wall(x0, true, zwall, ztrack, zfar, wall_mat, true)

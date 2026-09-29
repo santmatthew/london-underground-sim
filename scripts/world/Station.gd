@@ -176,11 +176,10 @@ func _make_gate(ld: Dictionary, z: float) -> Dictionary:
 
 func _on_gate_body(body: Node3D, gd: Dictionary) -> void:
 	# open if the body approaches from the correct side (entry lanes: from -z heading +z; exit lanes: from +z heading -z)
-	var gz: float = (gd["node"] as Node3D).global_position.z
-	var side: float = body.global_position.z - gz
+	# gate-local frame: the models let passengers walk toward local -Z, so the approach side is local +Z for both lane kinds.
+	# (World coordinates would be wrong: after a ride the station is placed with an arbitrary rotation.)
 	var kind: int = gd["kind"]
-	var ok: bool = (kind > 0 and side < 0.0) or (kind < 0 and side > 0.0)
-	if not ok:
+	if (gd["node"] as Node3D).to_local(body.global_position).z <= 0.0:
 		return
 	_open_gate(gd)
 	Sfx.play_at("gate_beep_ok", gd["node"], Vector3(0, 1.1, 0), 0.0 if body is Player else -8.0, 18.0)
@@ -219,7 +218,7 @@ func _process(delta: float) -> void:
 			if gd["open_t"] <= 0.0:
 				var occupied := false
 				for b in (gd["area"] as Area3D).get_overlapping_bodies():
-					if absf(b.global_position.z - (gd["node"] as Node3D).global_position.z) < 0.8:
+					if absf((gd["node"] as Node3D).to_local(b.global_position).z) < 0.8:
 						occupied = true
 				if occupied:
 					gd["open_t"] = 0.4
