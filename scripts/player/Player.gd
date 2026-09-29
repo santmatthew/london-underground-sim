@@ -23,6 +23,8 @@ var _pitch := 0.0
 var look_target := Vector3.ZERO
 var last_speed := 0.0
 var hurrying := false
+var safe_pos := Vector3.ZERO
+var _safe_t := 0.0
 var step_accum := 0.0
 var surface := "concrete"
 var footsteps_enabled := true
@@ -112,6 +114,16 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.y = maxf(velocity.y, -0.5)
 	move_and_slide()
+	# safety net: if we ever fall out of the world, go back to the last solid ground
+	if is_on_floor():
+		_safe_t -= delta
+		if _safe_t <= 0.0:
+			_safe_t = 0.4
+			safe_pos = global_position
+	elif safe_pos != Vector3.ZERO and global_position.y < safe_pos.y - 30.0:
+		global_position = safe_pos + Vector3(0, 0.3, 0)
+		velocity = Vector3.ZERO
+		push_warning("Player fell out of the world - respawned")
 	last_speed = Vector2(get_real_velocity().x, get_real_velocity().z).length()
 	# footsteps
 	if is_on_floor() and last_speed > 0.4 and footsteps_enabled:

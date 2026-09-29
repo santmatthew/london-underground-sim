@@ -118,6 +118,153 @@ static func plan(start_station: int, start_node: String, t0: float, dest_station
 	return {"ok": true, "arrive": best_total, "legs": legs, "walk_end": best_pred["walk_end"], "walk_start": prev[gp_cur].get("walk", 0.0) if gp_cur != -1 else 0.0, "duration": best_total - t0}
 
 
+## Earliest arrival at the STREET EXIT of every station reachable from (start_station, start_node) leaving at t0.
+## Returns {station_idx: exit_time}. Read-only on shared data (call StationPlan.warm_all() first for thread safety).
+static func plan_all(start_station: int, start_node: String, t0: float, horizon := 3.0 * 3600.0) -> Dictionary:
+	var ready := {}
+	var heap: Array = []
+	var best_exit := {}
+	var plan0 := StationPlan.for_station(start_station)
+	var st: Dictionary = Net.stations[start_station]
+	for pid in st["platforms"]:
+		var gp: int = Timetable.plat_index[start_station][pid]
+		var w := 1e9
+		for f in plan0.faces:
+			if plan0.faces[f]["pid"] == pid:
+				w = minf(w, plan0.walk_time(start_node, "face:" + f))
+		if w >= 1e8:
+			continue
+		var t: float = t0 + w + BOARD_BUFFER
+		ready[gp] = t
+		_push(heap, t, gp)
+	while heap.size() > 0:
+		var top: Array = _pop(heap)
+		var t: float = top[0]
+		var gp: int = top[1]
+		if t > ready.get(gp, INF) + 0.001:
+			continue
+		if t > t0 + horizon:
+			break
+		var evs: PackedInt64Array = Timetable.events[gp]
+		var i := _lower(evs, t)
+		var seen := {}
+		var count := 0
+		while i < evs.size() and count < 45:
+			var key := evs[i]
+			i += 1
+			count += 1
+			var r := Timetable.ev_run(key)
+			var k := Timetable.ev_stop(key)
+			var stops: PackedInt32Array = Timetable.run_stops[r]
+			if k >= stops.size() - 1:
+				continue
+			var tag: String = "%s/%d" % [Timetable.run_svc[r], Timetable.run_dir[r]]
+			if seen.has(tag):
+				continue
+			seen[tag] = true
+			var arr: PackedFloat32Array = Timetable.run_arr[r]
+			var gps: PackedInt32Array = Timetable.run_plat[r]
+			var faces: PackedByteArray = Timetable.run_face[r]
+			for j in range(k + 1, stops.size()):
+				var s_j: int = stops[j]
+				var a_t: float = arr[j]
+				if a_t > t0 + horizon:
+					break
+				var gp_j: int = gps[j]
+				var plan_j := StationPlan.for_station(s_j)
+				var pid_j: String = Timetable.plat_pid[gp_j]
+				var face_key := "%s#%d" % [pid_j, faces[j]]
+				var exit_w := plan_j.time_face_to_exit(face_key) if plan_j.faces.has(face_key) else 60.0
+				var ex := a_t + exit_w
+				if ex < best_exit.get(s_j, INF):
+					best_exit[s_j] = ex
+				for pid2 in Net.stations[s_j]["platforms"]:
+					var q: int = Timetable.plat_index[s_j][pid2]
+					var w2: float
+					if q == gp_j:
+						w2 = SAME_PLATFORM_RESET
+					else:
+						w2 = 1e9
+						for f2 in plan_j.faces:
+							if plan_j.faces[f2]["pid"] == pid2:
+								w2 = minf(w2, plan_j.time_face_to_face(face_key, f2) if plan_j.faces.has(face_key) else 90.0)
+						if w2 >= 1e8:
+							continue
+						w2 += BOARD_BUFFER
+					var cand := a_t + w2
+					if cand < ready.get(q, INF) - 0.001:
+						ready[q] = cand
+						_push(heap, cand, q)
+	return best_exit
+
+
+## Exact optimal order to visit all `targets` (street-exit each, then re-enter after `reentry_s`) — Held-Karp over subsets.
+## Returns {ok, order:[station idx...], arrive:[exit times...], total, calls}
+static func plan_tour(start_station: int, start_node: String, t0: float, targets: Array, reentry_s := 25.0) -> Dictionary:
+	var n := targets.size()
+	var calls := 0
+	var best := {}       # key = mask * 16 + last -> [time, prev_last]
+	var first := plan_all(start_station, start_node, t0)
+	calls += 1
+	for i in n:
+		if not first.has(targets[i]):
+			return {"ok": false}
+		best[(1 << i) * 16 + i] = [first[targets[i]], -1]
+	var masks: Array = range(1, 1 << n)
+	masks.sort_custom(func(a, b): return _popcount(a) < _popcount(b))
+	for mask in masks:
+		for last in n:
+			if not (mask & (1 << last)):
+				continue
+			var key: int = mask * 16 + last
+			if not best.has(key):
+				continue
+			if mask == (1 << n) - 1:
+				continue
+			var t_here: float = best[key][0] + reentry_s
+			var nxt := plan_all(targets[last], "street0", t_here)
+			calls += 1
+			for i in n:
+				if mask & (1 << i):
+					continue
+				if not nxt.has(targets[i]):
+					continue
+				var nk: int = (mask | (1 << i)) * 16 + i
+				var tt: float = nxt[targets[i]]
+				if not best.has(nk) or tt < best[nk][0]:
+					best[nk] = [tt, last]
+	var full := (1 << n) - 1
+	var bl := -1
+	var bt := INF
+	for last in n:
+		var k2: int = full * 16 + last
+		if best.has(k2) and best[k2][0] < bt:
+			bt = best[k2][0]
+			bl = last
+	if bl < 0:
+		return {"ok": false}
+	# reconstruct
+	var order: Array = []
+	var arrive: Array = []
+	var mask2 := full
+	var cur := bl
+	while cur != -1:
+		order.push_front(targets[cur])
+		arrive.push_front(best[mask2 * 16 + cur][0])
+		var pv: int = best[mask2 * 16 + cur][1]
+		mask2 &= ~(1 << cur)
+		cur = pv
+	return {"ok": true, "order": order, "arrive": arrive, "total": bt, "duration": bt - t0, "calls": calls}
+
+
+static func _popcount(x: int) -> int:
+	var c := 0
+	while x:
+		c += x & 1
+		x >>= 1
+	return c
+
+
 static func _leg(r: int, k: int, j: int) -> Dictionary:
 	var stops: PackedInt32Array = Timetable.run_stops[r]
 	var arr: PackedFloat32Array = Timetable.run_arr[r]

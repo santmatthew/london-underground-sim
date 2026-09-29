@@ -560,6 +560,21 @@ func walk_points(names: Array, pick := 0) -> Array:
 			out.append({"pos": esc_point(ej, Vector3(0.9, 0.0, lzj)), "kind": "esc_out", "esc": ej, "lane": lj, "dir": -1})
 			i += 2
 			continue
+		# street passage: line up with the opening in the hall's north wall
+		if n.begins_with("street") and prv == "hall_unpaid":
+			var sdi := _street_by_id(n)
+			out.append({"pos": Vector3(sdi["c"], 0, (hall["rect"] as Array)[2] + 2.0), "kind": "walk"})
+			out.append({"pos": Vector3(sdi["c"], 0, (hall["rect"] as Array)[2] - 1.0), "kind": "walk"})
+			out.append({"pos": nodes[node_idx[n]]["pos"], "kind": "walk"})
+			i += 1
+			continue
+		if n == "hall_unpaid" and prv.begins_with("street"):
+			var sdp := _street_by_id(prv)
+			out.append({"pos": Vector3(sdp["c"], 0, (hall["rect"] as Array)[2] - 1.0), "kind": "walk"})
+			out.append({"pos": Vector3(sdp["c"], 0, (hall["rect"] as Array)[2] + 2.0), "kind": "walk"})
+			out.append({"pos": nodes[node_idx[n]]["pos"], "kind": "walk"})
+			i += 1
+			continue
 		if n.begins_with("landing") and nxt.contains("_spine"):
 			var mi := int(nxt.substr(1, nxt.find("_") - 1))
 			var m: Dictionary = modules[mi]
@@ -587,11 +602,36 @@ func walk_points(names: Array, pick := 0) -> Array:
 	return out
 
 
+func _street_by_id(id: String) -> Dictionary:
+	for sd in street_doors:
+		if sd["id"] == id:
+			return sd
+	return street_doors[0]
+
+
 func _landing_rect(level: int) -> Array:
 	for rm in rooms:
 		if rm["name"] == "landing%d" % level:
 			return rm["rect"]
 	return [-11.0, 11.0, 0.0, 12.0]
+
+
+## Fills the walk-time cache for every node so later queries are read-only (thread safe).
+func warm() -> void:
+	for n in nodes:
+		if not _dcache.has(n["name"]):
+			_dcache[n["name"]] = dijkstra(n["name"])
+
+
+static var _all_warm := false
+
+
+static func warm_all() -> void:
+	if _all_warm:
+		return
+	for i in Net.stations.size():
+		for_station(i).warm()
+	_all_warm = true
 
 
 var _dcache: Dictionary = {}

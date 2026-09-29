@@ -64,3 +64,53 @@ static func rating(score: float) -> String:
 	if score >= 60.0: return "Regular Oyster user"
 	if score >= 40.0: return "Confused tourist"
 	return "Lost on the Circle line"
+
+
+## Multi-stop: start + N target stations clustered within reach of each other (par is computed by Planner.plan_tour in a thread)
+static func generate_multi(rng: RandomNumberGenerator, opts: Dictionary) -> Dictionary:
+	var n: int = clampi(int(opts.get("stops", 3)), 2, 5)
+	var t0 := pick_time(rng, opts.get("time", "random"))
+	for attempt in 30:
+		var start := Net.random_station(rng, true)
+		var sx: float = Net.stations[start]["x"]
+		var sy: float = Net.stations[start]["y"]
+		var cands: Array = []
+		for s in Net.stations:
+			if s["idx"] == start:
+				continue
+			var d := Vector2(s["x"] - sx, s["y"] - sy).length()
+			if d > 2.5 and d < 11.0:
+				cands.append(s["idx"])
+		if cands.size() < n * 2:
+			continue
+		var picks: Array = []
+		var tries := 0
+		while picks.size() < n and tries < 200:
+			tries += 1
+			var c: int = cands[rng.randi() % cands.size()]
+			var ok := true
+			for p in picks:
+				if Net.dist_km(c, p) < 2.2:
+					ok = false
+			if ok:
+				picks.append(c)
+		if picks.size() < n:
+			continue
+		var plan := StationPlan.for_station(start)
+		var spot := _pick_spot(rng, plan)
+		return {"mode": "multi", "start": start, "spot": spot, "targets": picks, "visited": [], "t0": t0, "dest": picks[0]}
+	return {}
+
+
+## Fixed journey for testing / replays: start station name, spot kind ("platform","street entrance","ticket hall"...), destination, hour
+static func make(start_name: String, spot_kind: String, dest_name: String, hour: float, rng: RandomNumberGenerator) -> Dictionary:
+	var start: int = Net.name_to_idx[start_name]
+	var dest: int = Net.name_to_idx[dest_name]
+	var plan := StationPlan.for_station(start)
+	var spot: Dictionary = plan.start_spots[0]
+	var cands: Array = plan.start_spots.filter(func(sp): return sp["name"] == spot_kind)
+	if not cands.is_empty():
+		spot = cands[rng.randi() % cands.size()]
+	var t0 := hour * 3600.0
+	var res := Planner.plan(start, spot["node"], t0, dest)
+	return {"start": start, "spot": spot, "dest": dest, "t0": t0, "par": res, "par_s": res.get("duration", 0.0), "mode": "single"}

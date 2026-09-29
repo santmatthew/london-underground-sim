@@ -12,7 +12,7 @@ var env: WorldEnvironment
 var station: Station
 var ride: Ride
 var journey: Dictionary = {}
-var opts := {"time": "random", "length": "medium", "hints": true, "quality": 2, "crowd": 1.0, "volume": 0.8, "sens": 0.0022}
+var opts := {"mode": "single", "stops": 3, "time": "random", "length": "medium", "hints": true, "quality": 2, "crowd": 1.0, "volume": 0.8, "sens": 0.0022}
 var t_play0 := 0.0
 var riding := false
 var paused := false
@@ -34,6 +34,8 @@ var font_b: Font
 var font_r: Font
 var bot_skip := false
 var _audio_t := 0.0
+var _par_task := -1
+var par_result: Dictionary = {}
 var autopilot: Autopilot
 var cli := {}
 
@@ -156,6 +158,20 @@ func _build_menu() -> void:
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 20)
 	vb.add_child(grid)
+	grid.add_child(_mk_label("Game mode", 18, Color.WHITE, false, false))
+	var ob_mode := OptionButton.new()
+	for t in [["Single destination", "single"], ["Multi-stop (visit several stations)", "multi"]]:
+		ob_mode.add_item(t[0])
+		ob_mode.set_item_metadata(ob_mode.item_count - 1, t[1])
+	ob_mode.item_selected.connect(func(i): opts["mode"] = ob_mode.get_item_metadata(i))
+	grid.add_child(ob_mode)
+	grid.add_child(_mk_label("Stops (multi-stop)", 18, Color.WHITE, false, false))
+	var ob_n := OptionButton.new()
+	for t in [3, 4, 5]:
+		ob_n.add_item("%d stations" % t)
+		ob_n.set_item_metadata(ob_n.item_count - 1, t)
+	ob_n.item_selected.connect(func(i): opts["stops"] = ob_n.get_item_metadata(i))
+	grid.add_child(ob_n)
 	grid.add_child(_mk_label("Time of day", 18, Color.WHITE, false, false))
 	var ob_time := OptionButton.new()
 	for t in [["Random", "random"], ["Morning peak", "am_peak"], ["Midday", "midday"], ["Evening peak", "pm_peak"], ["Evening", "evening"], ["Late night", "late"]]:
@@ -257,10 +273,23 @@ func start_journey() -> void:
 	await get_tree().process_frame
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
-	journey = Journey.generate(rng, opts)
-	while journey.is_empty():
-		journey = Journey.generate(rng, opts)
+	StationPlan.warm_all()
+	var multi: bool = opts.get("mode", "single") == "multi"
+	if cli.has("start") and cli.has("dest"):
+		journey = Journey.make(str(cli["start"]).replace("_", " "), str(cli.get("spot", "platform")).replace("_", " "), str(cli["dest"]).replace("_", " "), float(cli.get("hour", "9")), rng)
+		multi = false
+	else:
+		journey = Journey.generate_multi(rng, opts) if multi else Journey.generate(rng, opts)
+		while journey.is_empty():
+			journey = Journey.generate_multi(rng, opts) if multi else Journey.generate(rng, opts)
 	journey["seed"] = seed
+	journey["mode"] = "multi" if multi else "single"
+	par_result = {}
+	_par_task = -1
+	if multi:
+		var jc: Dictionary = journey
+		_par_task = WorkerThreadPool.add_task(func():
+			par_result = Planner.plan_tour(jc["start"], jc["spot"]["node"], jc["t0"], jc["targets"]))
 	_loading.text = "Building %s station..." % Net.station_name(journey["start"])
 	await get_tree().process_frame
 	Clock.set_time(journey["t0"])
@@ -308,11 +337,20 @@ func _show_briefing() -> void:
 	vb.add_child(_mk_label("YOUR JOURNEY", 40, Color(1, 0.85, 0.2), true))
 	vb.add_child(_mk_label("Weekday  ·  %s" % Clock.fmt(journey["t0"]), 26, Color.WHITE, true))
 	vb.add_child(_mk_label("You are at %s Underground station — %s." % [Net.station_name(journey["start"]), spot["name"]], 22))
-	vb.add_child(_mk_label("Destination: %s" % Net.station_name(journey["dest"]), 34, Color(0.5, 0.9, 1.0), true))
-	vb.add_child(_mk_label("Reach the street exit ('Way out') at your destination as quickly as you can. The clock starts when you press Enter. Press M for the Tube map.", 18, Color(0.8, 0.85, 0.95)))
+	if journey["mode"] == "multi":
+		vb.add_child(_mk_label("Visit all %d stations (in any order):" % journey["targets"].size(), 26, Color(0.5, 0.9, 1.0), true))
+		var names: Array = []
+		for t in journey["targets"]:
+			names.append(Net.station_name(t))
+		vb.add_child(_mk_label("  ·  ".join(names), 28, Color(1, 0.9, 0.4), true))
+		vb.add_child(_mk_label("Reach the street exit ('Way out') at each station. After each one you re-enter (25 s). The clock starts when you press Enter. Press M for the Tube map.", 18, Color(0.8, 0.85, 0.95)))
+	else:
+		vb.add_child(_mk_label("Destination: %s" % Net.station_name(journey["dest"]), 34, Color(0.5, 0.9, 1.0), true))
+		vb.add_child(_mk_label("Reach the street exit ('Way out') at your destination as quickly as you can. The clock starts when you press Enter. Press M for the Tube map.", 18, Color(0.8, 0.85, 0.95)))
 	vb.add_child(_mk_button("Start  (Enter)", func(): _begin_play()))
 	map.here = journey["start"]
-	map.dest = journey["dest"]
+	map.dest = journey["dest"] if journey["mode"] == "single" else -1
+	map.stops = journey.get("targets", [])
 	map.focus_on(journey["start"])
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
@@ -329,10 +367,13 @@ func _begin_play() -> void:
 	player.frozen = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	hud.set_visible_hud(true)
-	hud.dest_label.text = "To: %s" % Net.station_name(journey["dest"])
+	_refresh_dest_label()
 	_last_pos = player.global_position
 	_apply_settings()
-	hud.toast("Find the way to %s" % Net.station_name(journey["dest"]), 5.0)
+	if journey["mode"] == "multi":
+		hud.toast("Visit all %d stations — any order" % journey["targets"].size(), 5.0)
+	else:
+		hud.toast("Find the way to %s" % Net.station_name(journey["dest"]), 5.0)
 	if cli.has("autopilot"):
 		autopilot = Autopilot.new()
 		add_child(autopilot)
@@ -378,6 +419,16 @@ func _process(delta: float) -> void:
 		_update_audio_zone()
 	var skip := Input.is_key_pressed(KEY_TAB) and (riding or player.last_speed < 0.3)
 	Clock.time_scale = 8.0 if (skip or bot_skip) else 1.0
+
+
+func _refresh_dest_label() -> void:
+	if journey["mode"] == "multi":
+		var parts: Array = []
+		for t in journey["targets"]:
+			parts.append(("✔ " if t in journey["visited"] else "○ ") + Net.station_name(t))
+		hud.dest_label.text = "Stops: " + "   ".join(parts)
+	else:
+		hud.dest_label.text = "To: %s" % Net.station_name(journey["dest"])
 
 
 func _update_audio_zone() -> void:
@@ -456,8 +507,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 func _toggle_map() -> void:
 	map_open = not map_open
 	map.visible = map_open
-	if journey.has("dest"):
+	if journey.has("dest") and journey.get("mode", "single") == "single":
 		map.dest = journey["dest"]
+	map.stops = journey.get("targets", []).filter(func(t): return not (t in journey["visited"]))
 	map.here = _last_station_idx if not riding else -1
 	if map.here >= 0:
 		map.focus_on(map.here)
@@ -514,6 +566,8 @@ func _toggle_hint() -> void:
 
 
 func _hint_text() -> String:
+	if journey["mode"] == "multi":
+		return _hint_multi()
 	var dest: int = journey["dest"]
 	if riding:
 		return "You are on the %s line to %s.\nNext stop: %s.\nDestination: %s." % [Net.line_name(_ride_line), _ride_dest, Net.station_name(_next_stop_idx), Net.station_name(dest)]
@@ -536,6 +590,41 @@ func _hint_text() -> String:
 	for lg in res["legs"]:
 		s += "• %s line towards %s — board at %s (%s), alight %s\n" % [Net.line_name(lg["line"]), Net.station_name(lg["dest"]), Net.station_name(lg["from"]), Clock.fmt(lg["dep"]), Net.station_name(lg["to"])]
 	s += "Arrive at the street exit about %s." % Clock.fmt(res["arrive"])
+	return s
+
+
+func _hint_multi() -> String:
+	var remaining: Array = journey["targets"].filter(func(t): return not (t in journey["visited"]))
+	var s := ""
+	if not par_result.is_empty() and par_result.get("ok", false):
+		var names: Array = []
+		for t in par_result["order"]:
+			names.append(Net.station_name(t))
+		s += "Best order from the start: " + " → ".join(names) + "\n"
+	if riding or station == null:
+		return s + "Remaining: " + ", ".join(remaining.map(func(t): return Net.station_name(t)))
+	var plan := station.plan
+	var best := "hall_unpaid"
+	var bd := 1e9
+	for n in plan.nodes:
+		var d: float = (n["pos"] as Vector3).distance_to(station.to_local(player.global_position))
+		if d < bd:
+			bd = d
+			best = n["name"]
+	var all := Planner.plan_all(plan.idx, best, Clock.now, 2.5 * 3600.0)
+	var nxt := -1
+	var nt := INF
+	for t in remaining:
+		if all.get(t, INF) < nt:
+			nt = all[t]
+			nxt = t
+	if nxt < 0:
+		return s + "No remaining stop reachable."
+	var res := Planner.plan(plan.idx, best, Clock.now, nxt)
+	s += "Nearest remaining stop: %s (about %s)\n" % [Net.station_name(nxt), Clock.fmt_dur(nt - Clock.now)]
+	if res.get("ok", false):
+		for lg in res["legs"]:
+			s += "• %s line towards %s — board at %s (%s), alight %s\n" % [Net.line_name(lg["line"]), Net.station_name(lg["dest"]), Net.station_name(lg["from"]), Clock.fmt(lg["dep"]), Net.station_name(lg["to"])]
 	return s
 
 
@@ -608,18 +697,44 @@ func _on_ride_arrived(dest_station: Station, vkey: String) -> void:
 	station.trains.player = player
 	var info: Dictionary = (station.trains.visits[vkey] as Dictionary)["info"]
 	Sfx.say_station_this(station.plan.idx, info["line"])
-	if station.plan.idx == journey["dest"]:
+	if journey["mode"] == "single" and station.plan.idx == journey["dest"]:
 		hud.toast("Your destination! Leave the train and follow the Way out signs.", 5.0)
+	elif journey["mode"] == "multi" and station.plan.idx in journey["targets"] and not (station.plan.idx in journey["visited"]):
+		hud.toast("One of your stops! Leave the train and follow the Way out signs.", 5.0)
 
 
 func _on_street_exit(_door: String) -> void:
 	if state != State.PLAYING or station == null:
 		return
-	if station.plan.idx == journey["dest"]:
+	var idx: int = station.plan.idx
+	if journey["mode"] == "multi":
+		if idx in journey["targets"] and not (idx in journey["visited"]):
+			journey["visited"].append(idx)
+			_refresh_dest_label()
+			Sfx.play("ui_success_chime")
+			if journey["visited"].size() >= journey["targets"].size():
+				_finish_journey()
+				return
+			hud.toast("Stop reached: %s  (%d of %d)" % [station.plan.name, journey["visited"].size(), journey["targets"].size()], 4.5)
+			_reenter()
+		else:
+			hud.toast("%s is not one of your remaining stops. Head back down." % station.plan.name, 4.0)
+			player.global_position += Vector3(0, 0, 3.0)
+		return
+	if idx == journey["dest"]:
 		_finish_journey()
 	else:
 		hud.toast("That's not your destination — this is %s. Head back down to the platforms." % station.plan.name, 4.0)
 		player.global_position += Vector3(0, 0, 3.0)
+
+
+## after a stop in multi-stop mode: step back in through the entrance (costs 25 s)
+func _reenter() -> void:
+	Clock.now += 25.0
+	var sd: Dictionary = station.plan.street_doors[0]
+	player.global_position = station.to_global(sd["pos"] + Vector3(0, 0.05, 1.8))
+	player.velocity = Vector3.ZERO
+	player.face(station.global_transform.basis * Vector3(0, 0, 1))
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -631,23 +746,36 @@ func _finish_journey() -> void:
 	player.enabled = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var elapsed: float = Clock.now - t_play0
+	if journey["mode"] == "multi":
+		if _par_task >= 0:
+			WorkerThreadPool.wait_for_task_completion(_par_task)
+		journey["par_s"] = par_result.get("duration", elapsed)
+		journey["par"] = {"legs": []}
 	var par: float = journey["par_s"]
 	var score := clampf(par / maxf(elapsed, 1.0), 0.0, 1.0) * 100.0
 	_result = _center_panel(760)
 	var vb: VBoxContainer = _result.get_meta("vb")
 	vb.add_child(_mk_label("JOURNEY COMPLETE", 40, Color(1, 0.85, 0.2), true))
-	vb.add_child(_mk_label("%s → %s" % [Net.station_name(journey["start"]), Net.station_name(journey["dest"])], 26, Color.WHITE, true))
+	if journey["mode"] == "multi":
+		var nms: Array = []
+		for t in journey["targets"]:
+			nms.append(Net.station_name(t))
+		vb.add_child(_mk_label("%s → %s" % [Net.station_name(journey["start"]), " · ".join(nms)], 22, Color.WHITE, true))
+	else:
+		vb.add_child(_mk_label("%s → %s" % [Net.station_name(journey["start"]), Net.station_name(journey["dest"])], 26, Color.WHITE, true))
 	vb.add_child(_mk_label("Your time: %s        Optimal: %s" % [Clock.fmt_dur(elapsed), Clock.fmt_dur(par)], 24, Color(0.6, 0.9, 1.0), true))
 	vb.add_child(_mk_label("Score %d%%  —  %s" % [int(round(score)), Journey.rating(score)], 30, Color(1, 0.9, 0.4), true))
 	vb.add_child(_mk_label("Walking %s · waiting %s · on trains %s · %d train%s · %d m on foot" % [Clock.fmt_dur(stats["walk"]), Clock.fmt_dur(stats["wait"]), Clock.fmt_dur(stats["ride"]), stats["transfers"], "" if stats["transfers"] == 1 else "s", int(stats["dist"])], 17, Color(0.8, 0.85, 0.95)))
 	var route := "Fastest route:\n"
+	if journey["mode"] == "multi" and par_result.get("ok", false):
+		route = "Best order: " + " → ".join(par_result["order"].map(func(t): return Net.station_name(t))) + "\n"
 	for lg in journey["par"]["legs"]:
 		route += "• %s line: %s → %s  (%s–%s)\n" % [Net.line_name(lg["line"]), Net.station_name(lg["from"]), Net.station_name(lg["to"]), Clock.fmt(lg["dep"]), Clock.fmt(lg["arr"])]
 	vb.add_child(_mk_label(route, 17, Color(0.85, 0.9, 1.0)))
 	vb.add_child(_mk_button("New journey", func(): _result.queue_free(); _result = null; start_journey()))
 	vb.add_child(_mk_button("Main menu", func(): _show_menu()))
 	_save_score(score, elapsed)
-	print("RESULT %s -> %s  time %s  par %s  score %d%%" % [Net.station_name(journey["start"]), Net.station_name(journey["dest"]), Clock.fmt_dur(elapsed), Clock.fmt_dur(par), int(round(score))])
+	print("RESULT %s -> %s  time %s  par %s  score %d%%" % [Net.station_name(journey["start"]), Net.station_name(journey["dest"]) if journey["mode"] == "single" else "multi", Clock.fmt_dur(elapsed), Clock.fmt_dur(par), int(round(score))])
 	if cli.has("autopilot") and cli.has("quit-when-done"):
 		await get_tree().create_timer(float(cli.get("end-secs", "4.0"))).timeout
 		get_tree().quit()
@@ -661,7 +789,7 @@ func _save_score(score: float, elapsed: float) -> void:
 		var parsed = JSON.parse_string(f.get_as_text())
 		if parsed is Array:
 			arr = parsed
-	arr.append({"score": score, "time": elapsed, "from": Net.station_name(journey["start"]), "to": Net.station_name(journey["dest"]), "when": Time.get_datetime_string_from_system()})
+	arr.append({"score": score, "time": elapsed, "from": Net.station_name(journey["start"]), "to": (Net.station_name(journey["dest"]) if journey["mode"] == "single" else "multi-stop x%d" % journey["targets"].size()), "when": Time.get_datetime_string_from_system()})
 	arr.sort_custom(func(a, b): return a["score"] > b["score"])
 	arr = arr.slice(0, 20)
 	var fw := FileAccess.open(path, FileAccess.WRITE)

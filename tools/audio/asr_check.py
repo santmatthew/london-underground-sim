@@ -26,7 +26,9 @@ ROOT = HERE.parents[1]
 OUT = ROOT / "assets" / "audio"
 SCORES = ROOT / "build" / "audio" / "asr_scores.json"
 
-norm = lambda s: re.sub(r"[^a-z0-9 ]", "", s.lower().replace("-", " ").replace("&", " and ")).split()
+_NUM = {str(i): w for i, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve thirteen "
+                                        "fourteen fifteen sixteen seventeen eighteen nineteen twenty".split())}
+norm = lambda s: [_NUM.get(w, w) for w in re.sub(r"[^a-z0-9 ]", "", s.lower().replace("-", " ").replace("&", " and ")).split()]
 
 
 def sim(expected, heard):
@@ -95,6 +97,7 @@ def cmd_repair(a):
     import dsp
     scores = json.loads(Path(a.scores).read_text())
     man = json.loads((OUT / "manifest.json").read_text())
+    scores = {k: [sim(man["clips"][k]["text"], t), t] for k, (_, t) in scores.items() if k in man["clips"]}
     bad = flagged(scores, a.drop)
     print("flagged", len(bad), flush=True)
     m = model(a.threads)

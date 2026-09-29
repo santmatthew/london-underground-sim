@@ -21,15 +21,21 @@ var _replans := 0
 var _stuck_t := 0.0
 var _last_pos := Vector3.ZERO
 var done := false
+var multi := false
 var quiet := false
 var _shots := 0
+var _side_t := 0.0
+var _side_dir := 1.0
+var _sidesteps := 0
+var _stuck_total := 0.0
 
 
 func setup(g: Game) -> void:
 	game = g
 	player = g.player
 	player.bot_active = true
-	legs = (g.journey["par"]["legs"] as Array).duplicate(true)
+	multi = g.journey["mode"] == "multi"
+	legs = [] if multi else (g.journey["par"]["legs"] as Array).duplicate(true)
 	leg_i = 0
 	mode = "init"
 
@@ -57,24 +63,51 @@ func _physics_process(delta: float) -> void:
 			_follow(delta)
 		"in_train":
 			_in_train(delta)
+		"done_wait":
+			wait_t += delta
+			if multi and wait_t > 2.0 and game.station != null and not (game.station.plan.idx in game.journey["visited"] and game.journey["visited"].size() >= game.journey["targets"].size()):
+				mode = "init"
 		"alight":
 			_follow(delta)
 		"exit":
 			_follow(delta)
-	# stuck detection
+	# stuck detection: commanding movement but not actually moving (standing on an escalator does not count)
 	if mode in ["walk", "board", "alight", "exit"]:
-		if player.global_position.distance_to(_last_pos) < 0.02 * delta * 60.0:
+		var real_v := player.get_real_velocity().length()
+		var commanded := player.bot_move.length() > 0.5
+		var at_target := wp_i < wps.size() and player.global_position.distance_to(wps[wp_i]) < 0.7
+		if commanded and real_v < 0.15 and not at_target:
 			_stuck_t += delta
 		else:
 			_stuck_t = 0.0
-		_last_pos = player.global_position
-		if _stuck_t > 6.0:
-			_log("stuck at wp %d/%d pos %s target %s" % [wp_i, wps.size(), str(player.global_position), str(wps[wp_i]) if wp_i < wps.size() else "-"])
-			if DisplayServer.get_name() != "headless" and _shots < 3:
+		if _stuck_t > 0.6 and _side_t <= 0.0:
+			_stuck_total += _stuck_t
+			var ci := KinematicCollision3D.new()
+			var dirv := Vector3(0, 0, -1).rotated(Vector3.UP, player.rotation.y) * 0.3
+			var by_person := false
+			var rel := Vector3.ZERO
+			if player.test_move(player.global_transform, dirv, ci):
+				var col := ci.get_collider() as Node
+				by_person = col is AnimatableBody3D
+				rel = ci.get_position() - player.global_position
+			# step around whatever is in the way (usually a person)
+			var fwd := Vector3(0, 0, -1).rotated(Vector3.UP, player.rotation.y)
+			var side_sign := -1.0 if fwd.cross(rel).y > 0.0 else 1.0
+			_side_dir = side_sign if by_person else (1.0 if _sidesteps % 2 == 0 else -1.0)
+			_side_t = 0.9
+			_sidesteps += 1
+			_stuck_t = 0.0
+			if _sidesteps % 6 == 0:
+				_log("stuck near %s wp %d/%d — %d sidesteps" % [str(player.global_position.snapped(Vector3(0.1, 0.1, 0.1))), wp_i, wps.size(), _sidesteps])
+			if _sidesteps > 40 and _stuck_total > 60.0:
+				_log("giving up this waypoint")
+				wp_i = mini(wp_i + 1, wps.size() - 1)
+				_stuck_total = 0.0
+				_sidesteps = 0
+			if DisplayServer.get_name() != "headless" and _shots < 3 and _sidesteps > 3:
 				_shots += 1
 				get_viewport().get_texture().get_image().save_png("res://build/bot_stuck_%d.png" % _shots)
-			_stuck_t = 0.0
-			wp_i = mini(wp_i + 1, wps.size() - 1)
+	_last_pos = player.global_position
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -108,7 +141,17 @@ func _plan_to_leg_platform() -> void:
 	var st := _station()
 	if st == null:
 		return
+	if multi and legs.is_empty():
+		if st.plan.idx in game.journey["targets"] and not (st.plan.idx in game.journey["visited"]):
+			_plan_exit()
+			return
+		if not _plan_next_target(st):
+			return
 	if leg_i >= legs.size():
+		if multi and not (st.plan.idx in game.journey["targets"] and not (st.plan.idx in game.journey["visited"])):
+			legs = []
+			_plan_next_target(st)
+			return
 		_plan_exit()
 		return
 	var lg: Dictionary = legs[leg_i]
@@ -133,6 +176,35 @@ func _plan_to_leg_platform() -> void:
 	mode = "walk"
 	_post_walk = "wait_train"
 	_log("heading to %s (%s line towards %s, dep %s)" % [target_face, Net.line_name(lg["line"]), Net.station_name(lg["dest"]), Clock.fmt(lg["dep"])])
+
+
+func _plan_next_target(st: Station) -> bool:
+	var remaining: Array = game.journey["targets"].filter(func(t): return not (t in game.journey["visited"]))
+	if remaining.is_empty():
+		return false
+	var target: int = remaining[0]
+	var pr: Dictionary = game.par_result
+	if pr.get("ok", false):
+		for t in pr["order"]:
+			if t in remaining:
+				target = t
+				break
+	else:
+		# par not ready yet: go to the nearest remaining stop
+		var all := Planner.plan_all(st.plan.idx, _nearest_node(st), Clock.now, 2.5 * 3600.0)
+		var bt := INF
+		for t in remaining:
+			if all.get(t, INF) < bt:
+				bt = all[t]
+				target = t
+	var res := Planner.plan(st.plan.idx, _nearest_node(st), Clock.now, target)
+	if not res.get("ok", false) or res["legs"].is_empty():
+		_log("no route to %s" % Net.station_name(target))
+		return false
+	legs = res["legs"]
+	leg_i = 0
+	_log("next stop: %s (%d leg%s)" % [Net.station_name(target), legs.size(), "" if legs.size() == 1 else "s"])
+	return true
 
 
 func _plan_exit() -> void:
@@ -187,6 +259,10 @@ func _follow(delta: float) -> void:
 		return
 	var dir := flat.normalized()
 	player.bot_yaw_target = atan2(-dir.x, -dir.z)
+	if _side_t > 0.0:
+		_side_t -= delta
+		player.bot_move = Vector2(_side_dir, -0.7)
+		return
 	# do not run forward until roughly facing the way
 	var yaw_err := absf(angle_difference(player.rotation.y, player.bot_yaw_target))
 	player.bot_move = Vector2(0, -1.0 if yaw_err < 0.6 else -0.15)
@@ -216,6 +292,10 @@ func _arrived_at_path_end() -> void:
 		"exit":
 			_log("reached the exit")
 			mode = "done_wait"
+			wait_t = 0.0
+			if multi:
+				legs = []
+				leg_i = 0
 
 
 # ---------------------------------------------------------------------------------------------------
