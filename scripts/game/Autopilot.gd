@@ -30,6 +30,8 @@ var _sidesteps := 0
 var _stuck_total := 0.0
 var _board_visit: Dictionary = {}
 var _dbg_t := -1
+var _win_t := 0.0
+var _win_pos := Vector3.ZERO
 var _route_from := ""
 var _repaths := 0
 var _unplanned := false         # carried off by a train we did not plan to take: get off at the next stop and replan
@@ -100,6 +102,14 @@ func _physics_process(delta: float) -> void:
 			_stuck_t += delta
 		else:
 			_stuck_t = 0.0
+		# creeping along a wall or corner still counts as stuck: judge net progress over a 2 s window as well
+		_win_t += delta
+		if _win_t >= 2.0:
+			var moved := player.global_position.distance_to(_win_pos)
+			_win_t = 0.0
+			_win_pos = player.global_position
+			if commanded and moved < 0.35 and not at_target and _side_t <= 0.0:
+				_stuck_t = maxf(_stuck_t, 0.7)
 		if _stuck_t > 0.6 and _side_t <= 0.0:
 			_stuck_total += _stuck_t
 			var ci := KinematicCollision3D.new()
