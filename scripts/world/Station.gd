@@ -56,6 +56,7 @@ func build_async(p: StationPlan, use_async := true) -> void:
 		esc.name = e["id"]
 		add_child(esc)
 		escalators.append(esc)
+		Sfx.loop_at("escalator_loop", esc, Vector3(esc.length * 0.5, -esc.rise * 0.5 + 1.5, 0), -4.0, 26.0)
 		await _yield()
 	_t0 = _t("escalators", _t0)
 	for mi in plan.modules.size():
@@ -181,6 +182,7 @@ func _on_gate_body(body: Node3D, gd: Dictionary) -> void:
 	if not ok:
 		return
 	_open_gate(gd)
+	Sfx.play_at("gate_beep_ok", gd["node"], Vector3(0, 1.1, 0), 0.0 if body is Player else -8.0, 18.0)
 	if body is Player:
 		gate_tapped.emit(kind)
 
@@ -189,6 +191,7 @@ func _set_gate_state(gd: Dictionary, open: bool) -> void:
 	if gd["is_open"] == open:
 		return
 	gd["is_open"] = open
+	Sfx.play_at("gate_flap_open" if open else "gate_flap_close", gd["node"], Vector3(0, 1.0, 0), -8.0, 14.0)
 	(gd["flaps"] as StaticBody3D).collision_layer = 0 if open else 1
 	var ang := 90.0 if open else 0.0
 	for key in ["fl", "fr"]:

@@ -23,6 +23,9 @@ var _pitch := 0.0
 var look_target := Vector3.ZERO
 var last_speed := 0.0
 var hurrying := false
+var step_accum := 0.0
+var surface := "concrete"
+var footsteps_enabled := true
 var bot_active := false          # autopilot drives movement
 var bot_move := Vector2.ZERO     # x strafe, y forward(-)/back(+)
 var bot_hurry := false
@@ -110,6 +113,12 @@ func _physics_process(delta: float) -> void:
 		velocity.y = maxf(velocity.y, -0.5)
 	move_and_slide()
 	last_speed = Vector2(get_real_velocity().x, get_real_velocity().z).length()
+	# footsteps
+	if is_on_floor() and last_speed > 0.4 and footsteps_enabled:
+		step_accum += last_speed * delta
+		if step_accum > 0.78:
+			step_accum = 0.0
+			Sfx.footstep(surface, -3.0 if last_speed < 2.0 else 0.0)
 	# head bob
 	if is_on_floor() and last_speed > 0.2:
 		_bob += delta * last_speed * 4.4

@@ -46,7 +46,8 @@ def transcribe(m, path):
 def cmd_score(a):
     man = json.loads((OUT / "manifest.json").read_text())
     keys = [k for k, v in man["clips"].items() if v["category"].startswith("speech") and "text" in v
-            and (not a.substr or any(s in k for s in a.substr))]
+            and (not a.substr or any(s in k for s in a.substr))
+            and not (a.skip and re.search(a.skip, k))]
     if a.shard:
         i, n = map(int, a.shard.split("/"))
         keys = keys[i::n]
@@ -132,6 +133,7 @@ def main():
     s = sub.add_parser("score")
     s.add_argument("substr", nargs="*")
     s.add_argument("--shard")
+    s.add_argument("--skip", help="regex of keys to skip, e.g. 'station/[^/]+/(this|next|alight)$'")
     s.add_argument("--threads", type=int, default=6)
     s.add_argument("--out", default=str(SCORES))
     r = sub.add_parser("repair")

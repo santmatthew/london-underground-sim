@@ -147,7 +147,17 @@ func _spawn(vkey: String, fkey: String, f: Dictionary, module: PlatformModule, i
 	train.set_meta("visit", v)
 	visits[vkey] = v
 	train.position.x = x_at(v, Clock.now)
+	if not origin:
+		var lead: float = info["arr"] - Clock.now         # seconds until it stops
+		if lead > -2.0 and lead < 26.0 and Sfx.has("train_arrive_platform"):
+			Sfx.play_at("train_arrive_platform", train, Vector3(length_front(train), 1.0, 0), 0.0, 90.0, maxf(0.0, 25.0 - lead))
+		if lead > 8.0 and player != null and player.global_position.distance_to(module.global_position) < 70.0:
+			Sfx.say_platform_approach(lid, info["dest"], info["via"])
 	train_spawned.emit(train, v)
+
+
+func length_front(train: Train) -> float:
+	return train.length * 0.5 - 4.0
 
 
 func _despawn(vkey: String) -> void:

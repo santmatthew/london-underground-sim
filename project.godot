@@ -12,6 +12,7 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 Net="*res://scripts/autoload/Net.gd"
 Clock="*res://scripts/autoload/Clock.gd"
 Timetable="*res://scripts/autoload/Timetable.gd"
+Sfx="*res://scripts/autoload/Sfx.gd"
 
 [display]
 window/size/viewport_width=1600

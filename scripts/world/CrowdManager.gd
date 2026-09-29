@@ -5,9 +5,9 @@ extends Node3D
 ## Flows: street doors -> gates -> escalators -> corridors -> platform (wait) -> board;  train doors -> platform -> exit / transfer.
 ## Riders standing/sitting inside trains are created when a train spawns and can alight when its doors open.
 
-const MAX_AWAKE := 120
-const WAKE_DIST := 62.0
-const SLEEP_DIST := 78.0
+const MAX_AWAKE := 100
+const WAKE_DIST := 48.0
+const SLEEP_DIST := 62.0
 const CarUtil = preload("res://assets/models/train/train_car_util.gd")
 
 class Agent:
@@ -668,3 +668,24 @@ func _sleep(a: Agent) -> void:
 
 func _free_agent(a: Agent) -> void:
 	_sleep(a)
+
+
+## number of people in a 3 m cone ahead of `world_pos` (used to slow the player in dense crowds)
+func density_ahead(world_pos: Vector3, forward: Vector3) -> int:
+	var lp := to_local(world_pos)
+	var fwd := (global_transform.basis.inverse() * forward)
+	fwd.y = 0.0
+	fwd = fwd.normalized()
+	var n := 0
+	for a in agents:
+		if a.node == null:
+			continue
+		var d: Vector3 = a.pos - lp
+		if absf(d.y) > 1.5:
+			continue
+		var dist := Vector2(d.x, d.z).length()
+		if dist < 0.3 or dist > 3.2:
+			continue
+		if Vector3(d.x, 0, d.z).normalized().dot(fwd) > 0.55:
+			n += 1
+	return n

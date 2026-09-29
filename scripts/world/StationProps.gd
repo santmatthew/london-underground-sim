@@ -75,6 +75,11 @@ static func place(station: Station) -> void:
 			_room_dressing(root, rm, rng)
 	for mi in plan.modules.size():
 		_platform(station.modules[mi], plan, mi, rng)
+	StationSigns.cull(root, 55.0)
+	for pm in station.modules:
+		var ph: Node = pm.get_node_or_null("Props")
+		if ph:
+			StationSigns.cull(ph, 55.0)
 
 
 static func _hall(station: Station, root: Node3D, plan: StationPlan, rng: RandomNumberGenerator) -> void:

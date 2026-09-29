@@ -18,6 +18,11 @@ static func place(station: Station) -> void:
 		_landing_signs(station, root, plan, li)
 	for mi in plan.modules.size():
 		_module_signs(station, root, plan, mi)
+	cull(root, 42.0)
+	for pm in station.modules:
+		for c in pm.get_children():
+			if c is Node3D and not (c is MeshInstance3D) and c.name not in ["Collision", "EdgeGuard", "Lights", "Props"] and not (c is Train):
+				cull(c, 42.0)
 
 
 static func _lines_here(plan: StationPlan) -> Array:
@@ -274,3 +279,12 @@ static func _rods(holder: Node3D, length: float) -> void:
 		mi.material_override = _rod_mat
 		mi.position = Vector3(sx, length * 0.5 + 0.3, 0.0)
 		holder.add_child(mi)
+
+
+## distance-cull every renderable under `n` (cheap: keeps far-away signs out of the draw list)
+static func cull(n: Node, dist: float) -> void:
+	if n is GeometryInstance3D:
+		(n as GeometryInstance3D).visibility_range_end = dist
+		(n as GeometryInstance3D).visibility_range_end_margin = 4.0
+	for c in n.get_children():
+		cull(c, dist)

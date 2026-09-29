@@ -14,6 +14,10 @@ var hint_label: Label
 var stamina: ProgressBar
 var fade: ColorRect
 var help_label: Label
+var perf_label: Label
+var perf_on := false
+var _perf_t := 0.0
+var extra_perf := ""
 var _sub_t := 0.0
 var _toast_t := 0.0
 var font_b: Font
@@ -91,6 +95,17 @@ func _ready() -> void:
 	help_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	help_label.position = Vector2(20, -28)
 	root.add_child(help_label)
+	perf_label = Label.new()
+	perf_label.add_theme_font_size_override("font_size", 14)
+	perf_label.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
+	perf_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	perf_label.add_theme_constant_override("outline_size", 4)
+	perf_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	perf_label.position = Vector2(-420, -110)
+	perf_label.size = Vector2(400, 100)
+	perf_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	perf_label.visible = false
+	root.add_child(perf_label)
 	# fade
 	fade = ColorRect.new()
 	fade.color = Color(0, 0, 0, 0)
@@ -143,7 +158,23 @@ func toast(text: String, seconds := 3.5) -> void:
 	_toast_t = seconds
 
 
+func toggle_perf() -> void:
+	perf_on = not perf_on
+	perf_label.visible = perf_on
+
+
 func _process(delta: float) -> void:
+	if perf_on:
+		_perf_t -= delta
+		if _perf_t <= 0.0:
+			_perf_t = 0.4
+			var info := "%d fps  (%.1f ms)\ndraw calls %d · %.2fM tris · %d objects\nvideo mem %d MB" % [
+				Engine.get_frames_per_second(), 1000.0 / maxf(Engine.get_frames_per_second(), 1.0),
+				RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+				RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME) / 1e6,
+				RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
+				RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED) / 1048576.0]
+			perf_label.text = info + extra_perf
 	if _sub_t > 0.0:
 		_sub_t -= delta
 		if _sub_t < 1.0:

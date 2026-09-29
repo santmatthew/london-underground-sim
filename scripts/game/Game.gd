@@ -12,7 +12,7 @@ var env: WorldEnvironment
 var station: Station
 var ride: Ride
 var journey: Dictionary = {}
-var opts := {"time": "random", "length": "medium", "hints": true}
+var opts := {"time": "random", "length": "medium", "hints": true, "quality": 2, "crowd": 1.0, "volume": 0.8, "sens": 0.0022}
 var t_play0 := 0.0
 var riding := false
 var paused := false
@@ -33,6 +33,7 @@ var _ride_dest := ""
 var font_b: Font
 var font_r: Font
 var bot_skip := false
+var _audio_t := 0.0
 var autopilot: Autopilot
 var cli := {}
 
@@ -40,7 +41,7 @@ var cli := {}
 func _ready() -> void:
 	font_b = load("res://assets/fonts/Barlow-Bold.ttf")
 	font_r = load("res://assets/fonts/Barlow-SemiBold.ttf")
-	env = Env.make()
+	env = Env.make(opts["quality"])
 	add_child(env)
 	player = Player.new()
 	player.enabled = false
@@ -56,6 +57,7 @@ func _ready() -> void:
 	map.visible = false
 	_ui.add_child(map)
 	map.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	Sfx.subtitle.connect(func(t, secs): if hud: hud.say(t, secs))
 	_build_menu()
 	_show_menu()
 	_preload()
@@ -72,6 +74,20 @@ func _parse_cli() -> void:
 		opts["time"] = cli["time"]
 	if cli.has("length"):
 		opts["length"] = cli["length"]
+
+
+func _apply_settings() -> void:
+	var q: int = opts["quality"]
+	var e := env.environment
+	e.ssao_enabled = q >= 1
+	e.ssil_enabled = q >= 2
+	e.ssr_enabled = q >= 2
+	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(opts["volume"]), 0.0001)))
+	if player:
+		player.mouse_sens = opts["sens"]
+	if station and station.crowd:
+		station.crowd.density = opts["crowd"]
+		station.crowd.enabled = opts["crowd"] > 0.0
 
 
 func _preload() -> void:
@@ -111,6 +127,7 @@ func _mk_button(text: String, cb: Callable) -> Button:
 	b.add_theme_font_override("font", font_b)
 	b.add_theme_font_size_override("font_size", 22)
 	b.custom_minimum_size = Vector2(320, 48)
+	b.pressed.connect(func(): Sfx.play("ui_click_soft"))
 	b.pressed.connect(cb)
 	return b
 
@@ -159,6 +176,40 @@ func _build_menu() -> void:
 	cb.button_pressed = true
 	cb.toggled.connect(func(v): opts["hints"] = v)
 	grid.add_child(cb)
+	grid.add_child(_mk_label("Graphics", 18, Color.WHITE, false, false))
+	var ob_q := OptionButton.new()
+	for t in [["Fast (no screen-space effects)", 0], ["Balanced", 1], ["High (SSAO, SSIL, reflections)", 2]]:
+		ob_q.add_item(t[0])
+		ob_q.set_item_metadata(ob_q.item_count - 1, t[1])
+	ob_q.select(2)
+	ob_q.item_selected.connect(func(i): opts["quality"] = ob_q.get_item_metadata(i); _apply_settings())
+	grid.add_child(ob_q)
+	grid.add_child(_mk_label("Crowds", 18, Color.WHITE, false, false))
+	var ob_c := OptionButton.new()
+	for t in [["Empty", 0.0], ["Light", 0.6], ["Realistic", 1.0], ["Packed", 1.5]]:
+		ob_c.add_item(t[0])
+		ob_c.set_item_metadata(ob_c.item_count - 1, t[1])
+	ob_c.select(2)
+	ob_c.item_selected.connect(func(i): opts["crowd"] = ob_c.get_item_metadata(i))
+	grid.add_child(ob_c)
+	grid.add_child(_mk_label("Volume", 18, Color.WHITE, false, false))
+	var sl := HSlider.new()
+	sl.min_value = 0.0
+	sl.max_value = 1.0
+	sl.step = 0.05
+	sl.value = 0.8
+	sl.custom_minimum_size = Vector2(200, 24)
+	sl.value_changed.connect(func(v): opts["volume"] = v; _apply_settings())
+	grid.add_child(sl)
+	grid.add_child(_mk_label("Mouse sensitivity", 18, Color.WHITE, false, false))
+	var sl2 := HSlider.new()
+	sl2.min_value = 0.0008
+	sl2.max_value = 0.006
+	sl2.step = 0.0001
+	sl2.value = 0.0022
+	sl2.custom_minimum_size = Vector2(200, 24)
+	sl2.value_changed.connect(func(v): opts["sens"] = v; _apply_settings())
+	grid.add_child(sl2)
 	vb.add_child(_mk_button("Start journey", func(): start_journey()))
 	vb.add_child(_mk_button("Quit", func(): get_tree().quit()))
 	_menu.visible = false
@@ -243,6 +294,9 @@ func _hook_station(st: Station) -> void:
 	st.trains.doors_closing.connect(_on_doors_closing)
 	st.trains.doors_opened.connect(_on_doors_opened)
 	st.attach_crowd(player)
+	if st.crowd:
+		st.crowd.density = opts["crowd"]
+		st.crowd.enabled = opts["crowd"] > 0.0
 	_last_station_idx = st.plan.idx
 
 
@@ -277,6 +331,7 @@ func _begin_play() -> void:
 	hud.set_visible_hud(true)
 	hud.dest_label.text = "To: %s" % Net.station_name(journey["dest"])
 	_last_pos = player.global_position
+	_apply_settings()
 	hud.toast("Find the way to %s" % Net.station_name(journey["dest"]), 5.0)
 	if cli.has("autopilot"):
 		autopilot = Autopilot.new()
@@ -293,6 +348,8 @@ func _process(delta: float) -> void:
 	hud.clock_label.text = Clock.fmt(Clock.now, true)
 	hud.elapsed_label.text = "elapsed  " + Clock.fmt_dur(Clock.now - t_play0)
 	hud.stamina.value = player.stamina
+	if hud.perf_on and station and station.crowd:
+		hud.extra_perf = "\ncrowd %d agents · %d awake · %d riders" % [station.crowd.stats["agents"], station.crowd.stats["awake"], station.crowd.stats["riders"]]
 	if riding:
 		hud.where_label.text = "On the %s line to %s — next: %s" % [Net.line_name(_ride_line), _ride_dest, Net.station_name(_next_stop_idx) if _next_stop_idx >= 0 else "?"]
 		stats["ride"] += delta * Clock.time_scale
@@ -309,8 +366,49 @@ func _process(delta: float) -> void:
 			stats["wait"] += delta * Clock.time_scale
 		else:
 			stats["walk"] += delta * Clock.time_scale
+	if station and station.crowd and not riding:
+		var cnt := station.crowd.density_ahead(player.global_position, player.forward())
+		var target := clampf(1.0 - 0.08 * cnt, 0.5, 1.0)
+		player.speed_mult = lerpf(player.speed_mult, target, clampf(delta * 3.0, 0.0, 1.0))
+	else:
+		player.speed_mult = 1.0
+	_audio_t -= delta
+	if _audio_t <= 0.0:
+		_audio_t = 0.5
+		_update_audio_zone()
 	var skip := Input.is_key_pressed(KEY_TAB) and (riding or player.last_speed < 0.3)
 	Clock.time_scale = 8.0 if (skip or bot_skip) else 1.0
+
+
+func _update_audio_zone() -> void:
+	var dens := Clock.crowd_factor(Clock.now)
+	if riding:
+		var sp: float = ride.speed_now if ride else 0.0
+		Sfx.set_zone("train_run" if sp > 1.0 else "train_idle", dens, sp)
+		player.surface = "rubber"
+		return
+	if station == null:
+		return
+	# inside a train at a platform?
+	for v in station.trains.visits.values():
+		if (v["train"] as Train).contains_world_point(player.global_position):
+			Sfx.set_zone("train_idle", dens)
+			player.surface = "rubber"
+			return
+	var loc := _describe_location()
+	player.surface = "concrete"
+	if loc.begins_with("platform"):
+		Sfx.set_zone("platform", dens)
+	elif loc.begins_with("ticket hall"):
+		Sfx.set_zone("hall", dens)
+	else:
+		# on or near an escalator?
+		var on_esc := false
+		for e in station.escalators:
+			var lp: Vector3 = (e as Node3D).to_local(player.global_position)
+			if lp.x > -1.0 and lp.x < e.length + 1.0 and absf(lp.z) < e.width * 0.5 + 0.5 and lp.y > -e.rise - 2.5 and lp.y < 4.0:
+				on_esc = true
+		Sfx.set_zone("escalator" if on_esc else "corridor", dens)
 
 
 func _describe_location() -> String:
@@ -346,6 +444,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_H:
 				if state == State.PLAYING:
 					_toggle_hint()
+			KEY_F3:
+				hud.toggle_perf()
 			KEY_ESCAPE:
 				if map_open:
 					_toggle_map()
@@ -446,9 +546,12 @@ func _on_doors_opened(v: Dictionary) -> void:
 	var train: Train = v["train"]
 	if station and train.contains_world_point(player.global_position):
 		var info: Dictionary = v["info"]
-		hud.say("This is %s.%s" % [station.plan.name, _change_text(station.plan.idx, info["line"])], 7.0)
+		Sfx.say_station_this(station.plan.idx, info["line"])
+		Sfx.play_at("door_chime_open", train, Vector3(0, 1.8, 0), 0.0, 30.0)
 		if info["final"]:
-			hud.say("This train terminates here. All change please.", 7.0)
+			Sfx.say(["this_train_terminates_here_all_change"])
+	elif station and train.global_position.distance_to(player.global_position) < 40.0:
+		Sfx.play_at("door_slide_open", train, Vector3(0, 1.5, 0), -6.0, 30.0)
 
 
 func _change_text(idx: int, line: String) -> String:
@@ -468,6 +571,7 @@ func _on_doors_closing(v: Dictionary) -> void:
 	if not train.contains_world_point(player.global_position):
 		return
 	var info: Dictionary = v["info"]
+	Sfx.play_at("door_chime_close", train, Vector3(0, 1.8, 0), 0.0, 30.0)
 	if info["final"]:
 		var pos := station.platform_point(v["key"], 0.5, 1.2)
 		player.global_position = pos + Vector3(0, 0.1, 0)
@@ -489,7 +593,10 @@ func _begin_ride(train: Train, v: Dictionary) -> void:
 	_next_stop_idx = next_idx
 	ride.start(self, train, info["run"], info["k"], station, player.global_position)
 	station = null
-	hud.say("Stand clear of the doors please.  This is a %s line train to %s.  The next station is %s." % [Net.line_name(_ride_line), _ride_dest, Net.station_name(next_idx)], 8.0)
+	Sfx.say(["stand_clear_of_the_doors"], true)
+	Sfx.say_terminates(_ride_line, info["dest"], info["via"])
+	Sfx.say_next(next_idx)
+	Sfx.play_at("train_depart_platform", train, Vector3(0, 1.0, 0), -2.0, 60.0)
 
 
 func _on_ride_arrived(dest_station: Station, vkey: String) -> void:
@@ -500,7 +607,7 @@ func _on_ride_arrived(dest_station: Station, vkey: String) -> void:
 	_hook_station(station)
 	station.trains.player = player
 	var info: Dictionary = (station.trains.visits[vkey] as Dictionary)["info"]
-	hud.say("This is %s.%s Mind the gap." % [station.plan.name, _change_text(station.plan.idx, info["line"])], 7.0)
+	Sfx.say_station_this(station.plan.idx, info["line"])
 	if station.plan.idx == journey["dest"]:
 		hud.toast("Your destination! Leave the train and follow the Way out signs.", 5.0)
 

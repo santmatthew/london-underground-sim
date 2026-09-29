@@ -8,7 +8,11 @@ func run():
 	Clock.set_time(8.25 * 3600.0)
 	var idx: int = Net.name_to_idx[sname]
 	var plan := StationPlan.for_station(idx)
-	add_child(Env.make())
+	var q := 2
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--quality="): q = int(a.substr(10))
+	add_child(Env.make(q))
+	print("quality ", q)
 	var t0 := Time.get_ticks_msec()
 	var st := Station.new()
 	add_child(st)
@@ -18,6 +22,26 @@ func run():
 	add_child(player)
 	player.enabled = false
 	st.trains.setup(st, player)
+	st.attach_crowd(player)
+	var flags := OS.get_cmdline_user_args()
+	if "--nolights" in flags:
+		for n in st.find_children("*", "OmniLight3D", true, false): n.visible = false
+		for n in st.find_children("*", "SpotLight3D", true, false): n.visible = false
+	if "--noprops" in flags:
+		var pr := st.get_node_or_null("Props")
+		if pr: pr.queue_free()
+		for m in st.modules:
+			var mp: Node = m.get_node_or_null("Props")
+			if mp: mp.queue_free()
+	if "--nosigns" in flags:
+		var sg := st.get_node_or_null("Signs")
+		if sg: sg.queue_free()
+		for m in st.modules:
+			for c in m.get_children():
+				if c is Node3D and not (c is MeshInstance3D) and c.name != "Collision" and c.name != "EdgeGuard" and c.name != "Lights" and c.name != "Props": c.queue_free()
+	if "--nocrowd" in flags and st.crowd:
+		st.crowd.enabled = false
+		for c in st.crowd.get_children(): c.queue_free()
 	var spots := {}
 	var r: Array = plan.hall["rect"]
 	spots["hall"] = [Vector3(0, 1.65, plan.gates["z"] + 3), Vector3(0, 1.4, r[3])]
