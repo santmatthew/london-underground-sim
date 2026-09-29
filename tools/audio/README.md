@@ -33,7 +33,8 @@ Piper voices are downloaded on demand from Hugging Face (`rhasspy/piper-voices`)
   length, filters/reverbs are circular, events wrap around the end, hums use an integer number of cycles.
   There is no crossfade to hear. `dsp.crossfade_loop` exists for non-periodic material.
 * **Speech**: voices `en_GB-cori-high` (female: station / platform PA and on-train station announcements) and
-  `en_GB-alan-medium` (male: driver). Each phrase is phonemised by espeak-ng inside Piper; `pronunciations.json`
+  `en_GB-vctk-medium` speaker `p243` (male, London accent: driver; chosen over `alan` because the VCTK corpus is
+  CC-BY-4.0 whereas the alan/apope dataset is "all rights reserved"). Each phrase is phonemised by espeak-ng inside Piper; `pronunciations.json`
   overrides words espeak gets wrong (Holborn, Southwark, Marylebone, Cockfosters, Edgware, Bakerloo, ...) by
   injecting IPA directly. Styles: `train_pa` (band-limited, gentle compression), `driver` (narrow, mid-heavy,
   slightly gritty), `platform_pa` (300 Hz-6 kHz horn speaker + short tiled-hall reverb). Every clip is trimmed and
@@ -44,8 +45,9 @@ Piper voices are downloaded on demand from Hugging Face (`rhasspy/piper-voices`)
 * Adding a sound: write a generator returning a float array in `sfx.py` (or `ambience.py` for loops) and add it to the
   registry with category / normalisation / suggested volume.
 
-## Optional pronunciation check
+## Optional speech QA (`asr_check.py`)
 
-`pip install faster-whisper` in a scratch venv and transcribe the station-name clips: mismatches point at
-words that need an entry in `pronunciations.json` (whisper mishears some genuine local pronunciations,
-e.g. Theydon Bois, so treat it as a hint only).
+`pip install faster-whisper piper-tts scipy` in a scratch venv, then `asr_check.py score` transcribes speech clips
+with Whisper and scores them against the intended text; `asr_check.py repair` re-renders clips that are much worse
+than sibling clips naming the same station (TTS occasionally drops a syllable). Whisper mishears some genuine
+local pronunciations (Theydon Bois, Amersham, ...), so treat plain scores as hints only.

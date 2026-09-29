@@ -86,6 +86,16 @@ static func get_mat(name: String) -> Material:
 			s2.albedo_color = Color(0.03, 0.03, 0.035)
 			s2.roughness = 0.6
 			m = s2
+		"glass_roof":
+			var gr := StandardMaterial3D.new()
+			var hh := fmod(Clock.now / 3600.0, 24.0)
+			var day := clampf(sin((hh - 6.0) / 14.0 * PI), 0.05, 1.0)
+			gr.albedo_color = Color(0.75, 0.85, 0.95)
+			gr.emission_enabled = true
+			gr.emission = Color(0.80, 0.90, 1.0)
+			gr.emission_energy_multiplier = 0.4 + 3.2 * day
+			gr.roughness = 0.2
+			m = gr
 		"light_emissive":
 			var s3 := StandardMaterial3D.new()
 			s3.albedo_color = Color(1, 1, 0.95)

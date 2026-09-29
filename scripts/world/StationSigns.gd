@@ -167,8 +167,13 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 		var arr := _arrow_for(view, side)
 		rows.append({"text": "Platform %d  %s" % [plan.platform_no[pid], f["label"]], "color": f["color"], "arrow": arr, "arrow_side": "left" if arr == 2 else "right", "bold": true})
 		rows.append({"text": plan.dest_text(pid, 3), "text_color": Color(0.85, 0.85, 0.85)})
-	var spx: float = mp.x + ox[0] - 2.5
-	hang(root, Signs.board(rows, 3.1, 0.34), Vector3(spx, mp.y + PlatformModule.SPINE_H - 0.55 - rows.size() * 0.09, m["lane_z"]), Vector3(-1, 0, 0), mp.y + PlatformModule.SPINE_H)
+	var box := pm.box
+	var spx: float = mp.x + (ox[0] - 2.5 if not box else -L * 0.5 + 4.5)
+	var spy: float = (mp.y + PlatformModule.SPINE_H - 0.55 - rows.size() * 0.09) if not box else (mp.y + PlatformModule.BOX_H - 1.5 - rows.size() * 0.09)
+	hang(root, Signs.board(rows, 3.1, 0.34), Vector3(spx, spy, m["lane_z"]), Vector3(-1, 0, 0), mp.y + (PlatformModule.SPINE_H if not box else PlatformModule.BOX_H))
+	if box:
+		for wx in [-L * 0.25, L * 0.05, L * 0.3]:
+			hang(root, Signs.board([{"text": "Way out", "bold": true, "arrow": 1}], 1.9, 0.4), Vector3(mp.x + wx, mp.y + PlatformModule.BOX_H - 1.3, mp.z), Vector3(1, 0, 0), mp.y + PlatformModule.BOX_H)
 	# --- per face: roundels, indicators, boards
 	for fi in faces.size():
 		var f2: Dictionary = faces[fi]
@@ -199,7 +204,7 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 			for o in ox:
 				if absf(x + L / n * 0.3 - o) < 4.0:
 					near_open = true
-			if not near_open:
+			if not near_open and not box:
 				var rd2 := Signs.roundel(short_name, 0.85, style == 1)
 				rd2.position = Vector3(x + L / n * 0.3, 1.75, s * (zwall + 0.03))
 				rd2.rotation.y = atan2(0.0, s)
@@ -211,7 +216,9 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 		for ix in [-L * 0.5 + 14.0, L * 0.5 - 16.0]:
 			var ind := Signs.indicator(gp, 2.9)
 			var holder := Node3D.new()
-			holder.position = Vector3(ix, PlatformModule.SPRING_Y - 0.15, pz)
+			holder.position = Vector3(ix, (PlatformModule.SPRING_Y - 0.15) if not box else (PlatformModule.BOX_H - 1.4), pz)
+			if box:
+				_rods(holder, 1.1)
 			holder.add_child(ind)
 			var ind2 := Signs.indicator(gp, 2.9)
 			ind2.rotation.y = PI
@@ -229,7 +236,9 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 			var b := Signs.board(brd_rows, 4.0, 0.4)
 			var b2 := b.duplicate()
 			var holder2 := Node3D.new()
-			holder2.position = Vector3(ix2, PlatformModule.SPRING_Y + 0.25, pz)
+			holder2.position = Vector3(ix2, (PlatformModule.SPRING_Y + 0.25) if not box else (PlatformModule.BOX_H - 1.5), pz)
+			if box:
+				_rods(holder2, 1.2)
 			b.rotation.y = -PI * 0.5
 			b2.rotation.y = PI * 0.5
 			b2.position.x = 0.03
@@ -237,7 +246,7 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 			holder2.add_child(b2)
 			pm.add_child(holder2)
 		# way-out boards at each opening, facing along the platform, pointing toward the wall side (the opening)
-		for o in ox:
+		for o in (ox if not box else []):
 			for view_dir in [Vector3(1, 0, 0), Vector3(-1, 0, 0)]:
 				var target := Vector3(0, 0, -s)      # the opening is toward the spine
 				var a := _arrow_for(view_dir, target)
@@ -247,3 +256,21 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 				wb.rotation.y = atan2(-view_dir.x, -view_dir.z)
 				hw.add_child(wb)
 				pm.add_child(hw)
+
+
+static func _rods(holder: Node3D, length: float) -> void:
+	if _rod_mat == null:
+		_rod_mat = StandardMaterial3D.new()
+		_rod_mat.albedo_color = HANG_ROD
+		_rod_mat.metallic = 0.8
+		_rod_mat.roughness = 0.4
+	for sx in [-0.8, 0.8]:
+		var mi := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.012
+		cm.bottom_radius = 0.012
+		cm.height = length
+		mi.mesh = cm
+		mi.material_override = _rod_mat
+		mi.position = Vector3(sx, length * 0.5 + 0.3, 0.0)
+		holder.add_child(mi)

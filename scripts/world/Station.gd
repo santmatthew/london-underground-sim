@@ -87,128 +87,87 @@ func build_async(p: StationPlan, use_async := true) -> void:
 
 
 # ---------------------------------------------------------------------------------------------------
-# Gateline
+# Gateline (Blender gate units)
 # ---------------------------------------------------------------------------------------------------
 func _build_gateline() -> void:
 	var g: Dictionary = plan.gates
-	var kit := MeshKit.new()
 	var z: float = g["z"]
-	var n: int = g["n"]
-	var pitch: float = g["pitch"]
-	var total := n * pitch
-	var x_start := -total * 0.5
-	var body := StaticBody3D.new()
-	body.name = "GateBody"
-	fitting_root.add_child(body)
 	var hx: float = -float((plan.hall["rect"] as Array)[0])
-	# barrier posts: n+1 posts between lanes (thick 0.28)
-	var kinds: Array = []
-	var rng := RandomNumberGenerator.new()
-	rng.seed = plan.seed_value + 5
-	for i in n:
-		kinds.append(1 if i < (n + 1) / 2 else -1)        # +1 = entry (moves +z), -1 = exit
-	if plan.imp < 1.2:
-		# quiet stations: bidirectional-ish - keep the same lanes anyway
-		pass
-	for i in n + 1:
-		var px := x_start + i * pitch
-		_gate_post(kit, body, px, z)
-	# fixed barriers from the last post to the hall walls
-	var wall_l := -hx
-	var wall_r := hx
-	_fence(kit, body, wall_l, x_start, z)
-	_fence(kit, body, x_start + total, wall_r, z)
-	# one wide accessible gate at the end lane (skip flaps there)
-	for i in n:
-		var cx := x_start + (i + 0.5) * pitch
-		var gate := _make_gate(kit, cx, z, kinds[i])
-		gate_nodes.append(gate)
-		fitting_root.add_child(gate["node"])
-	var mats := {"metal": Mats.get_mat("metal"), "black": Mats.get_mat("black"), "light_emissive": Mats.get_mat("light_emissive"),
-		"gate_body": Mats.flat(Color(0.22, 0.24, 0.27), 0.35, 0.6), "gate_top": Mats.flat(Color(0.05, 0.05, 0.06), 0.25, 0.2)}
-	var mi := MeshInstance3D.new()
-	mi.mesh = kit.build(mats, Mats.get_mat("metal"))
-	fitting_root.add_child(mi)
+	var total_w: float = g["total_w"]
+	var fence_body := StaticBody3D.new()
+	fence_body.name = "GateFence"
+	fitting_root.add_child(fence_body)
+	for ld in g["lanes"]:
+		var lane := _make_gate(ld, z)
+		gate_nodes.append(lane)
+		fitting_root.add_child(lane["node"])
+	# fixed barriers from the ends of the lane block to the hall walls
+	for side: float in [-1.0, 1.0]:
+		var edge: float = side * total_w * 0.5
+		var span: float = hx - total_w * 0.5
+		var x: float = edge
+		while span > 0.05:
+			var seg: float = minf(2.0, span)
+			var f := StationProps.inst("gate_fence")
+			fitting_root.add_child(f)
+			f.position = Vector3(x + side * seg * 0.5, 0, z)
+			if seg < 2.0:
+				f.scale.x = seg / 2.0
+			x += side * seg
+			span -= seg
+	var cs_l := CollisionShape3D.new()
+	var sh_l := BoxShape3D.new()
+	sh_l.size = Vector3(hx * 2.0, 1.6, 0.2)
+	cs_l.shape = sh_l
+	cs_l.position = Vector3(0, 0.8, z + 0.0)
+	# (lane block collision comes from the gate units; the fences collide via a thin wall behind the fence line)
+	var side_l := CollisionShape3D.new()
+	var side_sh := BoxShape3D.new()
+	side_sh.size = Vector3(hx - total_w * 0.5, 1.6, 0.2)
+	side_l.shape = side_sh
+	side_l.position = Vector3(-(total_w * 0.5 + (hx - total_w * 0.5) * 0.5), 0.8, z)
+	fence_body.add_child(side_l)
+	var side_r := CollisionShape3D.new()
+	side_r.shape = side_sh
+	side_r.position = Vector3((total_w * 0.5 + (hx - total_w * 0.5) * 0.5), 0.8, z)
+	fence_body.add_child(side_r)
 
 
-func _gate_post(kit: MeshKit, body: StaticBody3D, x: float, z: float) -> void:
-	kit.box({"*": "gate_body", "top": "gate_top"}, Vector3(x, 0.55, z), Vector3(0.14, 1.1, 1.5), 0.0)
-	# reader / display head
-	kit.box("gate_top", Vector3(x, 1.12, z + 0.0), Vector3(0.18, 0.06, 0.5), 0.0)
-	var cs := CollisionShape3D.new()
-	var sh := BoxShape3D.new()
-	sh.size = Vector3(0.16, 1.4, 1.5)
-	cs.shape = sh
-	cs.position = Vector3(x, 0.7, z)
-	body.add_child(cs)
-
-
-func _fence(kit: MeshKit, body: StaticBody3D, xa: float, xb: float, z: float) -> void:
-	if xb - xa < 0.05:
-		return
-	kit.box({"*": "gate_body", "top": "gate_top"}, Vector3((xa + xb) * 0.5, 0.55, z), Vector3(xb - xa, 1.1, 0.12), 0.0)
-	var cs := CollisionShape3D.new()
-	var sh := BoxShape3D.new()
-	sh.size = Vector3(xb - xa, 1.6, 0.12)
-	cs.shape = sh
-	cs.position = Vector3((xa + xb) * 0.5, 0.8, z)
-	body.add_child(cs)
-
-
-func _make_gate(kit: MeshKit, cx: float, z: float, kind: int) -> Dictionary:
-	# flaps: two thin panels that retract into the posts. Collision only while closed.
-	var node := Node3D.new()
-	node.position = Vector3(cx, 0, z)
+func _make_gate(ld: Dictionary, z: float) -> Dictionary:
+	var kind: int = ld["kind"]
+	var wide: bool = ld["wide"]
+	var node := StationProps.inst("gate_wide" if wide else "gate_unit")
+	node.position = Vector3(ld["x"], 0, z)
+	# the models let passengers walk toward -Z; entry lanes (moving +z) are turned around
+	node.rotation.y = PI if kind > 0 else 0.0
 	node.name = "Gate"
-	var flaps := StaticBody3D.new()
-	var mats_flap := StandardMaterial3D.new()
-	mats_flap.albedo_color = Color(0.55, 0.75, 0.9, 0.55)
-	mats_flap.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mats_flap.roughness = 0.1
-	var flap_meshes := []
-	for sgn in [-1.0, 1.0]:
-		var mi := MeshInstance3D.new()
-		var bm := BoxMesh.new()
-		bm.size = Vector3(0.28, 0.85, 0.02)
-		mi.mesh = bm
-		mi.material_override = mats_flap
-		mi.position = Vector3(sgn * 0.19, 0.75, 0.0)
-		node.add_child(mi)
-		flap_meshes.append(mi)
-	var cs := CollisionShape3D.new()
-	var sh := BoxShape3D.new()
-	sh.size = Vector3(0.7, 1.0, 0.05)
-	cs.shape = sh
-	cs.position = Vector3(0, 0.7, 0)
-	flaps.add_child(cs)
-	node.add_child(flaps)
-	# status light above the lane: green arrow when open
-	var lamp := MeshInstance3D.new()
-	var lm := QuadMesh.new()
-	lm.size = Vector2(0.16, 0.16)
-	lamp.mesh = lm
-	var lmat := StandardMaterial3D.new()
-	lmat.albedo_color = Color(0.1, 0.9, 0.3) if kind > 0 else Color(0.9, 0.2, 0.2)
-	lmat.emission_enabled = true
-	lmat.emission = lmat.albedo_color
-	lmat.emission_energy_multiplier = 2.0
-	lmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	lamp.material_override = lmat
-	lamp.position = Vector3(0, 1.16, 0.0)
-	lamp.rotation.x = -PI / 2.0
-	node.add_child(lamp)
-	# trigger zone (both sides)
+	var flap_l := node.get_node_or_null("door_L" if wide else "flap_L") as Node3D
+	var flap_r := node.get_node_or_null("door_R" if wide else "flap_R") as Node3D
+	var lamp_go := node.get_node_or_null("lamp_go") as Node3D
+	var lamp_stop := node.get_node_or_null("lamp_stop") as Node3D
+	if lamp_go:
+		lamp_go.visible = false
+	# lane blocker (closed flaps)
+	var blocker := StaticBody3D.new()
+	var bcs := CollisionShape3D.new()
+	var bsh := BoxShape3D.new()
+	bsh.size = Vector3(0.9 if wide else 0.6, 1.3, 0.06)
+	bcs.shape = bsh
+	bcs.position = Vector3(0, 0.65, -0.1)
+	blocker.add_child(bcs)
+	node.add_child(blocker)
+	# trigger zone on both sides of the lane
 	var area := Area3D.new()
 	area.collision_layer = 0
-	area.collision_mask = (1 << 3) | (1 << 1)      # player + people
+	area.collision_mask = (1 << 3) | (1 << 1)
 	var acs := CollisionShape3D.new()
 	var ash := BoxShape3D.new()
-	ash.size = Vector3(0.7, 1.8, 2.6)
+	ash.size = Vector3(0.8 if not wide else 1.1, 1.8, 2.8)
 	acs.shape = ash
 	acs.position = Vector3(0, 0.9, 0)
 	area.add_child(acs)
 	node.add_child(area)
-	var gd := {"node": node, "flaps": flaps, "meshes": flap_meshes, "kind": kind, "open_t": 0.0, "area": area, "lamp": lamp}
+	var gd := {"node": node, "flaps": blocker, "fl": flap_l, "fr": flap_r, "kind": kind, "open_t": 0.0, "area": area, "lamp_go": lamp_go, "lamp_stop": lamp_stop, "wide": wide, "is_open": false}
 	area.body_entered.connect(_on_gate_body.bind(gd))
 	return gd
 
@@ -226,11 +185,27 @@ func _on_gate_body(body: Node3D, gd: Dictionary) -> void:
 		gate_tapped.emit(kind)
 
 
+func _set_gate_state(gd: Dictionary, open: bool) -> void:
+	if gd["is_open"] == open:
+		return
+	gd["is_open"] = open
+	(gd["flaps"] as StaticBody3D).collision_layer = 0 if open else 1
+	var ang := 90.0 if open else 0.0
+	for key in ["fl", "fr"]:
+		var f: Node3D = gd[key]
+		if f:
+			var target := deg_to_rad(ang if key == "fl" else -ang)
+			var tw := create_tween()
+			tw.tween_property(f, "rotation:y", target, 0.28)
+	if gd["lamp_go"]:
+		(gd["lamp_go"] as Node3D).visible = open
+	if gd["lamp_stop"]:
+		(gd["lamp_stop"] as Node3D).visible = not open
+
+
 func _open_gate(gd: Dictionary) -> void:
-	gd["open_t"] = 2.2
-	(gd["flaps"] as StaticBody3D).collision_layer = 0
-	for m in gd["meshes"]:
-		(m as MeshInstance3D).visible = false
+	gd["open_t"] = 2.4
+	_set_gate_state(gd, true)
 
 
 func _process(delta: float) -> void:
@@ -238,17 +213,14 @@ func _process(delta: float) -> void:
 		if gd["open_t"] > 0.0:
 			gd["open_t"] -= delta
 			if gd["open_t"] <= 0.0:
-				# only close when nobody is standing in the lane
 				var occupied := false
 				for b in (gd["area"] as Area3D).get_overlapping_bodies():
-					if absf(b.global_position.z - (gd["node"] as Node3D).global_position.z) < 0.6:
+					if absf(b.global_position.z - (gd["node"] as Node3D).global_position.z) < 0.8:
 						occupied = true
 				if occupied:
 					gd["open_t"] = 0.4
 				else:
-					(gd["flaps"] as StaticBody3D).collision_layer = 1
-					for m in gd["meshes"]:
-						(m as MeshInstance3D).visible = true
+					_set_gate_state(gd, false)
 
 
 # ---------------------------------------------------------------------------------------------------

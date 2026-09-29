@@ -22,6 +22,7 @@ var _stuck_t := 0.0
 var _last_pos := Vector3.ZERO
 var done := false
 var quiet := false
+var _shots := 0
 
 
 func setup(g: Game) -> void:
@@ -68,7 +69,10 @@ func _physics_process(delta: float) -> void:
 			_stuck_t = 0.0
 		_last_pos = player.global_position
 		if _stuck_t > 6.0:
-			_log("stuck at wp %d/%d (%s) — nudging" % [wp_i, wps.size(), str(player.global_position)])
+			_log("stuck at wp %d/%d pos %s target %s" % [wp_i, wps.size(), str(player.global_position), str(wps[wp_i]) if wp_i < wps.size() else "-"])
+			if DisplayServer.get_name() != "headless" and _shots < 3:
+				_shots += 1
+				get_viewport().get_texture().get_image().save_png("res://build/bot_stuck_%d.png" % _shots)
 			_stuck_t = 0.0
 			wp_i = mini(wp_i + 1, wps.size() - 1)
 
@@ -120,6 +124,8 @@ func _plan_to_leg_platform() -> void:
 	if names.is_empty():
 		_log("no path from %s to %s" % [start, goal])
 		return
+	while names.size() > 1 and String(names[0]).begins_with("street"):
+		names.remove_at(0)       # we are just inside the door: never walk back into the exit trigger
 	wps = _waypoints_for(st, names)
 	# final waypoint: a spot on the platform mid-way (closer to where the train will stop)
 	wps.append(st.platform_point(target_face, 0.5, 1.4))

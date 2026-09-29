@@ -164,7 +164,9 @@ def run_speech(jobs_n, force, name_filter):
         cache[j["file"]] = j["sig"]
         e = dict(file=j["file"], duration=r["duration"], loop=False, volume_db=j["volume_db"], category=j["category"],
                  channels=1, lufs=r["lufs"], peak_db=r["peak_db"], spatial="2d" if j["style"] != "dry" else "2d",
-                 voice=speech.VOICES[j["voice"]]["name"], text=j["shown"])
+                 voice=speech.VOICES[j["voice"]]["name"] + ("-" + speech.VOICES[j["voice"]]["speaker"]
+                                                            if speech.VOICES[j["voice"]]["speaker"] else ""),
+                 text=j["shown"])
         for k in ("line", "dest", "via", "excluded_line"):
             if k in j:
                 e[k] = j[k]
@@ -173,9 +175,10 @@ def run_speech(jobs_n, force, name_filter):
     SPEECH_CACHE.write_text(json.dumps(cache, indent=0))
     manifest = load_manifest()          # re-read: other runs may have updated it meanwhile
     manifest["clips"].update(updates)
-    manifest["voices"] = {k: dict(model=f"en_GB-{v['name']}-{v['quality']}", role=r)
-                          for (k, v), r in zip(speech.VOICES.items(), ("station / platform PA, on-train station announcements",
-                                                                        "train driver"))}
+    roles = {"female_pa": "station / platform PA, on-train station announcements", "male_driver": "train driver"}
+    manifest["voices"] = {k: dict(model=f"en_GB-{v['name']}-{v['quality']}", role=roles.get(k, ""),
+                                  **({"speaker": v["speaker"]} if v["speaker"] else {}))
+                          for k, v in speech.VOICES.items()}
     save_manifest(manifest)
 
 

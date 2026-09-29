@@ -114,6 +114,10 @@ func generate(station_idx: int) -> void:
 		var d: float = BASE_DEPTH.get(md["group"], 24.0) + rng.randf_range(-2.0, 2.5)
 		if imp < 1.6:
 			d = minf(d, 18.0 + rng.randf() * 4.0)
+		if kind == "surface":
+			d = rng.randf_range(5.0, 6.5)
+		elif kind == "sub":
+			d = rng.randf_range(8.0, 10.5)
 		md["depth"] = d
 	mod_defs.sort_custom(func(a, b): return a["depth"] < b["depth"])
 	# cluster modules into levels: those within 4 m share a level (max 2 per level)
@@ -126,7 +130,7 @@ func generate(station_idx: int) -> void:
 			lvl.append({"depth": md["depth"], "mods": [md]})
 	var prev_depth := 0.0
 	for L in lvl:
-		var min_d: float = prev_depth + (7.0 if prev_depth > 0.0 else 8.0)
+		var min_d: float = prev_depth + (7.0 if prev_depth > 0.0 else (5.0 if kind == "surface" else 8.0))
 		L["depth"] = maxf(L["depth"], min_d)
 		prev_depth = L["depth"]
 
@@ -186,7 +190,8 @@ func generate(station_idx: int) -> void:
 			var L: float = cars[0] * cars[1] + 10.0
 			var pw := PlatformModule.PW_RUN
 			var corr_len := 10.0 + rng.randf() * 22.0
-			var spine_x0 := -L * 0.5 - 6.0
+			var is_box: bool = kind != "deep"
+			var spine_x0 := -L * 0.5 if is_box else -L * 0.5 - 6.0
 			var mx: float = rect[1] + corr_len - spine_x0
 			var mpos := Vector3(mx, -lvl[li]["depth"], lane_z)
 			var faces_spec: Array = []
@@ -198,7 +203,7 @@ func generate(station_idx: int) -> void:
 			var openings_x := [-L * 0.5 + 8.0, -L * 0.5 + 8.0 + 14.0]
 			var wall_style := "tile_cream" if (seed_value + mi) % 3 == 0 else "tile_white"
 			var stripes := _stripes_for(seed_value + mi, faces_spec[0]["color"])
-			var mspec := {"length": L, "pw": pw, "wall": wall_style, "stripes": stripes, "seed": seed_value + li * 7 + mi, "faces": faces_spec,
+			var mspec := {"style": "box" if is_box else "arch", "roof": "glass" if kind == "surface" else "flat", "length": L, "pw": pw, "wall": wall_style, "stripes": stripes, "seed": seed_value + li * 7 + mi, "faces": faces_spec,
 				"openings_x": openings_x, "spine_x0": spine_x0, "spine_x1": -L * 0.5 + 8.0 + 14.0 + 6.0, "name": name, "group": group}
 			var midx := modules.size()
 			modules.append({"pos": mpos, "spec": mspec, "faces": md["faces"], "level": li, "group": group, "lane_z": lane_z, "corr": [rect[1], mpos.x + spine_x0]})
@@ -228,7 +233,19 @@ func generate(station_idx: int) -> void:
 		street_doors.append({"id": "street%d" % i, "pos": Vector3(c, 0.0, hz0 - street_len + 0.4), "dir": Vector3(0, 0, -1), "c": c, "len": street_len})
 		rooms.append({"name": "street_passage%d" % i, "rect": [c - 1.6, c + 1.6, hz0 - street_len, hz0], "y": 0.0, "h": 3.0, "open_ends": ["S"], "wall": "tile_white", "floor": "floor_hall", "lights": "strip_z", "light_dz": 3.5, "seed": seed_value + 90 + i})
 	var gate_z := hz0 + 8.0
-	gates = {"z": gate_z, "x0": -hx + 0.3, "x1": hx - 0.3, "n": clampi(int(4 + imp * 1.8), 4, 14), "pitch": 0.98}
+	var n_gates := clampi(int(4 + imp * 1.8), 4, 14)
+	var lane_defs: Array = []
+	var total_w := 0.0
+	for gi in n_gates:
+		var wide := gi == 0 or gi == n_gates - 1        # accessible lanes at both ends of the line
+		var lw := 1.23 if wide else 0.93
+		lane_defs.append({"w": lw, "wide": wide, "kind": (1 if gi < (n_gates + 1) / 2 else -1)})
+		total_w += lw
+	var gx := -total_w * 0.5
+	for ld in lane_defs:
+		ld["x"] = gx + ld["w"] * 0.5
+		gx += ld["w"]
+	gates = {"z": gate_z, "x0": -hx + 0.3, "x1": hx - 0.3, "n": n_gates, "pitch": 0.93, "lanes": lane_defs, "total_w": total_w}
 	rooms.append({"name": "hall", "rect": hall["rect"], "y": 0.0, "h": HALL_H, "openings": hall_openings, "wall": "tile_white", "floor": "floor_hall", "lights": "grid",
 		"light_dx": 4.5, "light_dz": 5.0, "seed": seed_value, "band": Color(0.02, 0.18, 0.5)})
 	for L2 in landings:
@@ -488,16 +505,16 @@ func esc_lane_for(ei: int, dir: int, pick := 0) -> int:
 	return idxs[pick % idxs.size()]
 
 
-## x of a gate lane of the wanted kind (+1 entry, -1 exit); `pick` selects among lanes nearest the centre
+## x of a gate lane of the wanted kind (+1 entry, -1 exit); `pick` selects among the lanes nearest the centre (non-accessible preferred)
 func gate_lane_x(kind: int, pick := 0) -> float:
-	var n: int = gates["n"]
-	var pitch: float = gates["pitch"]
-	var start := -n * pitch * 0.5
 	var xs: Array = []
-	for i in n:
-		var k := 1 if i < (n + 1) / 2 else -1
-		if k == kind:
-			xs.append(start + (i + 0.5) * pitch)
+	for ld in gates["lanes"]:
+		if ld["kind"] == kind and not ld["wide"]:
+			xs.append(ld["x"])
+	if xs.is_empty():
+		for ld in gates["lanes"]:
+			if ld["kind"] == kind:
+				xs.append(ld["x"])
 	xs.sort_custom(func(a, b): return absf(a) < absf(b))
 	return xs[pick % xs.size()]
 

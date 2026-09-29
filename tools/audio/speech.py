@@ -2,7 +2,7 @@
 
 Voices (cached under build/audio/voices/):
   female_pa   -> en_GB-cori-high        (UK English female, LibriVox; station / platform PA)
-  male_driver -> en_GB-alan-medium      (UK English male; train driver)
+  male_driver -> en_GB-vctk-medium, speaker p243 (London male, CSTR VCTK corpus, CC-BY 4.0; train driver)
 """
 from __future__ import annotations
 
@@ -22,7 +22,8 @@ HF = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB"
 
 VOICES = {
     "female_pa": dict(name="cori", quality="high", speaker=None, length=1.06, noise=0.55, noise_w=0.70, ipa="en"),
-    "male_driver": dict(name="alan", quality="medium", speaker=None, length=1.02, noise=0.55, noise_w=0.70, ipa="rp"),
+    # VCTK speaker p243: male, London accent (CC-BY 4.0 corpus, so the voice is licence-clean)
+    "male_driver": dict(name="vctk", quality="medium", speaker="p243", length=1.10, noise=0.45, noise_w=0.55, ipa="rp"),
 }
 
 PRON_PATH = Path(__file__).with_name("pronunciations.json")
@@ -132,6 +133,8 @@ class Tts:
         self.pv = pv
         self.sr = pv.config.sample_rate
         self.idmap = pv.config.phoneme_id_map
+        spk = self.cfg["speaker"]
+        self.speaker_id = pv.config.speaker_id_map[spk] if isinstance(spk, str) else spk
 
     # RP-notation IPA (as written in pronunciations.json) -> the voice's own espeak dialect
     def _ipa(self, s):
@@ -175,7 +178,7 @@ class Tts:
     def synth(self, text, length=None, noise=None, noise_w=None, pause=0.32):
         from piper import SynthesisConfig
         c = self.cfg
-        cfg = SynthesisConfig(speaker_id=c["speaker"], length_scale=length or c["length"],
+        cfg = SynthesisConfig(speaker_id=self.speaker_id, length_scale=length or c["length"],
                               noise_scale=noise if noise is not None else c["noise"],
                               noise_w_scale=noise_w if noise_w is not None else c["noise_w"],
                               normalize_audio=False)

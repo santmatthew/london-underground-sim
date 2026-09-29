@@ -23,10 +23,12 @@ const SPINE_H := 2.6
 const OPEN_W := 3.0
 const OPEN_H := 2.15
 const TUNNEL_EXT := 170.0    # running tunnel visible beyond the platform ends (must exceed a full train length)
+const BOX_H := 4.7          # ceiling height of "box" halls (sub-surface / surface stations)
 const PW_RUN := 3.2          # platform width AND running-tunnel clearance: constant so every tunnel joins invisibly
 
 var spec: Dictionary = {}
 var meta: Dictionary = {}
+var box := false
 var kit := MeshKit.new()
 var _cols: Array = []        # [center, size]  (collision boxes in local space)
 var _lights: Array = []      # [pos, energy, range]
@@ -40,6 +42,7 @@ static func half_width(pw: float) -> float:
 ## spec: length, pw, wall ("tile_white"/"tile_cream"), faces:[{line,color,label}], openings_x:[...], spine_x0, spine_x1, name
 func build(p_spec: Dictionary) -> void:
 	spec = p_spec
+	box = spec.get("style", "arch") == "box"
 	var L: float = spec.get("length", 110.0)
 	var pw: float = spec.get("pw", 3.0)
 	var wall_mat: String = spec.get("wall", "tile_cream")
@@ -48,7 +51,7 @@ func build(p_spec: Dictionary) -> void:
 	var spine_x0: float = spec.get("spine_x0", -L * 0.5 - 6.0)
 	var spine_x1: float = spec.get("spine_x1", -L * 0.5 + 27.0)
 	kit.seed_rng(int(spec.get("seed", 1)))
-	meta = {"faces": [], "openings": openings, "spine_x0": spine_x0, "spine_x1": spine_x1, "length": L, "pw": pw}
+	meta = {"faces": [], "openings": openings, "spine_x0": spine_x0, "spine_x1": spine_x1, "length": L, "pw": pw, "style": spec.get("style", "arch")}
 
 	var zwall := GAP * 0.5                      # platform-side wall (abs z)
 	var zedge := zwall + pw                     # platform edge
@@ -68,10 +71,13 @@ func build(p_spec: Dictionary) -> void:
 			"index": fi, "side": s, "track_z": s * ztrack, "edge_z": s * zedge, "wall_z": s * zwall,
 			"x0": x0, "x1": x1, "rail_y": RAIL_Y, "label": f.get("label", ""), "line": f.get("line", ""),
 		})
-	_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
+	if box:
+		_build_box_hall(x0, x1, zwall, zedge, ztrack, zfar, wall_mat)
+	else:
+		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 
 	var mats := {}
-	for n in ["tile_white", "tile_cream", "panel_white", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "black", "light_emissive"]:
+	for n in ["tile_white", "tile_cream", "panel_white", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "black", "light_emissive", "glass_roof"]:
 		mats[n] = Mats.get_mat(n)
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
@@ -97,7 +103,8 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	var prof_run := _arch_profile(s, zwall_run, zfar)
 	var xa := x0 - TUNNEL_EXT
 	var xb := x1 + TUNNEL_EXT
-	kit.sweep_x(wall_mat, prof, x0, x1, 0.0, s < 0.0)
+	if not box:
+		kit.sweep_x(wall_mat, prof, x0, x1, 0.0, s < 0.0)
 	kit.sweep_x(wall_mat, prof_run, xa, x0, 0.0, s < 0.0)
 	kit.sweep_x(wall_mat, prof_run, x1, xb, 0.0, s < 0.0)
 	# platform-side wall, tunnel face. Full height under the platform (running tunnel) and above it at the platform.
@@ -107,7 +114,8 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	var holes := []
 	for ox in openings:
 		holes.append([ox - OPEN_W * 0.5, ox + OPEN_W * 0.5, OPEN_H])
-	_wall_z(wall_mat, s * zwall, x0, x1, 0.0, SPRING_Y, holes, s < 0.0, true)
+	if not box:
+		_wall_z(wall_mat, s * zwall, x0, x1, 0.0, SPRING_Y, holes, s < 0.0, true)
 
 	# --- platform deck (y = 0) and edge ---
 	var zlo := minf(s * zwall, s * zedge)
@@ -147,6 +155,8 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	kit.box("rail", Vector3((xa + xb) * 0.5, RAIL_Y - 0.07, s * ztrack - s * 1.05), Vector3(xb - xa, 0.10, 0.06), BED_Y)         # outer (positive) rail
 	# sleepers: a textured strip under the rails (2.6 m wide)
 	kit.horiz("track_sleepers", xa, xb, s * ztrack - 1.3, s * ztrack + 1.3, BED_Y + 0.004, true, BED_Y)
+	if box:
+		_box_track_wall(s, x0, x1, zfar, wall_mat)
 	# --- wall stripes / dado (station style) on the track-side wall and the platform wall ---
 	var stripes: Array = spec.get("stripes", [{"y0": 1.15, "y1": 1.42, "color": band}])
 	for st in stripes:
@@ -154,7 +164,8 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 		var key: String = ("dado:" if st.get("dado", false) else "flat:") + col.to_html(false)
 		var y0: float = st["y0"]
 		_band(key, s * zfar, xa + 20.0, xb - 20.0, y0, st["y1"], s < 0.0, true)
-		_band(key, s * zwall, x0, x1, y0, st["y1"], s < 0.0, false, holes)
+		if not box:
+			_band(key, s * zwall, x0, x1, y0, st["y1"], s < 0.0, false, holes)
 	# cable tray on the track-side wall
 	kit.box("metal", Vector3((x0 + x1) * 0.5, 0.75, s * (zfar - 0.15)), Vector3(x1 - x0, 0.08, 0.3), 0.0)
 	kit.box("metal", Vector3((x0 + x1) * 0.5, 0.35, s * (zfar - 0.15)), Vector3(x1 - x0, 0.08, 0.3), 0.0)
@@ -170,26 +181,116 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	# track-side wall & tunnel floor (only matter near platform)
 	_cols.append([Vector3((x0 + x1) * 0.5, 2.5, s * (zfar + 0.5)), Vector3(x1 - x0 + 4.0, 6.0, 1.0)])
 	# platform-side wall segments between openings (full-height box) — keeps player inside the spine/platform
-	var segs := _segments(x0, x1, openings, OPEN_W)
-	for sg in segs:
-		_cols.append([Vector3((sg[0] + sg[1]) * 0.5, 1.5, s * zwall), Vector3(sg[1] - sg[0], 3.0, 0.3)])
+	if not box:
+		var segs := _segments(x0, x1, openings, OPEN_W)
+		for sg in segs:
+			_cols.append([Vector3((sg[0] + sg[1]) * 0.5, 1.5, s * zwall), Vector3(sg[1] - sg[0], 3.0, 0.3)])
 	# platform ends
 	_cols.append([Vector3(x0 - 0.5, 0.9, s * (zwall + zedge) * 0.5), Vector3(1.0, 1.8, zedge - zwall), "edge"])
 	_cols.append([Vector3(x1 + 0.5, 0.9, s * (zwall + zedge) * 0.5), Vector3(1.0, 1.8, zedge - zwall), "edge"])
 	# tunnel light fixtures at the crown
-	var lx := x0 + 2.0
 	var zc := s * (zwall + zfar) * 0.5
 	var apex := SPRING_Y + RISE
-	while lx < x1:
-		kit.box("light_emissive", Vector3(lx, apex - 0.06, zc), Vector3(1.4, 0.06, 0.28), 0.0)
-		lx += 3.0
-	var lx2 := x0 + 6.0
-	while lx2 < x1:
-		_lights.append([Vector3(lx2, apex - 0.7, zc), 1.6, 11.0])
-		lx2 += 7.0
+	if not box:
+		var lx := x0 + 2.0
+		while lx < x1:
+			kit.box("light_emissive", Vector3(lx, apex - 0.06, zc), Vector3(1.4, 0.06, 0.28), 0.0)
+			lx += 3.0
+		var lx2 := x0 + 6.0
+		while lx2 < x1:
+			_lights.append([Vector3(lx2, apex - 0.7, zc), 1.6, 11.0])
+			lx2 += 7.0
 	# reveal frames around the cross-passage openings (dark trim)
-	for ox in openings:
-		_frame(s * zwall, ox, OPEN_W, OPEN_H)
+	if not box:
+		for ox in openings:
+			_frame(s * zwall, ox, OPEN_W, OPEN_H)
+
+
+func _box_track_wall(s: float, x0: float, x1: float, zfar: float, wall_mat: String) -> void:
+	# vertical wall on the track side up to the flat ceiling (visible from the hall)
+	if s > 0.0:
+		kit.wall(wall_mat, Vector3(x1, 0, zfar), Vector3(x0, 0, zfar), BED_Y, BOX_H, 0.0)
+	else:
+		kit.wall(wall_mat, Vector3(x0, 0, -zfar), Vector3(x1, 0, -zfar), BED_Y, BOX_H, 0.0)
+
+
+func _build_box_hall(x0: float, x1: float, zwall: float, zedge: float, ztrack: float, zfar: float, wall_mat: String) -> void:
+	var surface: bool = spec.get("roof", "flat") == "glass"
+	# island median floor between the two platforms
+	kit.horiz("floor_platform", x0, x1, -zwall, zwall, 0.0, true, 0.0)
+	_cols.append([Vector3((x0 + x1) * 0.5, -0.5, 0.0), Vector3(x1 - x0, 1.0, GAP)])
+	# ceiling
+	if surface:
+		kit.horiz("glass_roof", x0, x1, -zfar, zfar, BOX_H, false, 0.0)
+		var rx := x0 + 3.0
+		while rx < x1:
+			kit.box("black", Vector3(rx, BOX_H - 0.12, 0.0), Vector3(0.22, 0.24, zfar * 2.0), 0.0)
+			rx += 4.0
+		for zz in [-zfar * 0.5, 0.0, zfar * 0.5]:
+			kit.box("black", Vector3((x0 + x1) * 0.5, BOX_H - 0.1, zz), Vector3(x1 - x0, 0.2, 0.2), 0.0)
+	else:
+		kit.horiz("ceiling", x0, x1, -zfar, zfar, BOX_H, false, 0.0)
+		# steel beams across the ceiling
+		var bx := x0 + 2.0
+		while bx < x1:
+			kit.box("metal", Vector3(bx, BOX_H - 0.22, 0.0), Vector3(0.3, 0.44, zfar * 2.0), 0.0)
+			bx += 6.4
+	# light fixtures
+	var lx := x0 + 3.0
+	while lx < x1:
+		for zz in [-3.2, 3.2, 0.0]:
+			if not surface or zz == 0.0:
+				kit.box("light_emissive", Vector3(lx, BOX_H - 0.32 if not surface else BOX_H - 0.3, zz), Vector3(1.3, 0.06, 0.3), 0.0)
+		lx += 3.2
+	var lx2 := x0 + 4.0
+	while lx2 < x1:
+		_lights.append([Vector3(lx2, BOX_H - 0.9, 3.2), 2.2 if not surface else 1.3, 13.0])
+		_lights.append([Vector3(lx2, BOX_H - 0.9, -3.2), 2.2 if not surface else 1.3, 13.0])
+		lx2 += 8.0
+	# steel columns down the two platforms
+	var cx := x0 + 5.0
+	while cx < x1 - 3.0:
+		for zz in [-(zwall + 1.9), (zwall + 1.9)]:
+			kit.box("metal", Vector3(cx, BOX_H * 0.5, zz), Vector3(0.42, BOX_H, 0.42), 0.0)
+			_cols.append([Vector3(cx, BOX_H * 0.5, zz), Vector3(0.44, BOX_H, 0.44)])
+		cx += 7.2
+	# end walls: track portals on both sides, plus a doorway at the west end leading to the corridor
+	_box_end_wall(x0, true, zwall, ztrack, zfar, wall_mat, true)
+	_box_end_wall(x1, false, zwall, ztrack, zfar, wall_mat, false)
+
+
+func _box_end_wall(x: float, west: bool, zwall: float, ztrack: float, zfar: float, wall_mat: String, doorway: bool) -> void:
+	# openings (z_lo, z_hi, y_lo, y_hi)
+	var ops: Array = [[-ztrack - 1.9, -ztrack + 1.65, BED_Y, 3.4], [ztrack - 1.65, ztrack + 1.9, BED_Y, 3.4]]
+	if doorway:
+		ops.append([-zwall, zwall, 0.0, SPINE_H])
+	ops.sort_custom(func(a, b): return a[0] < b[0])
+	var z := -zfar
+	for o in ops:
+		_end_strip(x, west, wall_mat, z, o[0], BED_Y, BOX_H)
+		# under / above the opening
+		if o[2] > BED_Y:
+			_end_strip(x, west, wall_mat, o[0], o[1], BED_Y, o[2])
+		_end_strip(x, west, wall_mat, o[0], o[1], o[3], BOX_H)
+		z = o[1]
+	_end_strip(x, west, wall_mat, z, zfar, BED_Y, BOX_H)
+	# solid collision segments between the openings (west end has a walk-through doorway)
+	var cz := -zfar
+	for o in ops:
+		if o[0] - cz > 0.05:
+			_cols.append([Vector3(x + (-0.15 if west else 0.15), BOX_H * 0.5, (cz + o[0]) * 0.5), Vector3(0.3, BOX_H, o[0] - cz)])
+		cz = o[1]
+	if zfar - cz > 0.05:
+		_cols.append([Vector3(x + (-0.15 if west else 0.15), BOX_H * 0.5, (cz + zfar) * 0.5), Vector3(0.3, BOX_H, zfar - cz)])
+
+
+func _end_strip(x: float, west: bool, mat: String, z0: float, z1: float, y0: float, y1: float) -> void:
+	if z1 - z0 < 0.01 or y1 - y0 < 0.01:
+		return
+	if west:
+		kit.wall(mat, Vector3(x, 0, z1), Vector3(x, 0, z0), y0, y1, 0.0)      # normal +x
+	else:
+		kit.wall(mat, Vector3(x, 0, z0), Vector3(x, 0, z1), y0, y1, 0.0)      # normal -x
 
 
 func _arch_profile(s: float, zwall: float, zfar: float) -> PackedVector2Array:
