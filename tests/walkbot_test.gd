@@ -5,11 +5,13 @@ func run():
 	var sname := "King's Cross St. Pancras"
 	var maxr := 99
 	var rot_deg := 0.0       # --rot=180: place the station rotated/offset like the ride does (catches world-space assumptions, e.g. gates)
+	var trace := false       # --trace: print the position twice a second
 	var reverse := false     # --reverse: walk from each platform face out to the street instead of hall -> platform
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--station="): sname = a.substr(10)
 		if a.begins_with("--max="): maxr = int(a.substr(6))
 		if a == "--reverse": reverse = true
+		if a == "--trace": trace = true
 		if a.begins_with("--rot="): rot_deg = float(a.substr(6))
 	Timetable.build(1)
 	Clock.set_time(11.0 * 3600.0)
@@ -70,6 +72,9 @@ func run():
 			player.bot_move = Vector2(0, -1.0 if yaw_err < 0.6 else -0.1)
 			await get_tree().physics_frame
 			t_wp += get_physics_process_delta_time()
+			if trace and int(t_wp * 60.0) % 30 == 0:
+				var sc := player.get_last_slide_collision()
+				print("    t=%.1f wp %d pos %s vel %s floor %s slide %s" % [t_wp, k, str(player.global_position.snapped(Vector3(0.01, 0.01, 0.01))), str(player.velocity.snapped(Vector3(0.1, 0.1, 0.1))), str(player.is_on_floor()), sc.get_collider().get_path().get_name(sc.get_collider().get_path().get_name_count() - 1) if sc else "-"])
 			var seg_len: float = (wps[k]["pos"] as Vector3).distance_to(wps[k - 1]["pos"])
 			if t_wp > seg_len / 0.9 + 6.0 or player.global_position.y < -80.0:
 				print("  FAIL %s wp %d/%d (%s) at %s target %s  dy=%.2f" % [fk, k, wps.size(), wps[k]["kind"], str(player.global_position.snapped(Vector3(0.1, 0.1, 0.1))), str(target.snapped(Vector3(0.1, 0.1, 0.1))), player.global_position.y - target.y])

@@ -28,6 +28,7 @@ var _side_t := 0.0
 var _side_dir := 1.0
 var _sidesteps := 0
 var _stuck_total := 0.0
+var _board_visit: Dictionary = {}
 var _route_from := ""
 var _repaths := 0
 var _unplanned := false         # carried off by a train we did not plan to take: get off at the next stop and replan
@@ -73,7 +74,12 @@ func _physics_process(delta: float) -> void:
 		"wait_train":
 			_wait_train(delta)
 		"board":
-			_follow(delta)
+			player.bot_hurry = true
+			# the doors closed (or the train left) before we got in: give up on this train
+			if not _board_visit.is_empty() and not _board_visit.get("doors", false) and not (_board_visit["train"] as Train).contains_world_point(player.global_position):
+				_abort_boarding()
+			else:
+				_follow(delta)
 		"in_train":
 			_in_train(delta)
 		"done_wait":
@@ -447,7 +453,20 @@ func _start_boarding(v: Dictionary) -> void:
 	wps = [outside, sill, inside]
 	wp_i = 0
 	mode = "board"
+	_board_visit = v
 	_log("boarding")
+
+
+func _abort_boarding() -> void:
+	_log("missed the doors — replanning")
+	_board_visit = {}
+	if multi:
+		legs = []
+		leg_i = 0
+		mode = "init"
+	else:
+		mode = "init"
+		_replan()
 
 
 func _in_train(delta: float) -> void:
