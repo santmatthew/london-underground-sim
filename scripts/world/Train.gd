@@ -80,6 +80,19 @@ func build(p_kind: String, p_cars: int, p_line: String, livery: Color) -> void:
 	add_child(front_light)
 
 
+## A moving train passes through walkways that share its tunnel line (landings/corridors west of the platform): its bodies must only be
+## solid while it stands at the platform. Layers are remembered so they can be restored.
+func set_solid(on: bool) -> void:
+	if get_meta("solid", true) == on:
+		return
+	set_meta("solid", on)
+	for n in find_children("*", "CollisionObject3D", true, false):
+		var co := n as CollisionObject3D
+		if not co.has_meta("orig_layer"):
+			co.set_meta("orig_layer", co.collision_layer)
+		co.collision_layer = int(co.get_meta("orig_layer")) if on else 0
+
+
 func setup_orientation(p_facing: int, p_platform_side: float) -> void:
 	facing = p_facing
 	platform_side = p_platform_side

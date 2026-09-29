@@ -69,6 +69,14 @@ func _physics_process(delta: float) -> void:
 			# the doors closed with us in the way (a crowd, a sidestep towards the train): ride on, get off at the next stop
 			_unplanned = true
 			_log("carried off by an unplanned train — will get off at the next stop")
+	# multi-stop: the game registers a stop the moment the door trigger fires and puts us back inside the entrance; our exit waypoints
+	# are stale then (walking on would hit the trigger again and be pushed back forever)
+	if multi and mode == "exit" and game.station != null and game.station.plan.idx in game.journey["visited"]:
+		_log("stop registered at %s" % game.station.plan.name)
+		mode = "done_wait"
+		wait_t = 0.0
+		legs = []
+		leg_i = 0
 	match mode:
 		"init":
 			_plan_to_leg_platform()

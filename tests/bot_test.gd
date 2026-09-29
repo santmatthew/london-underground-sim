@@ -30,16 +30,50 @@ func run():
 	var frames := 0
 	var y_prev: float = g.player.global_position.y
 	var drops := 0
+	var trail: Array = []
 	while g.state == Game.State.PLAYING and frames < max_frames:
 		await get_tree().physics_frame
 		frames += 1
 		var y_now: float = g.player.global_position.y
+		if frames % 10 == 0:
+			var sc0 := g.player.get_last_slide_collision()
+			trail.append("%s pos %s vfloor %s slide %s mode %s" % [Clock.fmt(Clock.now, true), str(g.player.global_position.snapped(Vector3(0.1, 0.1, 0.1))), str(g.player.is_on_floor()), (sc0.get_collider() as Node).get_parent().name + "/" + (sc0.get_collider() as Node).name if sc0 else "-", g.autopilot.mode if g.autopilot else "-"])
+			if trail.size() > 24:
+				trail.pop_front()
 		if y_now < y_prev - 0.25 and drops < 6:
 			drops += 1
 			var ph := "-"
 			if g.ride != null:
 				ph = "phase %d t_arr-now %.1f dest_ready %s speed %.1f" % [g.ride.phase, g.ride.t_arr - Clock.now, str(g.ride.dest_ready), g.ride.speed_now]
 			print("DROP y %.2f -> %.2f at %s clock %s riding=%s ride[%s] station=%s on_floor=%s mode=%s" % [y_prev, y_now, str(g.player.global_position.snapped(Vector3(0.1, 0.1, 0.1))), Clock.fmt(Clock.now, true), str(g.riding), ph, g.station.plan.name if g.station else "null", str(g.player.is_on_floor()), g.autopilot.mode if g.autopilot else "-"])
+			if drops == 1 and g.riding and g.ride != null and g.ride.train != null:
+				var trn: Train = g.ride.train
+				var pl: Vector3 = trn.to_local(g.player.global_position)
+				print("   RIDE-DROP player train-local %s train x %.1f kind %s cars %d length %.1f" % [str(pl.snapped(Vector3(0.1, 0.1, 0.1))), trn.position.x, trn.kind, trn.n_cars, trn.length])
+				var space := g.player.get_world_3d().direct_space_state
+				var qy := PhysicsRayQueryParameters3D.create(g.player.global_position + Vector3(0, 0.6, 0), g.player.global_position + Vector3(0, -2.0, 0))
+				qy.collision_mask = 0xffff
+				var hy := space.intersect_ray(qy)
+				print("   ray below player: ", (hy["collider"] as Node).get_path() if not hy.is_empty() else "NONE", " at ", str(hy.get("position", Vector3.ZERO)))
+				for fl in trn.find_children("Floor*", "CollisionObject3D", true, false):
+					var co := fl as CollisionObject3D
+					var cs := co.get_child(0) as CollisionShape3D if co.get_child_count() > 0 and co.get_child(0) is CollisionShape3D else null
+					print("     floor body ", co.get_path().get_name(co.get_path().get_name_count() - 2), "/", co.name, " layer ", co.collision_layer, " at ", str(co.global_position.snapped(Vector3(0.1, 0.1, 0.1))), " disabled ", str(cs.disabled) if cs else "?")
+			if drops == 1:
+				print("   TRAIL (last %d samples, 1/6 s apart):" % trail.size())
+				for tl in trail:
+					print("     ", tl)
+			if drops == 1 and g.station != null and not g.riding:
+				var pp: Vector3 = g.player.global_position
+				for e in g.station.escalators:
+					var en := e as Node3D
+					var lp2: Vector3 = en.to_local(pp)
+					if absf(lp2.z) < 6.0 and lp2.x > -8.0 and lp2.x < float(e.length) + 8.0:
+						var lays := []
+						for co in en.find_children("*", "CollisionObject3D", true, false):
+							lays.append("%s:%d" % [co.name, (co as CollisionObject3D).collision_layer])
+						print("   ESC near player: %s local %s rise %.1f layers %s" % [en.name, str(lp2.snapped(Vector3(0.1, 0.1, 0.1))), float(e.rise), str(lays)])
+				print("   station rot y %.1f deg, pos %s" % [rad_to_deg(g.station.global_rotation.y), str(g.station.global_position.snapped(Vector3(0.1, 0.1, 0.1)))])
 			if drops == 1 and g.station != null:
 				for key in g.station.trains.visits:
 					var vv: Dictionary = g.station.trains.visits[key]

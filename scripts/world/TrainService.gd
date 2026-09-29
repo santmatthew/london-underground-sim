@@ -72,6 +72,7 @@ func _process(delta: float) -> void:
 		var x := x_at(v, now)
 		var train: Train = v["train"]
 		train.position.x = x
+		train.set_solid(absf(x) < 0.5)
 		var dwell: float = info["dep"] - info["arr"]
 		# doors
 		var want_open: bool = now >= info["arr"] + (3.0 if not v["origin"] else 0.0) and now < info["dep"] - 6.0 and dwell >= 15.0 and absf(x) < 0.5
