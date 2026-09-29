@@ -6,8 +6,10 @@ func run():
 	add_child(g)
 	await get_tree().process_frame
 	var seed := 1
+	var every := 3600
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--seed="): seed = int(a.substr(7))
+		if a.begins_with("--every="): every = int(a.substr(8))
 		if a.begins_with("--time="): g.opts["time"] = a.substr(7)
 		if a.begins_with("--length="): g.opts["length"] = a.substr(9)
 		if a.begins_with("--multi="): g.opts["mode"] = "multi"; g.opts["stops"] = int(a.substr(8))
@@ -27,8 +29,8 @@ func run():
 	while g.state == Game.State.PLAYING and frames < 60 * 60 * 25:
 		await get_tree().physics_frame
 		frames += 1
-		if frames % 3600 == 0 and g.autopilot:
-			print("  f=%d clock %s mode %s wp %d/%d pos %s crowd %s" % [frames, Clock.fmt(Clock.now, true), g.autopilot.mode, g.autopilot.wp_i, g.autopilot.wps.size(), str(g.player.global_position), str(g.station.crowd.stats) if g.station and g.station.crowd else ""])
+		if frames % every == 0 and g.autopilot:
+			print("  f=%d clock %s mode %s wp %d/%d pos %s local %s mv %s crowd %s" % [frames, Clock.fmt(Clock.now, true), g.autopilot.mode, g.autopilot.wp_i, g.autopilot.wps.size(), str(g.player.global_position), str(g.station.to_local(g.player.global_position).snapped(Vector3(0.1, 0.1, 0.1))) if g.station else "-", str(g.player.bot_move.snapped(Vector2(0.1, 0.1))), str(g.station.crowd.stats) if g.station and g.station.crowd else ""])
 	print("state ", g.state, " frames ", frames, " sim end ", Clock.fmt(Clock.now, true))
 	if g.autopilot:
 		for l in g.autopilot.log_lines: print(l)

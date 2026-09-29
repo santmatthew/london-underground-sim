@@ -282,6 +282,7 @@ func attach_crowd(p: Node3D) -> void:
 
 
 ## world position of a platform face's boarding point given a fraction along the platform (0..1) — inside the platform, at the edge
+## station-LOCAL position (use to_global() for world space: after a ride the station is not at the origin)
 func platform_point(face_key: String, frac: float, inset := 0.9) -> Vector3:
 	var f: Dictionary = plan.faces[face_key]
 	var x: float = lerpf(f["x0"] + 4.0, f["x1"] - 4.0, frac)

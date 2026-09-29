@@ -455,6 +455,9 @@ func _process(delta: float) -> void:
 	if _audio_t <= 0.0:
 		_audio_t = 0.5
 		_update_audio_zone()
+	if Clock.now > Timetable.SERVICE_END + 1200.0 and state == State.PLAYING:
+		_fail_journey("The last trains have gone. You didn't make it before the network closed for the night.")
+		return
 	var skip := Input.is_key_pressed(KEY_TAB) and (riding or player.last_speed < 0.3)
 	Clock.time_scale = 8.0 if (skip or bot_skip) else 1.0
 
@@ -702,7 +705,7 @@ func _on_doors_closing(v: Dictionary) -> void:
 	var info: Dictionary = v["info"]
 	Sfx.play_at("door_chime_close", train, Vector3(0, 1.8, 0), 0.0, 30.0)
 	if info["final"]:
-		var pos := station.platform_point(v["key"], 0.5, 1.2)
+		var pos := station.to_global(station.platform_point(v["key"], 0.5, 1.2))
 		player.global_position = pos + Vector3(0, 0.1, 0)
 		hud.toast("This train terminates here — everybody off.", 4.0)
 		return
@@ -819,6 +822,20 @@ func _finish_journey() -> void:
 	if cli.has("autopilot") and cli.has("quit-when-done"):
 		await get_tree().create_timer(float(cli.get("end-secs", "4.0"))).timeout
 		get_tree().quit()
+
+
+func _fail_journey(reason: String) -> void:
+	state = State.RESULT
+	Clock.running = false
+	player.enabled = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_result = _center_panel(700)
+	var vb: VBoxContainer = _result.get_meta("vb")
+	vb.add_child(_mk_label("JOURNEY ABANDONED", 40, Color(1, 0.5, 0.4), true))
+	vb.add_child(_mk_label(reason, 22, Color.WHITE))
+	vb.add_child(_mk_label("Elapsed: %s" % Clock.fmt_dur(Clock.now - t_play0), 20, Color(0.7, 0.8, 1.0)))
+	vb.add_child(_mk_button("New journey", func(): _result.queue_free(); _result = null; start_journey()))
+	vb.add_child(_mk_button("Main menu", func(): _show_menu()))
 
 
 func _save_score(score: float, elapsed: float) -> void:

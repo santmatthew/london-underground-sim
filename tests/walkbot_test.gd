@@ -4,9 +4,11 @@ extends Node3D
 func run():
 	var sname := "King's Cross St. Pancras"
 	var maxr := 99
+	var reverse := false     # --reverse: walk from each platform face out to the street instead of hall -> platform
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--station="): sname = a.substr(10)
 		if a.begins_with("--max="): maxr = int(a.substr(6))
+		if a == "--reverse": reverse = true
 	Timetable.build(1)
 	Clock.set_time(11.0 * 3600.0)
 	add_child(Env.make(0))
@@ -29,8 +31,18 @@ func run():
 		if routes >= maxr: break
 		routes += 1
 		var names := plan.path("hall_unpaid", "face:" + fk)
-		var wps := plan.walk_points(names, 0)
-		wps.append({"pos": st.platform_point(fk, 0.5, 1.4), "kind": "walk"})
+		var wps: Array
+		if reverse:
+			names = []
+			for sd in plan.street_doors:
+				var p := plan.path("face:" + fk, sd["id"])
+				if names.is_empty() or (not p.is_empty() and p.size() < names.size()):
+					names = p
+			wps = plan.walk_points(names, 0)
+			wps.insert(0, {"pos": st.platform_point(fk, 0.5, 1.4), "kind": "walk"})
+		else:
+			wps = plan.walk_points(names, 0)
+			wps.append({"pos": st.platform_point(fk, 0.5, 1.4), "kind": "walk"})
 		player.global_position = wps[0]["pos"] + Vector3(0, 0.1, 0)
 		player.velocity = Vector3.ZERO
 		await get_tree().physics_frame

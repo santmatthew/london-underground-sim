@@ -99,6 +99,8 @@ def cmd_repair(a):
     man = json.loads((OUT / "manifest.json").read_text())
     scores = {k: [sim(man["clips"][k]["text"], t), t] for k, (_, t) in scores.items() if k in man["clips"]}
     bad = flagged(scores, a.drop)
+    if a.only:
+        bad = [k for k in bad if re.search(a.only, k)]
     print("flagged", len(bad), flush=True)
     m = model(a.threads)
     tts = {}
@@ -143,6 +145,7 @@ def main():
     r.add_argument("--scores", default=str(SCORES))
     r.add_argument("--tries", type=int, default=4)
     r.add_argument("--drop", type=float, default=0.2)
+    r.add_argument("--only", help="regex: only repair matching keys")
     r.add_argument("--threads", type=int, default=6)
     a = ap.parse_args()
     (cmd_score if a.cmd == "score" else cmd_repair)(a)

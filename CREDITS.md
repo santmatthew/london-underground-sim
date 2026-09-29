@@ -17,5 +17,6 @@ Licensed CC-BY (attribution required); source: makehumancommunity.org asset pack
 Full per-asset list with links is generated to `assets/people/CREDITS.txt` by `tools/blender/people/make_credits.py`.
 
 ## Other
-- Piper TTS voices (en_GB-cori-high, en_GB-vctk-medium) from rhasspy/piper-voices — see each voice's model card for its licence.
+- Speech: synthesised with Piper TTS (rhasspy/piper-voices). Female PA voice `en_GB-cori-high`; male driver voice `en_GB-vctk-medium` (speaker p243), trained on the CSTR VCTK Corpus, © University of Edinburgh, licensed CC-BY 4.0 (https://datashare.ed.ac.uk/handle/10283/3443). Speech quality was screened with OpenAI Whisper (`tools/audio/asr_check.py`).
+- All other audio (ambience, train/door/gate/footstep sounds, chimes) is synthesised procedurally by `tools/audio/make_audio.py`.
 - Wikimedia Commons reference photographs were only viewed for calibration; none are shipped.

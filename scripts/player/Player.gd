@@ -125,7 +125,7 @@ func _physics_process(delta: float) -> void:
 	elif safe_pos != Vector3.ZERO and global_position.y < safe_pos.y - 30.0:
 		global_position = safe_pos + Vector3(0, 0.3, 0)
 		velocity = Vector3.ZERO
-		push_warning("Player fell out of the world - respawned")
+		push_warning("Player fell out of the world at %s (safe %s) - respawned" % [str(global_position.snapped(Vector3(0.01, 0.01, 0.01))), str(safe_pos.snapped(Vector3(0.01, 0.01, 0.01)))])
 	last_speed = Vector2(get_real_velocity().x, get_real_velocity().z).length()
 	# footsteps
 	if is_on_floor() and last_speed > 0.4 and footsteps_enabled:

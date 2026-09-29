@@ -252,7 +252,7 @@ func _finish() -> void:
 	var canon := 1 if f["face"] == 0 else -1
 	train.position = Vector3(0, PlatformModule.RAIL_Y, side * (PlatformModule.GAP * 0.5 + module.meta["pw"] + PlatformModule.TRACK_TO_EDGE))
 	train.rotation = Vector3(0, 0.0 if canon > 0 else PI, 0)
-	train.setup_orientation(train.facing, -side)
+	train.setup_orientation(canon, -side)     # orientation is relative to the destination module, not the origin one
 	if dest_station.crowd != null:
 		dest_station.crowd.adopt_train(train, rider_state)
 	var svc := dest_station.trains

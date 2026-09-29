@@ -212,6 +212,22 @@ def build_index(clips):
     return idx
 
 
+def sync_import_loops(clips):
+    """If Godot has already created <file>.import for a loop clip, switch its importer to loop=true
+    (harmless otherwise; the audio manager should still honour manifest 'loop')."""
+    n = 0
+    for c in clips.values():
+        if not c.get("loop"):
+            continue
+        imp = OUT / (c["file"] + ".import")
+        if imp.exists():
+            t = imp.read_text()
+            if "\nloop=false" in t:
+                imp.write_text(t.replace("\nloop=false", "\nloop=true", 1))
+                n += 1
+    return n
+
+
 def save_manifest(m):
     m["clips"] = {k: v for k, v in sorted(m["clips"].items()) if (OUT / v["file"]).exists()}
     m["format"] = 1
@@ -226,6 +242,7 @@ def save_manifest(m):
     m["totals"] = dict(clips=len(m["clips"]),
                        total_seconds=round(sum(c["duration"] for c in m["clips"].values()), 1),
                        total_bytes=sum((OUT / c["file"]).stat().st_size for c in m["clips"].values()))
+    sync_import_loops(m["clips"])
     MANIFEST.parent.mkdir(parents=True, exist_ok=True)
     order = ["format", "sample_rate", "generated", "totals", "notes", "voices", "aliases", "index", "clips"]
     out = {k: m[k] for k in order if k in m}

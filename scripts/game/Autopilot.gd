@@ -28,6 +28,9 @@ var _side_t := 0.0
 var _side_dir := 1.0
 var _sidesteps := 0
 var _stuck_total := 0.0
+var _route_from := ""
+var _repaths := 0
+var _unplanned := false         # carried off by a train we did not plan to take: get off at the next stop and replan
 
 
 func setup(g: Game) -> void:
@@ -52,6 +55,16 @@ func _physics_process(delta: float) -> void:
 	game.bot_skip = false
 	player.bot_hurry = false
 	player.bot_move = Vector2.ZERO
+	if game.riding and mode in ["init", "walk", "wait_train", "board", "exit"]:
+		var planned: bool = mode == "board" and game.ride != null and game.ride.run == target_run
+		mode = "in_train"
+		wait_t = 0.0
+		if planned:
+			_log("aboard")
+		else:
+			# the doors closed with us in the way (a crowd, a sidestep towards the train): ride on, get off at the next stop
+			_unplanned = true
+			_log("carried off by an unplanned train — will get off at the next stop")
 	match mode:
 		"init":
 			_plan_to_leg_platform()
@@ -86,10 +99,12 @@ func _physics_process(delta: float) -> void:
 			var dirv := Vector3(0, 0, -1).rotated(Vector3.UP, player.rotation.y) * 0.3
 			var by_person := false
 			var rel := Vector3.ZERO
+			var blocker := "nothing"
 			if player.test_move(player.global_transform, dirv, ci):
 				var col := ci.get_collider() as Node
 				by_person = col is AnimatableBody3D
 				rel = ci.get_position() - player.global_position
+				blocker = "%s (%s) at %s" % [col.name, col.get_class(), str(ci.get_position().snapped(Vector3(0.1, 0.1, 0.1)))]
 			# step around whatever is in the way (usually a person)
 			var fwd := Vector3(0, 0, -1).rotated(Vector3.UP, player.rotation.y)
 			var side_sign := -1.0 if fwd.cross(rel).y > 0.0 else 1.0
@@ -97,8 +112,13 @@ func _physics_process(delta: float) -> void:
 			_side_t = 0.9
 			_sidesteps += 1
 			_stuck_t = 0.0
+			if (_sidesteps == 4 or _sidesteps % 10 == 0) and mode in ["walk", "exit"]:
+				_repath()
 			if _sidesteps % 6 == 0:
-				_log("stuck near %s wp %d/%d — %d sidesteps" % [str(player.global_position.snapped(Vector3(0.1, 0.1, 0.1))), wp_i, wps.size(), _sidesteps])
+				var stn := _station()
+				var loc := str(stn.to_local(player.global_position).snapped(Vector3(0.1, 0.1, 0.1))) if stn else "?"
+				var tloc := str(stn.to_local(wps[wp_i]).snapped(Vector3(0.1, 0.1, 0.1))) if stn and wp_i < wps.size() else "-"
+				_log("stuck near %s (station-local %s) wp %d/%d target-local %s — %d sidesteps, blocked by %s" % [str(player.global_position.snapped(Vector3(0.1, 0.1, 0.1))), loc, wp_i, wps.size(), tloc, _sidesteps, blocker])
 			if _sidesteps > 40 and _stuck_total > 60.0:
 				_log("giving up this waypoint")
 				wp_i = mini(wp_i + 1, wps.size() - 1)
@@ -127,6 +147,51 @@ func _nearest_node(st: Station) -> String:
 			bd = d
 			best = n["name"]
 	return best
+
+
+func _route_start(st: Station) -> String:
+	return _route_from if _route_from != "" else _nearest_node(st)
+
+
+## nearest plan node that the player can actually see (no wall in between): after being shoved through a platform opening the
+## geometrically nearest node can be on the other side of a wall
+func _nearest_visible_node(st: Station) -> String:
+	var space := player.get_world_3d().direct_space_state
+	var eye := player.global_position + Vector3(0, 1.0, 0)
+	var cands: Array = []
+	var lp := st.to_local(player.global_position)
+	for n in st.plan.nodes:
+		cands.append([(n["pos"] as Vector3).distance_to(lp), n["name"], n["pos"]])
+	cands.sort_custom(func(a, b): return a[0] < b[0])
+	for c in cands.slice(0, 24):
+		var to: Vector3 = st.to_global((c[2] as Vector3) + Vector3(0, 1.0, 0))
+		var across := (to - eye).cross(Vector3.UP).normalized() * 0.35     # the capsule is not a point: test three rays
+		var clear := true
+		for off in [Vector3.ZERO, across, -across]:
+			var q := PhysicsRayQueryParameters3D.create(eye + off, to + off)
+			q.collision_mask = 1 | 4        # world walls + the invisible platform-end/edge guards
+			if not space.intersect_ray(q).is_empty():
+				clear = false
+				break
+		if clear:
+			return c[1]
+	return _nearest_node(st)
+
+
+## rebuild the waypoint list from where we really are (we were pushed off the route and are wedged against something)
+func _repath() -> void:
+	var st := _station()
+	if st == null or _repaths >= 20:
+		return
+	_repaths += 1
+	_route_from = _nearest_visible_node(st)
+	_log("re-routing from %s" % _route_from)
+	if mode == "walk" and _post_walk == "wait_train":
+		_plan_to_leg_platform()
+	elif mode == "exit":
+		_plan_exit()
+	_route_from = ""
+	_stuck_total = 0.0
 
 
 func _face_key_for_leg(lg: Dictionary) -> String:
@@ -161,7 +226,7 @@ func _plan_to_leg_platform() -> void:
 		return
 	target_run = lg["run"]
 	target_face = _face_key_for_leg(lg)
-	var start := _nearest_node(st)
+	var start := _route_start(st)
 	var goal := "face:" + target_face
 	var names := st.plan.path(start, goal)
 	if names.is_empty():
@@ -171,7 +236,7 @@ func _plan_to_leg_platform() -> void:
 		names.remove_at(0)       # we are just inside the door: never walk back into the exit trigger
 	wps = _waypoints_for(st, names)
 	# final waypoint: a spot on the platform mid-way (closer to where the train will stop)
-	wps.append(st.platform_point(target_face, 0.5, 1.4))
+	wps.append(st.to_global(st.platform_point(target_face, 0.5, 1.4)))
 	wp_i = 0
 	mode = "walk"
 	_post_walk = "wait_train"
@@ -211,7 +276,7 @@ func _plan_exit() -> void:
 	var st := _station()
 	if st == null:
 		return
-	var start := _nearest_node(st)
+	var start := _route_start(st)
 	var best: Array = []
 	for sd in st.plan.street_doors:
 		var p := st.plan.path(start, sd["id"])
@@ -254,7 +319,14 @@ func _follow(delta: float) -> void:
 	var target: Vector3 = wps[wp_i]
 	var pos := player.global_position
 	var flat := Vector3(target.x - pos.x, 0, target.z - pos.z)
-	if flat.length() < 0.55:
+	# the last point of a walk is just "somewhere on the platform": someone may be standing on it, so be lenient
+	var last := wp_i == wps.size() - 1
+	var accept := 0.55
+	if last and mode == "walk":
+		accept = 1.8
+	elif last and (mode == "alight" or mode == "exit"):
+		accept = 0.9
+	if flat.length() < accept:
 		wp_i += 1
 		return
 	var dir := flat.normalized()
@@ -270,10 +342,22 @@ func _follow(delta: float) -> void:
 	# hurry when the train is about to leave
 	if mode == "walk" and _post_walk == "wait_train" and leg_i < legs.size():
 		var lg: Dictionary = legs[leg_i]
-		if lg["dep"] - Clock.now < 30.0:
+		var slack: float = lg["dep"] - Clock.now - _remaining_walk() / Player.WALK_SPEED
+		if lg["dep"] - Clock.now < 30.0 or slack < 20.0:
 			player.bot_hurry = true
 	if mode == "board" or mode == "alight":
 		pass
+
+
+## metres left along the current waypoint list (flat distance)
+func _remaining_walk() -> float:
+	var total := 0.0
+	var prev := player.global_position
+	for i in range(wp_i, wps.size()):
+		var w: Vector3 = wps[i]
+		total += Vector2(w.x - prev.x, w.z - prev.z).length()
+		prev = w
+	return total
 
 
 func _arrived_at_path_end() -> void:
@@ -289,6 +373,13 @@ func _arrived_at_path_end() -> void:
 			_log("on the platform at %s" % game.station.plan.name)
 			leg_i += 1
 			mode = "init"
+			if _unplanned:
+				_unplanned = false
+				if multi:
+					legs = []
+					leg_i = 0
+				else:
+					_replan()
 		"exit":
 			_log("reached the exit")
 			mode = "done_wait"
@@ -368,17 +459,15 @@ func _in_train(delta: float) -> void:
 	if st == null:
 		return
 	# at a station: alight if it is the leg's destination
-	var lg: Dictionary = legs[leg_i]
-	if st.plan.idx == lg["to"] and wait_t > 2.0:
+	var lg: Dictionary = legs[leg_i] if leg_i < legs.size() else {}
+	if wait_t > 2.0 and (_unplanned or (not lg.is_empty() and st.plan.idx == lg["to"])):
 		# find the train we are on and its open doors
 		for key in st.trains.visits:
 			var v: Dictionary = st.trains.visits[key]
 			if (v["train"] as Train).contains_world_point(player.global_position) and v["doors"]:
 				_start_alighting(v)
 				return
-	elif st.plan.idx != lg["to"]:
-		# still riding through an intermediate stop (doors open/close) — just wait
-		pass
+	# else: still riding through an intermediate stop (doors open/close) — just wait
 
 
 func _start_alighting(v: Dictionary) -> void:
