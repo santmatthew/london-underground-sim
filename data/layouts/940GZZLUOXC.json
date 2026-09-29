@@ -1,0 +1,203 @@
+{
+ "note": "Oxford Circus, from TfL layout diagram C123 (topology; dimensions estimated): two ticket halls, circulating area, Bakerloo/Victoria/Central platforms",
+ "rooms": [
+  {
+   "id": "hall_main",
+   "kind": "hall",
+   "rect": [
+    -12,
+    12,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 14
+   },
+   "doors": [
+    {
+     "c": -9,
+     "ref": "1"
+    },
+    {
+     "c": -3,
+     "ref": "2"
+    },
+    {
+     "c": 3,
+     "ref": "3"
+    },
+    {
+     "c": 9,
+     "ref": "4"
+    }
+   ]
+  },
+  {
+   "id": "hall_sec",
+   "kind": "hall",
+   "rect": [
+    -36,
+    -20,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 8
+   },
+   "doors": [
+    {
+     "c": -34,
+     "ref": "5"
+    },
+    {
+     "c": -30,
+     "ref": "6"
+    },
+    {
+     "c": -26,
+     "ref": "7"
+    },
+    {
+     "c": -22,
+     "ref": "8"
+    }
+   ]
+  },
+  {
+   "id": "circ_mid",
+   "kind": "landing",
+   "size": [
+    48,
+    16
+   ],
+   "depth": 11.0
+  },
+  {
+   "id": "circ_low",
+   "kind": "landing",
+   "size": [
+    40,
+    44
+   ],
+   "depth": 19.1
+  }
+ ],
+ "esc": [
+  {
+   "id": "a",
+   "from": "hall_main",
+   "to": "circ_mid",
+   "dir": "S",
+   "c": -5,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": -7
+  },
+  {
+   "id": "b",
+   "from": "hall_main",
+   "to": "circ_mid",
+   "dir": "S",
+   "c": 5,
+   "lanes": [
+    1,
+    1,
+    -1
+   ]
+  },
+  {
+   "id": "c",
+   "from": "hall_sec",
+   "to": "circ_mid",
+   "dir": "S",
+   "c": -28,
+   "lanes": [
+    1,
+    -1,
+    1
+   ]
+  },
+  {
+   "id": "d",
+   "from": "circ_mid",
+   "to": "circ_low",
+   "dir": "S",
+   "c": -24,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 14
+  },
+  {
+   "id": "e",
+   "from": "circ_mid",
+   "to": "circ_low",
+   "dir": "S",
+   "c": 0,
+   "lanes": [
+    1,
+    1,
+    -1
+   ]
+  }
+ ],
+ "modules": [
+  {
+   "attach": "circ_low",
+   "lane_z": 68,
+   "corr_len": 16,
+   "group": "bakerloo",
+   "faces": [
+    [
+     "bakerloo:Northbound",
+     0
+    ],
+    [
+     "bakerloo:Southbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "circ_low",
+   "lane_z": 86,
+   "corr_len": 18,
+   "group": "victoria",
+   "faces": [
+    [
+     "victoria:Northbound",
+     0
+    ],
+    [
+     "victoria:Southbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "circ_low",
+   "lane_z": 104,
+   "corr_len": 24,
+   "group": "central",
+   "faces": [
+    [
+     "central:Eastbound",
+     0
+    ],
+    [
+     "central:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

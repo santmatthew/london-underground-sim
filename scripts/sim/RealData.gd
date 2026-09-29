@@ -43,6 +43,16 @@ static func layout(naptan: String) -> Dictionary:
 	return _layouts.get(naptan, {})
 
 
+## authored layout spec (data/layouts/<naptan>.json, see LayoutCompiler), or {}
+static func layout_spec(naptan: String) -> Dictionary:
+	var path := "res://data/layouts/%s.json" % naptan
+	if not FileAccess.file_exists(path):
+		return {}
+	var f := FileAccess.open(path, FileAccess.READ)
+	var parsed = JSON.parse_string(f.get_as_text())
+	return parsed if parsed is Dictionary else {}
+
+
 ## real platform number for (line, direction) at a station, 0 if unknown
 static func platform_number(naptan: String, line: String, direction: String) -> int:
 	_load()

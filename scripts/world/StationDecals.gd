@@ -46,7 +46,9 @@ static func place(station: Station) -> void:
 	for rm in plan.rooms:
 		var nm: String = rm["name"]
 		var rr: Array = rm["rect"]
-		if nm.begins_with("landing"):
+		if nm.begins_with("hall") and nm != "hall":
+			_scatter(root, rng, rr[0], rr[1], rr[2], rr[3], rm["y"] + 0.02, int(20 * dens), int(26 * dens), int(16 * dens))
+		elif nm.begins_with("landing"):
 			_scatter(root, rng, rr[0], rr[1], rr[2], rr[3], rm["y"] + 0.02, int(8 * dens), int(10 * dens), int(8 * dens))
 		elif nm.begins_with("corridor"):
 			var n := maxi(2, int((rr[1] - rr[0]) / 7.0))

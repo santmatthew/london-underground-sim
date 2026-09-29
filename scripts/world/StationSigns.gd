@@ -13,9 +13,13 @@ static func place(station: Station) -> void:
 	root.name = "Signs"
 	station.add_child(root)
 	var lines: Array = _lines_here(plan)
-	_hall_signs(station, root, plan, lines)
-	for li in plan.escs.size():
-		_landing_signs(station, root, plan, li)
+	for gl in plan.gatelines:
+		_hall_signs_at(root, plan, gl, lines)
+	if plan.authored:
+		_authored_signs(root, plan)
+	else:
+		for li in plan.escs.size():
+			_landing_signs(station, root, plan, li)
 	for mi in plan.modules.size():
 		_module_signs(station, root, plan, mi)
 	cull(root, 42.0)
@@ -172,31 +176,134 @@ static func _arrow_for(viewer_dir: Vector3, target_dir: Vector3) -> int:
 
 
 # ---------------------------------------------------------------------------------------------------
-static func _hall_signs(station: Station, root: Node3D, plan: StationPlan, lines: Array) -> void:
-	var r: Array = plan.hall["rect"]
-	var gz: float = plan.gates["z"]
-	var h: float = plan.hall["h"]
+static func _hall_signs_at(root: Node3D, plan: StationPlan, gl: Dictionary, lines: Array) -> void:
+	var r: Array = gl.get("rect", plan.hall["rect"])
+	var gz: float = gl["z"]
+	var h: float = StationPlan.HALL_H
+	var cx: float = gl.get("cx", 0.0)
+	var hall_name: String = gl.get("hall", "hall")
 	# 1. above the gateline, facing the unpaid zone (people walking south to the gates): where to find trains
 	var rows: Array = [{"text": "Trains", "bold": true, "icon": ""}]
 	rows.append_array(_line_rows(lines, 1))
-	hang_room(root, Signs.board(rows, 2.8, 0.36), Vector3(0, h - 1.0 - rows.size() * 0.14, gz - 0.3), Vector3(0, 0, -1), 0.0, h, 3.6)
+	hang_room(root, Signs.board(rows, 2.8, 0.36), Vector3(cx, h - 1.0 - rows.size() * 0.14, gz - 0.3), Vector3(0, 0, -1), 0.0, h, 3.6)
 	# 2. above the gateline, facing the paid zone: way out
-	hang_room(root, Signs.board([{"text": "Way out", "bold": true, "arrow": 1}], 2.2, 0.42), Vector3(0, h - 1.15, gz + 0.3), Vector3(0, 0, 1), 0.0, h, 3.0)
-	# 3. paid zone, above the escalators (S wall) facing north (viewers heading south)
-	var esc_w: float = plan.escs[0]["width"]
+	hang_room(root, Signs.board([{"text": "Way out", "bold": true, "arrow": 1}], 2.2, 0.42), Vector3(cx, h - 1.15, gz + 0.3), Vector3(0, 0, 1), 0.0, h, 3.0)
+	# 3. paid zone: "Platforms" above each escalator that leaves this hall (chain layouts: the S wall)
 	var prows: Array = [{"text": "Platforms", "bold": true, "arrow": 3}]
 	prows.append_array(_line_rows(lines, 3))
-	hang_room(root, Signs.board(prows, 3.0, 0.36), Vector3(0, h - 0.95 - prows.size() * 0.16, r[3] - 0.5), Vector3(0, 0, -1), 0.0, h, 3.6)
+	var shown := false
+	for e in plan.escs:
+		if e.get("from", "hall") != hall_name:
+			continue
+		var d: String = e.get("dir", "S")
+		var face := Vector3(0, 0, -1)
+		var pos := Vector3(0, h - 0.95 - prows.size() * 0.16, 0)
+		match d:
+			"S": face = Vector3(0, 0, -1); pos = Vector3(e.get("c", cx), pos.y, r[3] - 0.5)
+			"N": face = Vector3(0, 0, 1); pos = Vector3(e.get("c", cx), pos.y, r[2] + 0.5)
+			"E": face = Vector3(-1, 0, 0); pos = Vector3(r[1] - 0.5, pos.y, e.get("c", 0.0))
+			"W": face = Vector3(1, 0, 0); pos = Vector3(r[0] + 0.5, pos.y, e.get("c", 0.0))
+		hang_room(root, Signs.board(prows, 3.0, 0.36), pos, face, 0.0, h, 3.6)
+		shown = true
+	if not shown and not plan.authored:
+		hang_room(root, Signs.board(prows, 3.0, 0.36), Vector3(cx, h - 0.95 - prows.size() * 0.16, r[3] - 0.5), Vector3(0, 0, -1), 0.0, h, 3.6)
 	# 4. paid zone: way out board mid-hall, facing +z
-	hang_room(root, Signs.board([{"text": "Way out", "bold": true, "arrow": 1}], 2.2, 0.42), Vector3(0, h - 1.1, gz + 6.0), Vector3(0, 0, 1), 0.0, h, 3.0)
+	hang_room(root, Signs.board([{"text": "Way out", "bold": true, "arrow": 1}], 2.2, 0.42), Vector3(cx, h - 1.1, gz + 6.0), Vector3(0, 0, 1), 0.0, h, 3.0)
 	# 5. street passages: exit boards over the N wall openings (visible from inside the hall)
 	for sd in plan.street_doors:
+		if sd.get("hall", "hall") != hall_name:
+			continue
 		var rows5: Array = [{"text": "Way out", "bold": true, "arrow": 1}]
 		if str(sd.get("exit_ref", "")) != "":
 			# real exit number and street (OpenStreetMap), first street only to keep the board readable
 			var st1: String = str(sd["exit_name"]).split(" / ")[0]
 			rows5.append({"text": "Exit %s  %s" % [sd["exit_ref"], st1], "text_color": Color(0.8, 0.8, 0.8)})
 		hang_room(root, Signs.board(rows5, 1.9, 0.34), Vector3(sd["c"], 3.35, r[2] + 0.4), Vector3(0, 0, 1), 0.0, h, 3.6 if plan.street_doors.size() > 3 else 3.0)
+
+
+## Signs of a LayoutCompiler plan: at every escalator bottom "Way out", at every escalator top a "Platforms" board listing the lines below,
+## at every platform corridor a board for its platforms.
+static func _authored_signs(root: Node3D, plan: StationPlan) -> void:
+	var by_name := {}
+	for rm in plan.rooms:
+		by_name[rm["name"]] = rm
+	for e in plan.escs:
+		var d: String = e["dir"]
+		var c: float = e["c"]
+		# bottom: way out, on the far side, facing into the room
+		var to: Dictionary = by_name[e["to"]]
+		var tr: Array = to["rect"]
+		var ty: float = to["y"]
+		var th: float = to["h"]
+		var rows: Array = [{"text": "Way out", "bold": true, "arrow": 1}, {"text": "Escalators up" if not e["stairs"] else "Stairs up", "text_color": Color(0.8, 0.8, 0.8)}]
+		var face := Vector3.ZERO
+		var pos := Vector3.ZERO
+		match d:
+			"S": face = Vector3(0, 0, 1); pos = Vector3(c, ty + th - 1.2, tr[2] + 0.4)
+			"N": face = Vector3(0, 0, -1); pos = Vector3(c, ty + th - 1.2, tr[3] - 0.4)
+			"E": face = Vector3(1, 0, 0); pos = Vector3(tr[0] + 0.4, ty + th - 1.2, c)
+			"W": face = Vector3(-1, 0, 0); pos = Vector3(tr[1] - 0.4, ty + th - 1.2, c)
+		hang_room(root, Signs.board(rows, 2.4, 0.4), pos, face, ty, ty + th, 3.0)
+		# top (only in landings; halls got theirs from _hall_signs_at): the lines below
+		var from: Dictionary = by_name[e["from"]]
+		if not String(e["from"]).begins_with("hall"):
+			var fr: Array = from["rect"]
+			var fy: float = from["y"]
+			var fh: float = from["h"]
+			var below := _lines_below(plan, e["to"])
+			if below.is_empty():
+				continue
+			var prow: Array = [{"text": "Lower platforms", "bold": true, "arrow": 3}]
+			for lid in below:
+				prow.append({"text": "%s line" % Net.line_name(lid), "color": Net.line_color(lid), "arrow": 3, "bold": true})
+			var fpos := Vector3.ZERO
+			var fface := Vector3.ZERO
+			match d:
+				"S": fface = Vector3(0, 0, -1); fpos = Vector3(c, fy + fh - 0.95 - prow.size() * 0.14, fr[3] - 0.5)
+				"N": fface = Vector3(0, 0, 1); fpos = Vector3(c, fy + fh - 0.95 - prow.size() * 0.14, fr[2] + 0.5)
+				"E": fface = Vector3(-1, 0, 0); fpos = Vector3(fr[1] - 0.5, fy + fh - 0.95 - prow.size() * 0.14, c)
+				"W": fface = Vector3(1, 0, 0); fpos = Vector3(fr[0] + 0.5, fy + fh - 0.95 - prow.size() * 0.14, c)
+			hang_room(root, Signs.board(prow, 3.2, 0.36), fpos, fface, fy, fy + fh, 3.4)
+	# platform boards: one per module, above its corridor opening on the room's E wall, facing -x
+	for mi in plan.modules.size():
+		var m: Dictionary = plan.modules[mi]
+		var room: Dictionary = by_name[m["room"]]
+		var rr: Array = room["rect"]
+		var ry: float = room["y"]
+		var rh: float = room["h"]
+		var rrows: Array = []
+		var seen := {}
+		for fd in m["faces"]:
+			var pid: String = fd["pid"]
+			if seen.has(pid):
+				continue
+			seen[pid] = true
+			var ln: String = plan.station_platform(pid)["lines"][0]
+			rrows.append({"text": "%s line" % Net.line_name(ln), "color": Net.line_color(ln), "bold": true, "arrow": 0, "arrow_side": "right"})
+			rrows.append({"text": "Platform %d  %s  %s" % [plan.platform_no[pid], plan.station_platform(pid)["dir"], plan.dest_text(pid, 2)], "text_color": Color(0.85, 0.85, 0.85)})
+		hang_room(root, Signs.board(rrows, 3.6, 0.32), Vector3(rr[1] - 0.4, ry + rh - 0.95 - rrows.size() * 0.1, m["lane_z"]), Vector3(-1, 0, 0), ry, ry + rh, 3.4)
+
+
+## lines whose platforms can be reached by going down from `room_name`
+static func _lines_below(plan: StationPlan, room_name: String) -> Array:
+	var out: Array = []
+	var seen := {}
+	var todo: Array = [room_name]
+	while not todo.is_empty():
+		var rn: String = todo.pop_back()
+		if seen.has(rn):
+			continue
+		seen[rn] = true
+		for m in plan.modules:
+			if m["room"] == rn:
+				for fd in m["faces"]:
+					var ln: String = plan.station_platform(fd["pid"])["lines"][0]
+					if not (ln in out):
+						out.append(ln)
+		for e in plan.escs:
+			if e["from"] == rn:
+				todo.append(e["to"])
+	return out
 
 
 static func _landing_signs(station: Station, root: Node3D, plan: StationPlan, li: int) -> void:

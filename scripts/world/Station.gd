@@ -92,47 +92,44 @@ func build_async(p: StationPlan, use_async := true) -> void:
 # Gateline (Blender gate units)
 # ---------------------------------------------------------------------------------------------------
 func _build_gateline() -> void:
-	var g: Dictionary = plan.gates
-	var z: float = g["z"]
-	var hx: float = -float((plan.hall["rect"] as Array)[0])
-	var total_w: float = g["total_w"]
+	var lines: Array = plan.gatelines if not plan.gatelines.is_empty() else [plan.gates]
 	var fence_body := StaticBody3D.new()
 	fence_body.name = "GateFence"
 	fitting_root.add_child(fence_body)
-	for ld in g["lanes"]:
-		var lane := _make_gate(ld, z)
-		gate_nodes.append(lane)
-		fitting_root.add_child(lane["node"])
-	# fixed barriers from the ends of the lane block to the hall walls
-	for side: float in [-1.0, 1.0]:
-		var edge: float = side * total_w * 0.5
-		var span: float = hx - total_w * 0.5
-		var x: float = edge
-		while span > 0.05:
-			var seg: float = minf(2.0, span)
-			var f := StationProps.inst("gate_fence")
-			fitting_root.add_child(f)
-			f.position = Vector3(x + side * seg * 0.5, 0, z)
-			if seg < 2.0:
-				f.scale.x = seg / 2.0
-			x += side * seg
-			span -= seg
-	var cs_l := CollisionShape3D.new()
-	var sh_l := BoxShape3D.new()
-	sh_l.size = Vector3(hx * 2.0, 1.6, 0.2)
-	cs_l.shape = sh_l
-	cs_l.position = Vector3(0, 0.8, z + 0.0)
-	# (lane block collision comes from the gate units; the fences collide via a thin wall behind the fence line)
-	var side_l := CollisionShape3D.new()
-	var side_sh := BoxShape3D.new()
-	side_sh.size = Vector3(hx - total_w * 0.5, 1.6, 0.2)
-	side_l.shape = side_sh
-	side_l.position = Vector3(-(total_w * 0.5 + (hx - total_w * 0.5) * 0.5), 0.8, z)
-	fence_body.add_child(side_l)
-	var side_r := CollisionShape3D.new()
-	side_r.shape = side_sh
-	side_r.position = Vector3((total_w * 0.5 + (hx - total_w * 0.5) * 0.5), 0.8, z)
-	fence_body.add_child(side_r)
+	for g: Dictionary in lines:
+		var z: float = g["z"]
+		var rect: Array = g.get("rect", plan.hall["rect"])
+		var total_w: float = g["total_w"]
+		var cx: float = g.get("cx", 0.0)
+		for ld in g["lanes"]:
+			var lane := _make_gate(ld, z)
+			gate_nodes.append(lane)
+			fitting_root.add_child(lane["node"])
+		# fixed barriers from the ends of the lane block to the hall walls
+		for side: float in [-1.0, 1.0]:
+			var edge: float = cx + side * total_w * 0.5
+			var wall: float = float(rect[1]) if side > 0.0 else float(rect[0])
+			var span: float = absf(wall - edge)
+			var x: float = edge
+			while span > 0.05:
+				var seg: float = minf(2.0, span)
+				var f := StationProps.inst("gate_fence")
+				fitting_root.add_child(f)
+				f.position = Vector3(x + side * seg * 0.5, 0, z)
+				if seg < 2.0:
+					f.scale.x = seg / 2.0
+				x += side * seg
+				span -= seg
+			var side_l := CollisionShape3D.new()
+			var side_sh := BoxShape3D.new()
+			side_sh.size = Vector3(maxf(span_len(edge, wall), 0.1), 1.6, 0.2)
+			side_l.shape = side_sh
+			side_l.position = Vector3((edge + wall) * 0.5, 0.8, z)
+			fence_body.add_child(side_l)
+
+
+static func span_len(a: float, b: float) -> float:
+	return absf(b - a)
 
 
 func _make_gate(ld: Dictionary, z: float) -> Dictionary:

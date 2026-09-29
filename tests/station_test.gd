@@ -29,6 +29,8 @@ func _ready() -> void:
 			pos = d["pos"] + Vector3(0, 1.65, 3.0); look = d["pos"] + Vector3(0, 1.4, -2)
 		"hall":
 			pos = Vector3(0, 1.65, plan.gates["z"] - 5.0); look = Vector3(0, 1.3, plan.gates["z"] + 6)
+		"exits":
+			pos = Vector3(0, 1.65, gz_hall(plan) - 1.5); look = Vector3(0, 2.6, r[2] + 0.5)
 		"hall2":
 			pos = Vector3(r[0] + 2, 1.65, r[2] + 2); look = Vector3(0, 1.3, plan.gates["z"] + 4)
 		"gates":
@@ -84,6 +86,10 @@ func _ready() -> void:
 	for i in 20: await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://build/shot_station_%s.png" % view)
 	get_tree().quit()
+
+func gz_hall(plan: StationPlan) -> float:
+	return float(plan.gates["z"])
+
 
 func sys_arg(name: String, def: String) -> String:
 	for a in OS.get_cmdline_user_args():

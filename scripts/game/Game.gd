@@ -524,9 +524,12 @@ func _describe_location() -> String:
 				if (f["side"] > 0.0 and lp.z > 1.5 and lp.z < 5.2) or (f["side"] < 0.0 and lp.z < -1.5 and lp.z > -5.2):
 					return "platform %d, %s %s" % [station.plan.platform_no[fd["pid"]], station.plan.station_platform(fd["pid"])["dir"], Net.line_name(f["line"])]
 			return "platform passages"
-	if p.y > -1.0:
-		if p.z < station.plan.gates["z"]:
-			return "ticket hall (before the gates)"
+	var lp2 := station.to_local(p)
+	if lp2.y > -1.0:
+		for gl in station.plan.gatelines:
+			var hr: Array = gl.get("rect", station.plan.hall["rect"])
+			if lp2.x >= hr[0] - 0.5 and lp2.x <= hr[1] + 0.5 and lp2.z >= hr[2] - 0.5 and lp2.z <= hr[3] + 0.5:
+				return "ticket hall (before the gates)" if lp2.z < gl["z"] else "ticket hall (paid area)"
 		return "ticket hall (paid area)"
 	return "below ground"
 

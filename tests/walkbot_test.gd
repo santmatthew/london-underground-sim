@@ -6,11 +6,13 @@ func run():
 	var maxr := 99
 	var rot_deg := 0.0       # --rot=180: place the station rotated/offset like the ride does (catches world-space assumptions, e.g. gates)
 	var trace := false       # --trace: print the position twice a second
+	var from_node := "hall_unpaid"     # --from=hall2_unpaid: start in another ticket hall
 	var reverse := false     # --reverse: walk from each platform face out to the street instead of hall -> platform
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--station="): sname = a.substr(10)
 		if a.begins_with("--max="): maxr = int(a.substr(6))
 		if a == "--reverse": reverse = true
+		if a.begins_with("--from="): from_node = a.substr(7)
 		if a == "--trace": trace = true
 		if a.begins_with("--rot="): rot_deg = float(a.substr(6))
 	Timetable.build(1)
@@ -37,7 +39,7 @@ func run():
 	for fk in plan.faces:
 		if routes >= maxr: break
 		routes += 1
-		var names := plan.path("hall_unpaid", "face:" + fk)
+		var names := plan.path(from_node, "face:" + fk)
 		var wps: Array
 		if reverse:
 			names = []

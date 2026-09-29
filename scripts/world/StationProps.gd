@@ -69,6 +69,8 @@ static func place(station: Station) -> void:
 	root.name = "Props"
 	station.add_child(root)
 	_hall(station, root, plan, rng)
+	for gl in plan.gatelines.slice(1):
+		_hall_at(root, plan, gl, rng)
 	for rm in plan.rooms:
 		var nm: String = rm["name"]
 		if nm.begins_with("landing") or nm.begins_with("corridor"):
@@ -82,10 +84,15 @@ static func place(station: Station) -> void:
 			StationSigns.cull(ph, 55.0)
 
 
-static func _hall(station: Station, root: Node3D, plan: StationPlan, rng: RandomNumberGenerator) -> void:
-	var r: Array = plan.hall["rect"]
-	var h: float = plan.hall["h"]
-	var gz: float = plan.gates["z"]
+static func _hall(_station: Station, root: Node3D, plan: StationPlan, rng: RandomNumberGenerator) -> void:
+	_hall_at(root, plan, plan.gates, rng)
+
+
+## furniture of one ticket hall (its gateline dictionary carries the hall rect and the gateline z)
+static func _hall_at(root: Node3D, plan: StationPlan, gl: Dictionary, rng: RandomNumberGenerator) -> void:
+	var r: Array = gl.get("rect", plan.hall["rect"])
+	var h: float = StationPlan.HALL_H
+	var gz: float = gl["z"]
 	var imp := plan.imp
 	# ticket machines along the side walls of the unpaid zone
 	var n_tm := clampi(int(1.5 + imp), 2, 6)

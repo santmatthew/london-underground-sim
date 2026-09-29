@@ -34,7 +34,9 @@ var escs: Array = []               # {id, pos:Vector3 (top), yaw, rise, lanes, f
 var modules: Array = []            # {pos:Vector3, spec:Dictionary, faces:[{pid,face}], level:int, group:String}
 var levels: Array = []             # [{depth, landing_room, module_idx:[...]}]
 var street_doors: Array = []       # {pos:Vector3, dir:Vector3, id}
-var gates: Dictionary = {}         # {z, x0, x1, n, pitch}
+var gates: Dictionary = {}         # {z, x0, x1, n, pitch}  (the primary hall's gateline)
+var authored := false              # built by LayoutCompiler from data/layouts/<naptan>.json
+var gatelines: Array = []          # every hall's gateline: {z, x0, x1, n, lanes, total_w, cx, hall, rect}
 var faces: Dictionary = {}         # "pid#f" -> {module:int, face:int, pos:Vector3 (platform centre), side, x0, x1, ...}
 var nodes: Array = []              # {name, pos}
 var node_idx: Dictionary = {}
@@ -93,6 +95,12 @@ func generate(station_idx: int) -> void:
 	var layout: Dictionary = RealData.layout(naptan)
 	var real_depths: Dictionary = layout.get("depths", {})
 	var hall_drop: float = float(layout.get("hall_depth", 4.0 if kind == "deep" else 3.0))     # ticket hall below street level
+	var lspec: Dictionary = RealData.layout_spec(naptan)
+	if not lspec.is_empty():
+		if LayoutCompiler.compile(self, lspec):
+			return
+		# a broken authored layout must never break the station: start again from scratch with the generator
+		_reset_plan()
 
 	# ---- 1. platform modules: group faces per line group (max 2 faces per module) --------------------------------
 	var groups := {}    # group -> [pid...]
@@ -282,7 +290,8 @@ func generate(station_idx: int) -> void:
 	for ld in lane_defs:
 		ld["x"] = gx + ld["w"] * 0.5
 		gx += ld["w"]
-	gates = {"z": gate_z, "x0": -hx + 0.3, "x1": hx - 0.3, "n": n_gates, "pitch": 0.93, "lanes": lane_defs, "total_w": total_w}
+	gates = {"z": gate_z, "x0": -hx + 0.3, "x1": hx - 0.3, "n": n_gates, "pitch": 0.93, "lanes": lane_defs, "total_w": total_w, "cx": 0.0, "hall": "hall", "rect": hall["rect"]}
+	gatelines = [gates]
 	rooms.append({"name": "hall", "rect": hall["rect"], "y": 0.0, "h": HALL_H, "openings": hall_openings, "wall": "tile_white", "floor": "floor_hall", "lights": "grid",
 		"light_dx": 4.5, "light_dz": 5.0, "seed": seed_value, "band": Color(0.02, 0.18, 0.5)})
 	for L2 in landings:
@@ -355,6 +364,16 @@ func generate(station_idx: int) -> void:
 				_node(pn2, Vector3(mp.x + ox[oi], mp.y, fc["pos"].z))
 				_edge("m%d_open%d" % [mi, oi], pn2)
 				_edge(pn2, mid)
+	finish_common(rng)
+
+
+## platform numbers (real where TfL has them), bounds and start spots; shared by the generator and LayoutCompiler
+func finish_common(rng: RandomNumberGenerator = null) -> void:
+	var st: Dictionary = Net.stations[idx]
+	var naptan: String = Net.station_ids[idx]
+	if rng == null:
+		rng = RandomNumberGenerator.new()
+		rng.seed = seed_value + 5150
 	bounds = AABB(Vector3(-40, -40, -40), Vector3(400, 60, 400))
 	var pn := 1
 	for m in modules:
@@ -378,6 +397,24 @@ func generate(station_idx: int) -> void:
 	if real_no.size() == platform_no.size():
 		platform_no = real_no
 	_add_start_spots(rng)
+
+
+func _reset_plan() -> void:
+	hall = {}
+	rooms = []
+	escs = []
+	modules = []
+	levels = []
+	street_doors = []
+	gates = {}
+	gatelines = []
+	faces = {}
+	nodes = []
+	node_idx = {}
+	edges = []
+	adj = []
+	start_spots = []
+	platform_no = {}
 
 
 func station_platform(pid: String) -> Dictionary:
@@ -458,8 +495,12 @@ func _add_start_spots(rng: RandomNumberGenerator) -> void:
 	# a few candidate start positions: street entrance, unpaid hall, paid hall, landing, platforms
 	for sd in street_doors:
 		start_spots.append({"name": "street entrance", "pos": sd["pos"] + Vector3(0, 0, 1.5), "yaw": 0.0, "node": sd["id"], "weight": 3.0})
-	start_spots.append({"name": "ticket hall", "pos": Vector3(rng.randf_range(-6, 6), 0.0, gates["z"] - 4.0 - rng.randf() * 2.0), "yaw": 0.0, "node": "hall_unpaid", "weight": 2.0})
-	start_spots.append({"name": "concourse", "pos": Vector3(rng.randf_range(-6, 6), 0.0, gates["z"] + 3.0 + rng.randf() * 3.0), "yaw": PI, "node": "hall_paid", "weight": 1.5})
+	for gi in gatelines.size():
+		var gl: Dictionary = gatelines[gi]
+		var pre := "" if gi == 0 else str(gi + 1)
+		var gcx: float = gl.get("cx", 0.0)
+		start_spots.append({"name": "ticket hall", "pos": Vector3(gcx + rng.randf_range(-6, 6), 0.0, gl["z"] - 4.0 - rng.randf() * 2.0), "yaw": 0.0, "node": "hall%s_unpaid" % pre, "weight": 2.0})
+		start_spots.append({"name": "concourse", "pos": Vector3(gcx + rng.randf_range(-6, 6), 0.0, gl["z"] + 3.0 + rng.randf() * 3.0), "yaw": PI, "node": "hall%s_paid" % pre, "weight": 1.5})
 	for f in faces:
 		var fc: Dictionary = faces[f]
 		start_spots.append({"name": "platform", "pos": Vector3(fc["pos"].x + rng.randf_range(-20, 20), fc["y"], fc["pos"].z), "yaw": (PI * 0.5 if rng.randf() < 0.5 else -PI * 0.5), "node": "face:" + f, "weight": 1.0, "face": f})
@@ -561,17 +602,35 @@ func esc_lane_for(ei: int, dir: int, pick := 0) -> int:
 
 
 ## x of a gate lane of the wanted kind (+1 entry, -1 exit); `pick` selects among the lanes nearest the centre (non-accessible preferred)
-func gate_lane_x(kind: int, pick := 0) -> float:
+func gate_lane_x(kind: int, pick := 0, gl: Dictionary = {}) -> float:
+	if gl.is_empty():
+		gl = gates
 	var xs: Array = []
-	for ld in gates["lanes"]:
+	for ld in gl["lanes"]:
 		if ld["kind"] == kind and not ld["wide"]:
 			xs.append(ld["x"])
 	if xs.is_empty():
-		for ld in gates["lanes"]:
+		for ld in gl["lanes"]:
 			if ld["kind"] == kind:
 				xs.append(ld["x"])
-	xs.sort_custom(func(a, b): return absf(a) < absf(b))
+	var cxg: float = gl.get("cx", 0.0)
+	xs.sort_custom(func(a, b): return absf(a - cxg) < absf(b - cxg))
 	return xs[pick % xs.size()]
+
+
+## gateline for a node name "gate_in" / "gate2_out" ...
+func gateline_of(node_name: String) -> Dictionary:
+	var digits := node_name.substr(4, node_name.find("_") - 4)
+	var gi := 0 if digits == "" else int(digits) - 1
+	return gatelines[clampi(gi, 0, gatelines.size() - 1)]
+
+
+func hall_rect_for_door(sd: Dictionary) -> Array:
+	var hn: String = sd.get("hall", "hall")
+	for rm in rooms:
+		if rm["name"] == hn:
+			return rm["rect"]
+	return hall["rect"]
 
 
 ## Waypoints (plan space) along a node path. Each: {pos, kind:"walk"|"gate"|"esc_in"|"esc_out", esc, lane, dir}
@@ -583,18 +642,20 @@ func walk_points(names: Array, pick := 0) -> Array:
 		var n: String = names[i]
 		var nxt: String = names[i + 1] if i + 1 < names.size() else ""
 		var prv: String = names[i - 1] if i > 0 else ""
-		if n == "gate_in" and nxt == "gate_out":
-			var lx := gate_lane_x(1, pick)
-			out.append({"pos": Vector3(lx, 0, gates["z"] - 1.6), "kind": "walk"})
-			out.append({"pos": Vector3(lx, 0, gates["z"] - 0.2), "kind": "gate"})
-			out.append({"pos": Vector3(lx, 0, gates["z"] + 1.8), "kind": "walk"})
+		if n.begins_with("gate") and n.ends_with("_in") and nxt == n.replace("_in", "_out"):
+			var gl := gateline_of(n)
+			var lx := gate_lane_x(1, pick, gl)
+			out.append({"pos": Vector3(lx, 0, gl["z"] - 1.6), "kind": "walk"})
+			out.append({"pos": Vector3(lx, 0, gl["z"] - 0.2), "kind": "gate"})
+			out.append({"pos": Vector3(lx, 0, gl["z"] + 1.8), "kind": "walk"})
 			i += 2
 			continue
-		if n == "gate_out" and nxt == "gate_in":
-			var lx2 := gate_lane_x(-1, pick)
-			out.append({"pos": Vector3(lx2, 0, gates["z"] + 1.6), "kind": "walk"})
-			out.append({"pos": Vector3(lx2, 0, gates["z"] + 0.2), "kind": "gate"})
-			out.append({"pos": Vector3(lx2, 0, gates["z"] - 1.8), "kind": "walk"})
+		if n.begins_with("gate") and n.ends_with("_out") and nxt == n.replace("_out", "_in"):
+			var gl2 := gateline_of(n)
+			var lx2 := gate_lane_x(-1, pick, gl2)
+			out.append({"pos": Vector3(lx2, 0, gl2["z"] + 1.6), "kind": "walk"})
+			out.append({"pos": Vector3(lx2, 0, gl2["z"] + 0.2), "kind": "gate"})
+			out.append({"pos": Vector3(lx2, 0, gl2["z"] - 1.8), "kind": "walk"})
 			i += 2
 			continue
 		if n.begins_with("esc") and n.ends_with("_top") and nxt.begins_with("esc") and nxt.ends_with("_bot"):
@@ -619,17 +680,19 @@ func walk_points(names: Array, pick := 0) -> Array:
 			i += 2
 			continue
 		# street passage: line up with the opening in the hall's north wall
-		if n.begins_with("street") and prv == "hall_unpaid":
+		if n.begins_with("street") and prv.begins_with("hall") and prv.ends_with("_unpaid"):
 			var sdi := _street_by_id(n)
-			out.append({"pos": Vector3(sdi["c"], 0, (hall["rect"] as Array)[2] + 2.0), "kind": "walk"})
-			out.append({"pos": Vector3(sdi["c"], 0, (hall["rect"] as Array)[2] - 1.0), "kind": "walk"})
+			var hr: Array = hall_rect_for_door(sdi)
+			out.append({"pos": Vector3(sdi["c"], 0, hr[2] + 2.0), "kind": "walk"})
+			out.append({"pos": Vector3(sdi["c"], 0, hr[2] - 1.0), "kind": "walk"})
 			out.append({"pos": nodes[node_idx[n]]["pos"], "kind": "walk"})
 			i += 1
 			continue
-		if n == "hall_unpaid" and prv.begins_with("street"):
+		if n.begins_with("hall") and n.ends_with("_unpaid") and prv.begins_with("street"):
 			var sdp := _street_by_id(prv)
-			out.append({"pos": Vector3(sdp["c"], 0, (hall["rect"] as Array)[2] - 1.0), "kind": "walk"})
-			out.append({"pos": Vector3(sdp["c"], 0, (hall["rect"] as Array)[2] + 2.0), "kind": "walk"})
+			var hr2: Array = hall_rect_for_door(sdp)
+			out.append({"pos": Vector3(sdp["c"], 0, hr2[2] - 1.0), "kind": "walk"})
+			out.append({"pos": Vector3(sdp["c"], 0, hr2[2] + 2.0), "kind": "walk"})
 			out.append({"pos": nodes[node_idx[n]]["pos"], "kind": "walk"})
 			i += 1
 			continue
