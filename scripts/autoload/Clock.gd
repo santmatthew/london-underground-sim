@@ -3,6 +3,7 @@ extends Node
 
 signal minute_changed(minute: int)
 
+static var weekend := false        # Saturday/Sunday: no commuter peaks, busier midday and evening
 var now: float = 8.0 * 3600.0
 var time_scale: float = 1.0        # 1 = real time; fast-forward while riding
 var running := true
@@ -48,6 +49,13 @@ static func crowd_factor(t: float) -> float:
 	if h < 5.0:
 		h += 24.0
 	var v := 0.10
+	if weekend:
+		v += 0.20 * exp(-pow((h - 9.5) / 1.2, 2.0))
+		v += 0.62 * exp(-pow((h - 13.5) / 3.6, 2.0))     # shopping / leisure hump
+		v += 0.40 * exp(-pow((h - 21.5) / 2.2, 2.0))     # nights out
+		if h >= 24.0:
+			v *= clampf(1.0 - (h - 24.0) / 0.75, 0.0, 1.0)
+		return clampf(v, 0.04, 1.0)
 	v += 0.90 * exp(-pow((h - 8.25) / 1.0, 2.0))        # AM peak
 	v += 0.85 * exp(-pow((h - 17.75) / 1.25, 2.0))      # PM peak
 	v += 0.42 * exp(-pow((h - 12.75) / 3.2, 2.0))       # inter-peak

@@ -12,7 +12,7 @@ var env: WorldEnvironment
 var station: Station
 var ride: Ride
 var journey: Dictionary = {}
-var opts := {"mode": "single", "stops": 3, "time": "random", "length": "medium", "hints": true, "quality": 2, "crowd": 1.0, "volume": 0.8, "sens": 0.0022}
+var opts := {"mode": "single", "stops": 3, "time": "random", "length": "medium", "hints": true, "day": "random", "quality": 2, "crowd": 1.0, "volume": 0.8, "sens": 0.0022}
 var t_play0 := 0.0
 var riding := false
 var paused := false
@@ -34,6 +34,7 @@ var font_b: Font
 var font_r: Font
 var bot_skip := false
 var _audio_t := 0.0
+var _scores_label: Label
 var _par_task := -1
 var par_result: Dictionary = {}
 var autopilot: Autopilot
@@ -172,6 +173,13 @@ func _build_menu() -> void:
 		ob_n.set_item_metadata(ob_n.item_count - 1, t)
 	ob_n.item_selected.connect(func(i): opts["stops"] = ob_n.get_item_metadata(i))
 	grid.add_child(ob_n)
+	grid.add_child(_mk_label("Day", 18, Color.WHITE, false, false))
+	var ob_day := OptionButton.new()
+	for t in [["Random", "random"], ["Weekday", "weekday"], ["Saturday", "saturday"], ["Sunday", "sunday"]]:
+		ob_day.add_item(t[0])
+		ob_day.set_item_metadata(ob_day.item_count - 1, t[1])
+	ob_day.item_selected.connect(func(i): opts["day"] = ob_day.get_item_metadata(i))
+	grid.add_child(ob_day)
 	grid.add_child(_mk_label("Time of day", 18, Color.WHITE, false, false))
 	var ob_time := OptionButton.new()
 	for t in [["Random", "random"], ["Morning peak", "am_peak"], ["Midday", "midday"], ["Evening peak", "pm_peak"], ["Evening", "evening"], ["Late night", "late"]]:
@@ -228,10 +236,32 @@ func _build_menu() -> void:
 	grid.add_child(sl2)
 	vb.add_child(_mk_button("Start journey", func(): start_journey()))
 	vb.add_child(_mk_button("Quit", func(): get_tree().quit()))
+	_scores_label = _mk_label("", 15, Color(0.75, 0.8, 0.95))
+	vb.add_child(_scores_label)
 	_menu.visible = false
 
 
+func _refresh_scores() -> void:
+	if _scores_label == null:
+		return
+	var path := "user://scores.json"
+	if not FileAccess.file_exists(path):
+		_scores_label.text = ""
+		return
+	var f := FileAccess.open(path, FileAccess.READ)
+	var arr = JSON.parse_string(f.get_as_text())
+	if not (arr is Array) or arr.is_empty():
+		_scores_label.text = ""
+		return
+	var t := "Best journeys\n"
+	for i in mini(5, arr.size()):
+		var e: Dictionary = arr[i]
+		t += "  %d%%  %s → %s  (%s)\n" % [int(round(e["score"])), e["from"], e["to"], Clock.fmt_dur(e["time"])]
+	_scores_label.text = t
+
+
 func _show_menu() -> void:
+	_refresh_scores()
 	state = State.MENU
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	player.enabled = false
@@ -268,6 +298,11 @@ func start_journey() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var seed := int(cli["seed"]) if cli.has("seed") else (int(Time.get_unix_time_from_system()) ^ randi())
+	var day_rng := RandomNumberGenerator.new()
+	day_rng.seed = seed + 99
+	var day := Journey.pick_day(day_rng, str(cli.get("day", opts.get("day", "random"))))
+	Clock.weekend = day != "weekday"
+	var day_name: String = {"weekday": "Weekday", "saturday": "Saturday", "sunday": "Sunday"}[day]
 	Timetable.build(seed)
 	_loading.text = "Choosing your journey..."
 	await get_tree().process_frame
@@ -283,6 +318,7 @@ func start_journey() -> void:
 		while journey.is_empty():
 			journey = Journey.generate_multi(rng, opts) if multi else Journey.generate(rng, opts)
 	journey["seed"] = seed
+	journey["day"] = day_name
 	journey["mode"] = "multi" if multi else "single"
 	par_result = {}
 	_par_task = -1
@@ -335,7 +371,7 @@ func _show_briefing() -> void:
 	var vb: VBoxContainer = _brief.get_meta("vb")
 	var spot: Dictionary = journey["spot"]
 	vb.add_child(_mk_label("YOUR JOURNEY", 40, Color(1, 0.85, 0.2), true))
-	vb.add_child(_mk_label("Weekday  ·  %s" % Clock.fmt(journey["t0"]), 26, Color.WHITE, true))
+	vb.add_child(_mk_label("%s  ·  %s" % [journey.get("day", "Weekday"), Clock.fmt(journey["t0"])], 26, Color.WHITE, true))
 	vb.add_child(_mk_label("You are at %s Underground station — %s." % [Net.station_name(journey["start"]), spot["name"]], 22))
 	if journey["mode"] == "multi":
 		vb.add_child(_mk_label("Visit all %d stations (in any order):" % journey["targets"].size(), 26, Color(0.5, 0.9, 1.0), true))
@@ -435,9 +471,11 @@ func _update_audio_zone() -> void:
 	var dens := Clock.crowd_factor(Clock.now)
 	if riding:
 		var sp: float = ride.speed_now if ride else 0.0
+		player.sway = clampf(sp / 12.0, 0.0, 1.6)
 		Sfx.set_zone("train_run" if sp > 1.0 else "train_idle", dens, sp)
 		player.surface = "rubber"
 		return
+	player.sway = 0.0
 	if station == null:
 		return
 	# inside a train at a platform?

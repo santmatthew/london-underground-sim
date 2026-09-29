@@ -347,7 +347,7 @@ def build_jobs(net, pron):
             "speech_station", f"This is {pl}.")
         add(f"station/{sid}/next", f"{base}_next.ogg", "female_pa", "train_pa", f"The next station is {nm}.",
             "speech_station", f"The next station is {pl}.")
-        add(f"station/{sid}/alight", f"{base}_alight.ogg", "female_pa", "train_pa", f"{nm}, mind the gap.",
+        add(f"station/{sid}/alight", f"{base}_alight.ogg", "female_pa", "train_pa", f"{nm}. Mind the gap.",
             "speech_station", f"{pl}. Mind the gap.")
         ls = [l for l in s["lines"]]
         if len(ls) >= 2:

@@ -154,6 +154,60 @@ def trackbed_sleepers(name, size=1024, seed=6):
     save(name, color, rough, ao, height * 6.0, 1.3, normal_strength=1.6)
 
 
+def decals(size=512, seed=11):
+    """RGBA decals: stains, gum, scuffs, wall runs -> assets/textures/gen/decals/<name>.png"""
+    rng = np.random.default_rng(seed)
+    d = os.path.join(OUT, "decals")
+    os.makedirs(d, exist_ok=True)
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+    def save_rgba(name, rgb, a):
+        img = np.zeros((size, size, 4), np.uint8)
+        img[..., :3] = (np.clip(rgb, 0, 1) * 255).astype(np.uint8)
+        img[..., 3] = (np.clip(a, 0, 1) * 255).astype(np.uint8)
+        Image.fromarray(img, "RGBA").save(os.path.join(d, name + ".png"))
+    # stains: soft blotches
+    for i in range(4):
+        n = tileable_noise((size, size), 96 + i * 20, np.random.default_rng(seed + i), 4)
+        r = np.sqrt((xx - 0.5) ** 2 + (yy - 0.5) ** 2)
+        blob = np.clip((n - 0.45) * 4.0, 0, 1) * np.clip(1.0 - r * 2.0, 0, 1) ** 0.6
+        base = np.array([0.10, 0.085, 0.07], np.float32)
+        rgb = np.broadcast_to(base, (size, size, 3)) * (0.7 + 0.6 * n[..., None])
+        save_rgba(f"stain_{i}", rgb, blob * (0.35 + 0.15 * i))
+    # gum spots: many small discs
+    a = np.zeros((size, size), np.float32)
+    rgb = np.zeros((size, size, 3), np.float32)
+    for k in range(70):
+        cx, cy = rng.random(2)
+        rad = rng.uniform(0.006, 0.014)
+        m = ((xx - cx) ** 2 + (yy - cy) ** 2) < rad ** 2
+        tone = rng.choice([0.62, 0.45, 0.78, 0.30])
+        a[m] = 0.85
+        rgb[m] = np.array([tone, tone * 0.98, tone * 0.95], np.float32)
+    a = ndi.gaussian_filter(a, 1.0)
+    save_rgba("gum", rgb, a)
+    # scuffs: long thin dark streaks
+    a = np.zeros((size, size), np.float32)
+    for k in range(26):
+        cx, cy = rng.random(2)
+        ang = rng.uniform(-0.5, 0.5)
+        ln = rng.uniform(0.05, 0.18)
+        t = np.linspace(-ln, ln, 60)
+        for tt in t:
+            px = int((cx + tt * np.cos(ang)) * size) % size
+            py = int((cy + tt * np.sin(ang)) * size) % size
+            a[py, px] = 0.5 * (1 - abs(tt) / ln)
+    a = ndi.gaussian_filter(a, 1.6) * 3.0
+    save_rgba("scuff", np.full((size, size, 3), 0.06, np.float32), a)
+    # wall run: vertical drips fading downward
+    n = tileable_noise((size, size), 40, rng, 3)
+    streak = ndi.gaussian_filter(n, (30, 1.2), mode="wrap")
+    streak = (streak - streak.min()) / (streak.max() - streak.min())
+    fade = np.clip(1.0 - yy * 1.1, 0, 1) ** 1.4
+    a = np.clip((streak - 0.55) * 3.0, 0, 1) * fade * 0.55
+    save_rgba("wall_run", np.broadcast_to(np.array([0.16, 0.14, 0.11], np.float32), (size, size, 3)), a)
+    print("wrote decals")
+
+
 def grime_mask(name, size=1024, seed=4):
     """tileable greyscale grime (vertical streaks + blotches) used by the surface shader"""
     rng = np.random.default_rng(seed)
@@ -174,4 +228,5 @@ if __name__ == "__main__":
     panel_cladding("panel_white", (0.88, 0.89, 0.88))
     tactile_paving("tactile_yellow")
     trackbed_sleepers("trackbed_sleepers")
+    decals()
     grime_mask("grime")

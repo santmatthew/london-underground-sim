@@ -1,0 +1,26 @@
+#!/bin/bash
+# Quick regression suite (a few minutes). Usage: tools/run_tests.sh [--full]
+# --full also runs a physical walk-through of several stations and a short autopilot journey.
+cd "$(dirname "$0")/.."
+fail=0
+check() {  # name, grep-pattern-that-must-match, log
+  if grep -qE "$2" "$3"; then echo "PASS  $1"; else echo "FAIL  $1  (see $3)"; fail=1; fi
+}
+GTEST_TIMEOUT=200 tools/gtest.sh test_timetable > build/t_timetable.log 2>&1
+check "timetable: no platform overlaps" "overlap check: 0 overlaps" build/t_timetable.log
+GTEST_TIMEOUT=200 tools/gtest.sh test_planner > build/t_planner.log 2>&1
+check "planner: routes found" "arrive exit" build/t_planner.log
+if grep -q "no route" build/t_planner.log; then echo "FAIL  planner: some case had no route"; fail=1; fi
+GTEST_TIMEOUT=250 tools/gtest.sh walk_test > build/t_walk.log 2>&1
+check "floor audit: no gaps" "TOTAL gap spots: 0" build/t_walk.log
+GTEST_TIMEOUT=100 tools/gtest.sh audio_test > build/t_audio.log 2>&1
+check "audio: streams load, speech plays" "speech playing: true \(missing streams: 0\)" build/t_audio.log
+if [ "$1" == "--full" ]; then
+  for st in "King's Cross St. Pancras" "Barbican" "Chiswick Park"; do
+    GTEST_ENGINE_ARGS="--fixed-fps 60" GTEST_TIMEOUT=300 tools/gtest.sh walkbot_test --station="$st" > build/t_walkbot.log 2>&1
+    check "walk-through: $st" " 0 failed" build/t_walkbot.log
+  done
+  GTEST_ENGINE_ARGS="--fixed-fps 60" GTEST_TIMEOUT=600 tools/gtest.sh bot_test --seed=3 --length=short > build/t_bot.log 2>&1
+  check "autopilot journey completes" "state 4|RESULT" build/t_bot.log
+fi
+exit $fail

@@ -15,6 +15,7 @@ var offset := 0.0            # accumulated distance
 var limit_ahead := INF       # scenery is not shown farther than this distance ahead of the train centre (station approach)
 var segs: Array = []
 var _prof_mesh: ArrayMesh
+var _variants: Array = []
 var _pw := PlatformModule.PW_RUN
 var _light_phase := 0.0
 
@@ -49,9 +50,48 @@ func setup(wall_mat := "tile_white") -> void:
 	for k in kit.surfaces.keys():
 		mats[k] = Mats.get_mat(k)
 	_prof_mesh = kit.build(mats)
+	_variants = [_prof_mesh]
+	# variants that add detail to a copy of the base geometry
+	for v in 3:
+		var k2 := MeshKit.new()
+		k2.seed_rng(40 + v)
+		match v:
+			0:   # signal post with red/green lamps and a cable junction box on the track-side wall
+				k2.box("metal", Vector3(-2.0, 1.1, zfar - 0.35), Vector3(0.12, 2.2, 0.12), 0.0)
+				k2.box("light_emissive_red", Vector3(-2.0, 1.85, zfar - 0.5), Vector3(0.2, 0.2, 0.05), 0.0)
+				k2.box("light_emissive_green", Vector3(-2.0, 1.5, zfar - 0.5), Vector3(0.2, 0.2, 0.05), 0.0)
+				k2.box("metal", Vector3(3.0, 0.9, zfar - 0.2), Vector3(0.5, 0.6, 0.3), 0.0)
+			1:   # blue emergency light + dark cross-passage doorway on the far wall
+				k2.box("light_emissive_blue", Vector3(0.0, 2.0, zfar - 0.1), Vector3(0.5, 0.18, 0.06), 0.0)
+				k2.box("black", Vector3(0.0, 0.85, zfar - 0.02), Vector3(1.6, 1.7, 0.04), 0.0)
+			2:   # wall bracket / pipe run on the platform-side wall
+				k2.box("metal", Vector3(0.0, 2.1, zwall_run + 0.12), Vector3(SEG_LEN, 0.12, 0.12), 0.0)
+				k2.box("metal", Vector3(-3.0, 1.6, zwall_run + 0.08), Vector3(0.08, 1.0, 0.08), 0.0)
+				k2.box("metal", Vector3(3.0, 1.6, zwall_run + 0.08), Vector3(0.08, 1.0, 0.08), 0.0)
+		var m2 := {}
+		for kk in k2.surfaces.keys():
+			m2[kk] = Mats.get_mat(kk) if not kk.begins_with("light_emissive_") else _lamp_mat(kk)
+		var extra := k2.build(m2)
+		# merge: new ArrayMesh = base surfaces + extra surfaces
+		var merged := ArrayMesh.new()
+		for si in _prof_mesh.get_surface_count():
+			merged.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, _prof_mesh.surface_get_arrays(si))
+			merged.surface_set_material(si, _prof_mesh.surface_get_material(si))
+		for si in extra.get_surface_count():
+			var idx := merged.get_surface_count()
+			merged.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, extra.surface_get_arrays(si))
+			merged.surface_set_material(idx, extra.surface_get_material(si))
+		_variants.append(merged)
 	for i in N_SEG:
 		var mi := MeshInstance3D.new()
-		mi.mesh = _prof_mesh
+		var pick := 0
+		if i % 7 == 3:
+			pick = 1
+		elif i % 11 == 5:
+			pick = 2
+		elif i % 5 == 1:
+			pick = 3
+		mi.mesh = _variants[pick]
 		add_child(mi)
 		segs.append(mi)
 		var o := OmniLight3D.new()
@@ -65,6 +105,16 @@ func setup(wall_mat := "tile_white") -> void:
 	# the tunnel geometry was built in face-A coordinates: shift so the track sits at track_z
 	position = Vector3(0, 0, track_z - ztrack)
 	_place(0.0)
+
+
+func _lamp_mat(key: String) -> Material:
+	var col := Color(1, 0.1, 0.1) if key.ends_with("red") else (Color(0.1, 1, 0.3) if key.ends_with("green") else Color(0.2, 0.4, 1.0))
+	var m := StandardMaterial3D.new()
+	m.albedo_color = col
+	m.emission_enabled = true
+	m.emission = col
+	m.emission_energy_multiplier = 4.0
+	return m
 
 
 func _profile(za: float, zb: float) -> PackedVector2Array:

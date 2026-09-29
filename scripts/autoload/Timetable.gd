@@ -81,11 +81,17 @@ func tph_at(line: String, hour: float) -> float:
 			b = i
 	# smooth ramp over the first 20 minutes of a band
 	var start: float = BAND_STARTS[b]
-	var cur: float = arr[b]
+	var cur: float = arr[b] * _weekend_scale(b)
 	if b > 0 and hour < start + 0.33:
-		var prev: float = arr[b - 1]
+		var prev: float = arr[b - 1] * _weekend_scale(b - 1)
 		return lerpf(prev, cur, (hour - start) / 0.33)
 	return cur
+
+
+func _weekend_scale(band: int) -> float:
+	if not Clock.weekend:
+		return 1.0
+	return [1.0, 0.72, 0.9, 0.72, 1.0, 1.0][band]      # thinner peak services at weekends
 
 
 func build(seed_value: int) -> void:

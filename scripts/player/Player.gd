@@ -25,6 +25,8 @@ var last_speed := 0.0
 var hurrying := false
 var safe_pos := Vector3.ZERO
 var _safe_t := 0.0
+var sway := 0.0                  # carriage sway amount (0 = off), set while riding
+var _sway_t := 0.0
 var step_accum := 0.0
 var surface := "concrete"
 var footsteps_enabled := true
@@ -131,6 +133,12 @@ func _physics_process(delta: float) -> void:
 		if step_accum > 0.78:
 			step_accum = 0.0
 			Sfx.footstep(surface, -3.0 if last_speed < 2.0 else 0.0)
+	# carriage sway while riding
+	_sway_t += delta
+	if sway > 0.001:
+		head.rotation.z = sin(_sway_t * 1.7) * 0.0025 * sway + sin(_sway_t * 5.3 + 1.0) * 0.0012 * sway
+	else:
+		head.rotation.z = lerpf(head.rotation.z, 0.0, delta * 4.0)
 	# head bob
 	if is_on_floor() and last_speed > 0.2:
 		_bob += delta * last_speed * 4.4

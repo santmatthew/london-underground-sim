@@ -255,7 +255,7 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 			for view_dir in [Vector3(1, 0, 0), Vector3(-1, 0, 0)]:
 				var target := Vector3(0, 0, -s)      # the opening is toward the spine
 				var a := _arrow_for(view_dir, target)
-				var wb := Signs.board([{"text": "Way out", "bold": true, "arrow": a, "arrow_side": "left" if a == 2 else "right"}, {"text": "Other platform", "text_color": Color(0.8, 0.8, 0.8), "arrow": a, "arrow_side": "left" if a == 2 else "right"}], 3.0, 0.45)
+				var wb := Signs.board([{"text": "Way out", "bold": true, "arrow": a, "arrow_side": "left" if a == 2 else "right"}, {"text": "Other platform", "text_color": Color(0.8, 0.8, 0.8), "arrow": a, "arrow_side": "left" if a == 2 else "right"}], 2.3, 0.34)
 				var hw := Node3D.new()
 				hw.position = Vector3(o + (0.15 if view_dir.x > 0 else -0.15), PlatformModule.SPRING_Y - 0.05, s * (zwall + 0.9))
 				wb.rotation.y = atan2(-view_dir.x, -view_dir.z)

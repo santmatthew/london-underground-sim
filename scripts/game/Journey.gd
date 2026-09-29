@@ -8,6 +8,14 @@ const TIME_MODES := {
 const LENGTHS := {"short": [7.0 * 60.0, 22.0 * 60.0], "medium": [15.0 * 60.0, 45.0 * 60.0], "long": [35.0 * 60.0, 80.0 * 60.0]}
 
 
+static func pick_day(rng: RandomNumberGenerator, mode: String) -> String:
+	match mode:
+		"saturday", "sunday", "weekday":
+			return mode
+	var r := rng.randf()
+	return "weekday" if r < 0.62 else ("saturday" if r < 0.82 else "sunday")
+
+
 static func pick_time(rng: RandomNumberGenerator, mode: String) -> float:
 	var span: Array = TIME_MODES.get(mode, TIME_MODES["random"])
 	if mode == "random":
