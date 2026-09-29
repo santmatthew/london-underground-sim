@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""Procedural PBR textures for the station: run with build/venv/bin/python tools/gen_textures.py
+Output: assets/textures/gen/<name>/{Color,NormalGL,Roughness,AO}.png (+ info.txt with physical size in metres).
+"""
+import os, sys
+import numpy as np
+from PIL import Image
+from scipy import ndimage as ndi
+
+ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+OUT = os.path.join(ROOT, "assets", "textures", "gen")
+
+
+def save(name, color, rough, ao, height, size_m, normal_strength=2.0, metal=None):
+    d = os.path.join(OUT, name)
+    os.makedirs(d, exist_ok=True)
+    def u8(a): return (np.clip(a, 0, 1) * 255 + 0.5).astype(np.uint8)
+    Image.fromarray(u8(color)).save(os.path.join(d, "Color.png"))
+    Image.fromarray(u8(rough)).save(os.path.join(d, "Roughness.png"))
+    Image.fromarray(u8(ao)).save(os.path.join(d, "AO.png"))
+    # normal from height (OpenGL: +Y up)
+    gy, gx = np.gradient(height)
+    nx, ny, nz = -gx * normal_strength, gy * normal_strength, np.ones_like(height)
+    l = np.sqrt(nx * nx + ny * ny + nz * nz)
+    n = np.stack([nx / l, ny / l, nz / l], -1) * 0.5 + 0.5
+    Image.fromarray(u8(n)).save(os.path.join(d, "NormalGL.png"))
+    if metal is not None:
+        Image.fromarray(u8(metal)).save(os.path.join(d, "Metalness.png"))
+    open(os.path.join(d, "info.txt"), "w").write(f"size_m={size_m}\n")
+    print("wrote", name)
+
+
+def smoothstep(e0, e1, x):
+    t = np.clip((x - e0) / (e1 - e0), 0, 1)
+    return t * t * (3 - 2 * t)
+
+
+def tileable_noise(shape, scale, rng, octaves=4):
+    """cheap tileable fractal noise via FFT-filtered random field"""
+    h, w = shape
+    out = np.zeros(shape, np.float32)
+    amp, tot = 1.0, 0.0
+    for o in range(octaves):
+        s = max(1, int(scale / (2 ** o)))
+        small = rng.random((max(2, h // s), max(2, w // s))).astype(np.float32)
+        big = ndi.zoom(small, (h / small.shape[0], w / small.shape[1]), order=3, mode="wrap")[:h, :w]
+        out += big * amp
+        tot += amp
+        amp *= 0.5
+    out /= tot
+    return (out - out.min()) / (out.max() - out.min() + 1e-6)
+
+
+def metro_tile(name, base_rgb, size=2048, tile_w=256, tile_h=128, grout=3, seed=1, size_m=1.2, dirt=0.10, bond=True, gloss=0.16):
+    """Glazed rectangular 'metro' tiles in brick bond (the classic London Underground wall)."""
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:size, 0:size]
+    row = yy // tile_h
+    xs = xx + (row % 2) * (tile_w // 2 if bond else 0)
+    col = (xs // tile_w) % (size // tile_w)
+    u = (xs % tile_w).astype(np.float32)
+    v = (yy % tile_h).astype(np.float32)
+    dist = np.minimum.reduce([u, tile_w - 1 - u, v, tile_h - 1 - v])          # px to tile edge
+    bevel = smoothstep(grout * 0.5, grout * 0.5 + 9, dist)                     # 0 in grout, ramps to 1
+    inside = smoothstep(grout * 0.5 - 0.5, grout * 0.5 + 1.0, dist)
+    # per-tile variation
+    ntile_r, ntile_c = size // tile_h, size // tile_w
+    tv = rng.normal(0, 0.014, (ntile_r, ntile_c)).astype(np.float32)
+    tt = rng.normal(0, 0.003, (ntile_r, ntile_c, 3)).astype(np.float32)
+    tile_id_r, tile_id_c = row % ntile_r, col
+    var = tv[tile_id_r, tile_id_c][..., None] + tt[tile_id_r, tile_id_c]
+    base = np.array(base_rgb, np.float32)[None, None, :]
+    glaze = base + var
+    # glaze pooling: darker toward bevel edge, slight gradient across tile
+    glaze *= (0.95 + 0.05 * bevel[..., None])
+    # crazing / fine dirt specks + soft mottling
+    mott = tileable_noise((size, size), 96, rng, 4)
+    glaze *= (0.965 + 0.07 * mott[..., None])
+    speck = (rng.random((size, size)) > 0.99985).astype(np.float32)
+    speck = ndi.gaussian_filter(speck, 1.0) * 6
+    glaze -= speck[..., None] * 0.12
+    grout_col = np.array([0.60, 0.59, 0.55], np.float32)[None, None, :] * (0.85 + 0.3 * tileable_noise((size, size), 24, rng, 3))[..., None]
+    color = glaze * inside[..., None] + grout_col * (1 - inside[..., None])
+    # general grime (subtle): more in grout & random cloud
+    cloud = tileable_noise((size, size), 256, rng, 5)
+    color *= (1.0 - dirt * (cloud[..., None] ** 2))
+    rough = gloss + 0.05 * mott + (1 - inside) * 0.65
+    rough = np.clip(rough + 0.10 * (cloud ** 3), 0, 1)
+    ao = 0.55 + 0.45 * smoothstep(0, grout * 1.6 + 3, dist)
+    height = bevel * 0.9 + 0.1 * mott
+    height = ndi.gaussian_filter(height, 0.8)
+    save(name, color, rough, ao, height * 6.0, size_m, normal_strength=1.4)
+
+
+def panel_cladding(name, base_rgb, size=2048, panel=(1024, 1024), gap=6, seed=2, size_m=2.0):
+    """Large flat enamel panels with recessed joints (modern refit)."""
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:size, 0:size]
+    pw, ph = panel
+    u, v = (xx % pw).astype(np.float32), (yy % ph).astype(np.float32)
+    dist = np.minimum.reduce([u, pw - 1 - u, v, ph - 1 - v])
+    inside = smoothstep(gap * 0.4, gap * 0.4 + 2, dist)
+    r, c = yy // ph, xx // pw
+    tv = rng.normal(0, 0.012, (size // ph + 1, size // pw + 1)).astype(np.float32)
+    mott = tileable_noise((size, size), 200, rng, 4)
+    base = np.array(base_rgb, np.float32)[None, None, :]
+    col = (base + tv[r, c][..., None]) * (0.975 + 0.05 * mott[..., None])
+    joint = np.array([0.18, 0.18, 0.18], np.float32)[None, None, :]
+    color = col * inside[..., None] + joint * (1 - inside[..., None])
+    rough = 0.32 + 0.08 * mott + (1 - inside) * 0.5
+    ao = 0.6 + 0.4 * smoothstep(0, gap * 1.5, dist)
+    height = smoothstep(0, gap, dist) * 0.5
+    save(name, color, rough, ao, ndi.gaussian_filter(height, 0.7) * 4, size_m, normal_strength=1.2)
+
+
+def tactile_paving(name, size=1024, seed=3, size_m=0.6):
+    """Yellow blister paving for the platform edge (dots on a 60 cm x 60 cm slab)"""
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32)
+    pitch = size / 12.0
+    cx = (xx % pitch) - pitch / 2
+    cy = (yy % pitch) - pitch / 2
+    r = np.sqrt(cx * cx + cy * cy)
+    dome = np.clip(1 - (r / (pitch * 0.32)) ** 2, 0, 1) ** 0.5
+    dome[r > pitch * 0.32] = 0
+    mott = tileable_noise((size, size), 64, rng, 4)
+    yellow = np.array([0.92, 0.72, 0.05], np.float32)
+    color = yellow[None, None, :] * (0.85 + 0.2 * mott[..., None])
+    color *= (1.0 - 0.35 * (tileable_noise((size, size), 16, rng, 3)[..., None] > 0.8))   # wear speckle
+    color *= (0.75 + 0.25 * dome[..., None])
+    rough = 0.55 + 0.25 * mott - 0.15 * dome
+    ao = 1.0 - 0.3 * (1 - dome)
+    save(name, color, rough, ao, ndi.gaussian_filter(dome, 1.0) * 5, size_m, normal_strength=2.5)
+
+
+def grime_mask(name, size=1024, seed=4):
+    """tileable greyscale grime (vertical streaks + blotches) used by the surface shader"""
+    rng = np.random.default_rng(seed)
+    streak = tileable_noise((size, size), 48, rng, 3)
+    streak = ndi.gaussian_filter(streak, (28, 1.5), mode="wrap")
+    streak = (streak - streak.min()) / (streak.max() - streak.min())
+    blot = tileable_noise((size, size), 160, rng, 5)
+    m = np.clip(0.55 * streak + 0.45 * blot, 0, 1)
+    d = os.path.join(OUT, name)
+    os.makedirs(d, exist_ok=True)
+    Image.fromarray((m * 255).astype(np.uint8)).save(os.path.join(d, "Grime.png"))
+    print("wrote", name)
+
+
+if __name__ == "__main__":
+    metro_tile("metro_white", (0.93, 0.93, 0.91), seed=1, dirt=0.05)
+    metro_tile("metro_cream", (0.90, 0.86, 0.74), seed=5, dirt=0.06)
+    panel_cladding("panel_white", (0.88, 0.89, 0.88))
+    tactile_paving("tactile_yellow")
+    grime_mask("grime")

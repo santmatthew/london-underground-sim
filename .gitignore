@@ -1,0 +1,25 @@
+# Godot
+.godot/
+*.translation
+# scratch / downloads / sandboxes (see tools/ to regenerate)
+build/
+# videos and other media are shared out-of-band, never committed
+*.mp4
+*.avi
+*.mov
+*.webm
+*.mkv
+*.gif
+# large generated / downloaded assets — regenerate with tools/setup_assets.sh (see README)
+assets/textures/
+assets/people/
+assets/models/
+assets/audio/
+# python / editor
+__pycache__/
+*.pyc
+.venv/
+venv/
+.vscode/
+.idea/
+*.uid
