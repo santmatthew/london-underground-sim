@@ -27,6 +27,9 @@ var _shots := 0
 var _side_t := 0.0
 var _side_dir := 1.0
 var _sidesteps := 0
+var _wp_sides := 0               # stuck events at the current waypoint: a re-route is due after a few, whatever happened earlier
+var _wp_sides_at := -1
+var _last_repath_t := -100.0
 var _stuck_total := 0.0
 var _board_visit: Dictionary = {}
 var _dbg_t := -1
@@ -81,7 +84,8 @@ func _physics_process(delta: float) -> void:
 		"init":
 			_plan_to_leg_platform()
 		"walk":
-			_follow(delta)
+			if not (_post_walk == "wait_train" and _board_early()):
+				_follow(delta)
 		"wait_train":
 			_wait_train(delta)
 		"board":
@@ -136,8 +140,12 @@ func _physics_process(delta: float) -> void:
 			_side_dir = side_sign if by_person else (1.0 if _sidesteps % 2 == 0 else -1.0)
 			_side_t = 0.9
 			_sidesteps += 1
+			if wp_i != _wp_sides_at:
+				_wp_sides_at = wp_i
+				_wp_sides = 0
+			_wp_sides += 1
 			_stuck_t = 0.0
-			if (_sidesteps == 4 or _sidesteps % 10 == 0) and mode in ["walk", "exit"]:
+			if (_wp_sides == 3 or _wp_sides % 8 == 0) and mode in ["walk", "exit"]:
 				_repath()
 			if _sidesteps % 6 == 0:
 				var stn := _station()
@@ -212,9 +220,10 @@ func _nearest_visible_node(st: Station) -> String:
 ## rebuild the waypoint list from where we really are (we were pushed off the route and are wedged against something)
 func _repath() -> void:
 	var st := _station()
-	if st == null or _repaths >= 20:
+	if st == null or _repaths >= 40 or Clock.now - _last_repath_t < 3.0:
 		return
 	_repaths += 1
+	_last_repath_t = Clock.now
 	_route_from = _nearest_visible_node(st)
 	_log("re-routing from %s" % _route_from)
 	if mode == "walk" and _post_walk == "wait_train":
@@ -317,6 +326,11 @@ func _plan_exit() -> void:
 	wps.append(st.to_global(st.plan.street_doors[0]["pos"] + Vector3(0, 0, -1.5)))
 	wp_i = 0
 	mode = "exit"
+	if OS.get_environment("BOT_DEBUG") != "":
+		print("EXIT PLAN from %s: %s" % [start, str(best)])
+		var pts := st.plan.walk_points(best, 0)
+		for k in pts.size():
+			print("   wp %d %s %s esc %s lane %s" % [k, pts[k]["kind"], str((pts[k]["pos"] as Vector3).snapped(Vector3(0.1, 0.1, 0.1))), str(pts[k].get("esc", "-")), str(pts[k].get("lane", "-"))])
 	_log("heading for the street exit")
 
 
@@ -374,6 +388,9 @@ func _follow(delta: float) -> void:
 	if mode == "walk" and _post_walk == "wait_train" and leg_i < legs.size():
 		var lg: Dictionary = legs[leg_i]
 		var slack: float = lg["dep"] - Clock.now - _remaining_walk() / Player.WALK_SPEED
+		if OS.get_environment("BOT_DEBUG") != "" and int(Clock.now) % 10 == 0 and int(Clock.now) != _dbg_t:
+			_dbg_t = int(Clock.now)
+			print("HURRY? now %s dep %s remaining %.0f m slack %.0f s" % [Clock.fmt(Clock.now, true), Clock.fmt(lg["dep"], true), _remaining_walk(), slack])
 		if lg["dep"] - Clock.now < 30.0 or slack < 20.0:
 			player.bot_hurry = true
 	if mode == "board" or mode == "alight":
@@ -448,6 +465,24 @@ func _wait_train(delta: float) -> void:
 	# skip time while the train is far away
 	if lg["arr"] - Clock.now > 25.0:
 		game.bot_skip = true
+
+
+## the train we are walking to is standing with its doors open and we are nearly there: get on it instead of finishing the walk to the
+## "mid-platform" spot first (the platform is often crowded and the doors are about to close)
+func _board_early() -> bool:
+	var st := _station()
+	if st == null or leg_i >= legs.size() or wp_i < wps.size() - 2 or _remaining_walk() > 30.0:
+		return false       # only once on the platform proper (the last waypoints), never from a corridor with a wall in between
+	var lg: Dictionary = legs[leg_i]
+	var vkey := "%d:%d" % [target_run, lg["k"]]
+	if not st.trains.visits.has(vkey):
+		return false
+	var v: Dictionary = st.trains.visits[vkey]
+	if not v["doors"]:
+		return false
+	_log("doors are open - boarding early")
+	_start_boarding(v)
+	return true
 
 
 func _start_boarding(v: Dictionary) -> void:

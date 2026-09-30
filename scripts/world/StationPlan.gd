@@ -667,6 +667,7 @@ func walk_points(names: Array, pick := 0) -> Array:
 			out.append({"pos": esc_point(ei, Vector3(-1.4, 0.0, lz)), "kind": "walk"})
 			out.append({"pos": esc_point(ei, Vector3(0.6, 0.0, lz)), "kind": "esc_in", "esc": ei, "lane": li, "dir": 1})
 			out.append({"pos": esc_point(ei, Vector3(e["length"] - 0.9, -e["rise"], lz)), "kind": "esc_out", "esc": ei, "lane": li, "dir": 1})
+			out.append({"pos": esc_point(ei, Vector3(e["length"] + 1.5, -e["rise"], lz)), "kind": "walk"})      # straight out of the lane before turning
 			i += 2
 			continue
 		if n.begins_with("esc") and n.ends_with("_bot") and nxt.begins_with("esc") and nxt.ends_with("_top"):
@@ -677,6 +678,7 @@ func walk_points(names: Array, pick := 0) -> Array:
 			out.append({"pos": esc_point(ej, Vector3(e2["length"] + 1.4, -e2["rise"], lzj)), "kind": "walk"})
 			out.append({"pos": esc_point(ej, Vector3(e2["length"] - 0.6, -e2["rise"], lzj)), "kind": "esc_in", "esc": ej, "lane": lj, "dir": -1})
 			out.append({"pos": esc_point(ej, Vector3(0.9, 0.0, lzj)), "kind": "esc_out", "esc": ej, "lane": lj, "dir": -1})
+			out.append({"pos": esc_point(ej, Vector3(-1.5, 0.0, lzj)), "kind": "walk"})
 			i += 2
 			continue
 		# street passage: line up with the opening in the hall's north wall

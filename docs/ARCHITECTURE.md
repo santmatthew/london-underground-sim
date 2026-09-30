@@ -42,6 +42,11 @@ The planner and the world share the same `StationPlan`, so the "par" time and th
 - World-space assumptions break after a ride (the destination is placed with an arbitrary rotation/offset): use `station.to_global/to_local`
   (e.g. `Station.platform_point` is station-LOCAL), and gate-local coordinates for the gate approach side.
 - `Player` has a fall safety net; `Game._respawn_point` only respawns at the last standing position if floor still exists there.
+- Escalators/stairs: the balustrade collision is **full shaft height** (`Escalator.GUARD_H`), and crowd riders are **not solid** for the player
+  while they ride (`CrowdManager._set_solid`). A rider that is carried into a player who is boxed in by the balustrades can only be resolved
+  upwards - onto the rider's head or the rail top - and from there the player slid off the outside edge into the void (Oxford Circus, found
+  by a hub journey). `esc_edge_test --crowd` reproduces it.
+- `Autopilot` stuck recovery is per waypoint (`_wp_sides`): a re-route from the nearest visible node after 3 stuck events at the same waypoint.
 
 ## Signage
 Every sign is tagged (`meta "sign"`, `meta "size"`), hung through `StationSigns.hang_room / hang_blade / mount_wall` and fitted by
@@ -51,7 +56,8 @@ roundels and names flat on the tile wall.
 
 ## Tests worth knowing
 `walkbot_test` (real capsule along routes; `--reverse`, `--rot=180`, `--trace`), `walk_test` (floor audit), `spine_wall_test`, `sign_audit_test`,
-`bot_test` (autopilot journey; `--seed`, `--multi=N`, `--start/--dest/--spot/--hour`, `--every`, `--frames`; prints DROP/TRAIL diagnostics
+`esc_edge_test` (real capsule pinned on every escalator lane, incl. `--crowd` = the station's real crowd at 08:50; fails if the player climbs a
+balustrade or leaves the shaft), `bot_test` (autopilot journey; `--seed`, `--multi=N`, `--start/--dest/--spot/--hour`, `--every`, `--frames`; prints DROP/TRAIL diagnostics
 when the player falls), `shots_test` (autopilot journey with screenshots), `overlap_test`.
 
 ## Conventions

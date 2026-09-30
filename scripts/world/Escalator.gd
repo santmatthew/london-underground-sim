@@ -12,6 +12,7 @@ const PITCH := 1.5
 const CLEARANCE := 3.7
 const SPEED := 0.75               # m/s along the slope
 const BALUSTRADE := 0.28
+const GUARD_H := 3.4               # collision height of the balustrades: full shaft height, so nobody can stand on (or vault) a handrail
 
 var rise := 12.0
 var lanes: Array = [1, -1, 1]
@@ -155,7 +156,7 @@ func _stairs_collision(hw: float) -> void:
 		var n := 8
 		for k in n:
 			var x := PLATE + run * (float(k) + 0.5) / n
-			_cols.append([Vector3(x, slope_y(x) + 0.7, sgn * (hw - 0.05)), Vector3(run / n + 0.05, 1.4, 0.12), null])
+			_cols.append([Vector3(x, slope_y(x) + GUARD_H * 0.5, sgn * (hw - 0.05)), Vector3(run / n + 0.05, GUARD_H, 0.12), null])
 
 
 func _balustrade(z: float) -> void:
@@ -192,9 +193,9 @@ func _collision() -> void:
 		var n := 8
 		for k in n:
 			var x := PLATE + run * (float(k) + 0.5) / n
-			_cols.append([Vector3(x, slope_y(x) + 0.7, zb), Vector3(run / n + 0.05, 1.4, BALUSTRADE), null])
-		_cols.append([Vector3(PLATE * 0.5, 0.7, zb), Vector3(PLATE, 1.4, BALUSTRADE), null])
-		_cols.append([Vector3(PLATE + run + PLATE * 0.5, -rise + 0.7, zb), Vector3(PLATE, 1.4, BALUSTRADE), null])
+			_cols.append([Vector3(x, slope_y(x) + GUARD_H * 0.5, zb), Vector3(run / n + 0.05, GUARD_H, BALUSTRADE), null])
+		_cols.append([Vector3(PLATE * 0.5, GUARD_H * 0.5, zb), Vector3(PLATE, GUARD_H, BALUSTRADE), null])
+		_cols.append([Vector3(PLATE + run + PLATE * 0.5, -rise + GUARD_H * 0.5, zb), Vector3(PLATE, GUARD_H, BALUSTRADE), null])
 
 
 func _finish() -> void:

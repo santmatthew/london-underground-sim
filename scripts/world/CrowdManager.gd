@@ -507,12 +507,20 @@ func _step_walk(a: Agent, delta: float, ppos: Vector3) -> void:
 		a.node.set_locomotion_speed(a.cur)
 
 
+## People riding an escalator (or stairs) cannot steer round the player, and a solid body that is carried into a player boxed in by the
+## balustrades can only be resolved upwards - onto the rider's head or the rail. So riders are not solid for the player while they ride.
+func _set_solid(a: Agent, solid: bool) -> void:
+	if a.body:
+		a.body.collision_layer = (1 << 1) if solid else 0
+
+
 func _enter_escalator(a: Agent, idx_in: int) -> void:
 	var wp: Dictionary = a.pts[idx_in]
 	var e: Dictionary = plan.escs[wp["esc"]]
 	var slope: float = float(e["rise"]) / sin(Escalator.ANGLE)
 	var total: float = Escalator.PLATE * 2.0 + slope
 	a.state = "esc"
+	_set_solid(a, false)
 	var is_stairs: bool = e.get("stairs", false)
 	a.esc = {"idx": wp["esc"], "lane": wp["lane"], "dir": wp["dir"], "len": total, "s": 0.0 if wp["dir"] > 0 else total, "walk": is_stairs or rng.randf() < 0.2, "stairs": is_stairs}
 	a.cur = 0.0
@@ -553,6 +561,7 @@ func _step_escalator(a: Agent, delta: float) -> void:
 		a.body.position = a.pos + Vector3(0, 0.88, 0)
 	if done:
 		a.state = "walk"
+		_set_solid(a, true)
 		a.esc = {}
 		# skip to the esc_out waypoint's successor
 		while a.i < a.pts.size() and a.pts[a.i]["kind"] != "esc_out":
@@ -649,7 +658,7 @@ func _wake(a: Agent) -> void:
 		_:
 			p.set_locomotion_speed(a.cur if a.cur > 0.1 else a.speed)
 	var b := AnimatableBody3D.new()
-	b.collision_layer = 1 << 1
+	b.collision_layer = 0 if a.state == "esc" else 1 << 1
 	b.collision_mask = 0
 	b.sync_to_physics = false
 	var cs := CollisionShape3D.new()
