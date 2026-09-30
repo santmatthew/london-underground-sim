@@ -23,7 +23,7 @@ gate / escalator / lift / ticket-hall counts.
 What no public source provides: surveyed dimensions of halls, corridors and platforms. Corridor lengths are estimates (diagrams are topologically
 exact, not to scale); OSM geometry refines them where a station is well mapped.
 
-## 3. Authored layouts (next)
+## 3. Authored layouts
 Hubs with several ticket halls, cross-links and stacked platforms (Oxford Circus, Bank/Monument, King's Cross St. Pancras, ...) cannot be a
 single hall plus a chain of escalators. Plan: a per-station layout description (rooms, escalator/stair banks, corridors, platform modules,
 several ticket halls each with its own gateline and exits) compiled into the same `StationPlan` structures (rooms, escs, modules, walking graph),
@@ -45,4 +45,9 @@ Street names are only used where the diagram or OSM gives them; exits the diagra
   tunnels. `tests/wall_audit_test.gd` measures it: visible-but-not-solid rays per station fell from thousands to a few dozen (door trim, shaft interiors).
 - Street names for exits come from OSM where mapped; where the diagram only gives a letter (Victoria B, C) the exit has a number and no street name.
 - Dimensions are estimates (the diagrams are topological, not to scale); depths come from the diagrams' depth tables.
+
+## Authoring pipeline (automated)
+From 2026-09-30 layouts are written as short *briefs* (topology and depths read from the diagram) and generated + verified automatically: see docs/LAYOUT_AUTHORING.md.
+`tools/layout_facts.py` (everything known + the diagram rendered upright), `tools/layout_builder.py` (brief -> data/layouts json, all geometry automatic),
+`tools/check_layout.sh` (compile, route audit, sign audit, wall audit, moving-capsule walks -> PASS/FAIL). Earlier hubs were built with tools/layouts/*.py.
 

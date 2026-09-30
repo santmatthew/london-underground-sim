@@ -1,0 +1,15 @@
+{
+  "naptan": "940GZZLULSQ",
+  "source": "TfL station layout diagram N107-02",
+  "halls": [
+    {"id": "hall_main", "exits": [{"ref": "1"}, {"ref": "2"}, {"ref": "3"}, {"ref": "4"}], "gates": 10}
+  ],
+  "levels": [
+    {"id": "conc_n", "depth": 27.4, "groups": ["northern"]},
+    {"id": "conc_p", "depth": 32.3, "groups": ["piccadilly"]}
+  ],
+  "banks": [
+    {"from": "hall_main", "to": "conc_n", "lanes": [1, -1, 1]},
+    {"from": "hall_main", "to": "conc_p", "lanes": [1, -1, 1]}
+  ]
+}

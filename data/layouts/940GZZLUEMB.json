@@ -1,14 +1,14 @@
 {
- "note": "Embankment, from TfL layout diagram N113-02 (topology; dimensions estimated): two ticket halls, D&C 5.5 m, Northern 16.2 m, Bakerloo 21.0 m",
+ "note": "Embankment, from TfL station layout diagram N113-02 (topology; dimensions estimated)",
  "rooms": [
   {
    "id": "hall_main",
    "kind": "hall",
    "rect": [
-    -16,
-    16,
-    -14,
-    8
+    -12.0,
+    12.0,
+    -14.0,
+    8.0
    ],
    "depth": 0,
    "gateline": {
@@ -17,12 +17,12 @@
    },
    "doors": [
     {
-     "ref": "A",
-     "c": -12.5
+     "c": -8.5,
+     "ref": "A"
     },
     {
-     "name": "Villiers Street",
-     "c": 12.5
+     "c": 8.5,
+     "name": "Villiers Street"
     }
    ]
   },
@@ -30,10 +30,10 @@
    "id": "hall_s",
    "kind": "hall",
    "rect": [
-    -44,
-    -28,
-    -14,
-    8
+    -44.0,
+    -20.0,
+    -14.0,
+    8.0
    ],
    "depth": 0,
    "gateline": {
@@ -42,8 +42,8 @@
    },
    "doors": [
     {
-     "ref": "B",
-     "c": -36.0
+     "c": -32.0,
+     "ref": "B"
     }
    ]
   },
@@ -51,8 +51,8 @@
    "id": "conc_dc",
    "kind": "landing",
    "size": [
-    60,
-    16
+    48.0,
+    16.0
    ],
    "depth": 5.5
   },
@@ -60,8 +60,8 @@
    "id": "conc_n",
    "kind": "landing",
    "size": [
-    40,
-    16
+    36.0,
+    16.0
    ],
    "depth": 16.2
   },
@@ -69,8 +69,8 @@
    "id": "conc_b",
    "kind": "landing",
    "size": [
-    36,
-    14
+    36.0,
+    16.0
    ],
    "depth": 21.0
   }
@@ -87,14 +87,14 @@
     -1
    ],
    "stairs": true,
-   "to_off": -18.0
+   "to_off": -16.0
   },
   {
    "id": "conc_dc_1",
    "from": "hall_s",
    "to": "conc_dc",
    "dir": "S",
-   "c": -36.0,
+   "c": -32.0,
    "lanes": [
     1,
     -1
@@ -106,7 +106,7 @@
    "from": "conc_dc",
    "to": "conc_n",
    "dir": "S",
-   "c": -18.0,
+   "c": -16.0,
    "lanes": [
     1,
     -1,
@@ -119,7 +119,7 @@
    "from": "conc_n",
    "to": "conc_b",
    "dir": "S",
-   "c": -18.0,
+   "c": -16.0,
    "lanes": [
     1,
     -1
@@ -131,9 +131,9 @@
  "modules": [
   {
    "attach": "conc_dc",
-   "lane_z": 0,
+   "lane_z": 0.0,
    "lane_rel": true,
-   "corr_len": 12,
+   "corr_len": 36.0,
    "group": "ss",
    "faces": [
     [
@@ -148,9 +148,9 @@
   },
   {
    "attach": "conc_n",
-   "lane_z": 0,
+   "lane_z": 0.0,
    "lane_rel": true,
-   "corr_len": 12,
+   "corr_len": 36.0,
    "group": "northern",
    "faces": [
     [
@@ -165,9 +165,9 @@
   },
   {
    "attach": "conc_b",
-   "lane_z": 0,
+   "lane_z": 0.0,
    "lane_rel": true,
-   "corr_len": 12,
+   "corr_len": 36.0,
    "group": "bakerloo",
    "faces": [
     [

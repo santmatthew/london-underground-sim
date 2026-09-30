@@ -1,0 +1,19 @@
+{
+  "naptan": "940GZZLUEMB",
+  "source": "TfL station layout diagram N113-02",
+  "halls": [
+    {"id": "hall_main", "exits": [{"ref": "A"}, {"name": "Villiers Street"}], "gates": 10},
+    {"id": "hall_s", "exits": [{"ref": "B"}], "gates": 6}
+  ],
+  "levels": [
+    {"id": "conc_dc", "depth": 5.5, "groups": ["ss"]},
+    {"id": "conc_n", "depth": 16.2, "groups": ["northern"]},
+    {"id": "conc_b", "depth": 21.0, "groups": ["bakerloo"]}
+  ],
+  "banks": [
+    {"from": "hall_main", "to": "conc_dc", "lanes": [1, -1], "stairs": true},
+    {"from": "hall_s", "to": "conc_dc", "lanes": [1, -1], "stairs": true},
+    {"from": "conc_dc", "to": "conc_n", "lanes": [1, -1, 1]},
+    {"from": "conc_n", "to": "conc_b", "lanes": [1, -1], "stairs": true}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "naptan": "940GZZLUVIC",
+  "source": "TfL station layout diagram V047-02",
+  "halls": [
+    {"id": "hall_vl", "exits": [{"ref": "A", "name": "Victoria Station"}, {"ref": "F", "name": "Victoria Station"}], "gates": 12},
+    {"id": "hall_dc", "exits": [{"ref": "B"}, {"ref": "C"}], "gates": 8}
+  ],
+  "levels": [
+    {"id": "conc", "depth": 6.4, "groups": ["ss"]},
+    {"id": "vl_low", "depth": 17.9, "groups": ["victoria"]}
+  ],
+  "banks": [
+    {"from": "hall_vl", "to": "conc", "lanes": [1, -1, 1]},
+    {"from": "hall_dc", "to": "conc", "lanes": [1, -1], "stairs": true},
+    {"from": "conc", "to": "vl_low", "lanes": [1, -1, -1, 1]}
+  ]
+}

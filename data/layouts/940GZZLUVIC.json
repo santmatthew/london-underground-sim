@@ -1,14 +1,14 @@
 {
- "note": "Victoria, from TfL layout diagram V047-02 (topology; dimensions estimated): Victoria line ticket hall (A, F), D&C ticket hall (B, C), interchange concourse, D&C platforms 1-2 at 6.4 m, Victoria line platforms 3-4 at 17.9 m",
+ "note": "Victoria, from TfL station layout diagram V047-02 (topology; dimensions estimated)",
  "rooms": [
   {
    "id": "hall_vl",
    "kind": "hall",
    "rect": [
-    -12,
-    12,
-    -14,
-    8
+    -12.0,
+    12.0,
+    -14.0,
+    8.0
    ],
    "depth": 0,
    "gateline": {
@@ -17,14 +17,14 @@
    },
    "doors": [
     {
+     "c": -8.5,
      "ref": "A",
-     "name": "Victoria Station",
-     "c": -8.5
+     "name": "Victoria Station"
     },
     {
+     "c": 8.5,
      "ref": "F",
-     "name": "Victoria Station",
-     "c": 8.5
+     "name": "Victoria Station"
     }
    ]
   },
@@ -32,10 +32,10 @@
    "id": "hall_dc",
    "kind": "hall",
    "rect": [
-    -36,
-    -20,
-    -14,
-    8
+    -44.0,
+    -20.0,
+    -14.0,
+    8.0
    ],
    "depth": 0,
    "gateline": {
@@ -44,12 +44,12 @@
    },
    "doors": [
     {
-     "ref": "B",
-     "c": -32.5
+     "c": -40.5,
+     "ref": "B"
     },
     {
-     "ref": "C",
-     "c": -23.5
+     "c": -23.5,
+     "ref": "C"
     }
    ]
   },
@@ -57,8 +57,8 @@
    "id": "conc",
    "kind": "landing",
    "size": [
-    44,
-    22
+    48.0,
+    16.0
    ],
    "depth": 6.4
   },
@@ -66,8 +66,8 @@
    "id": "vl_low",
    "kind": "landing",
    "size": [
-    36,
-    16
+    36.0,
+    16.0
    ],
    "depth": 17.9
   }
@@ -84,14 +84,14 @@
     -1,
     1
    ],
-   "to_off": -14.0
+   "to_off": -16.0
   },
   {
    "id": "conc_1",
    "from": "hall_dc",
    "to": "conc",
    "dir": "S",
-   "c": -28.0,
+   "c": -32.0,
    "lanes": [
     1,
     -1
@@ -103,7 +103,7 @@
    "from": "conc",
    "to": "vl_low",
    "dir": "S",
-   "c": -14.0,
+   "c": -16.0,
    "lanes": [
     1,
     -1,
@@ -116,9 +116,9 @@
  "modules": [
   {
    "attach": "conc",
-   "lane_z": 0,
+   "lane_z": 0.0,
    "lane_rel": true,
-   "corr_len": 12,
+   "corr_len": 36.0,
    "group": "ss",
    "faces": [
     [
@@ -133,9 +133,9 @@
   },
   {
    "attach": "vl_low",
-   "lane_z": 0,
+   "lane_z": 0.0,
    "lane_rel": true,
-   "corr_len": 12,
+   "corr_len": 36.0,
    "group": "victoria",
    "faces": [
     [

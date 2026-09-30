@@ -1,14 +1,14 @@
 {
- "note": "Leicester Square, from TfL layout diagram N107-02 (topology; dimensions estimated): round ticket hall, Northern concourse 27.4 m, Piccadilly concourse 32.3 m via the interchange subway",
+ "note": "Leicester Square, from TfL station layout diagram N107-02 (topology; dimensions estimated); bank hall_main->conc_p rerouted from conc_n (the landings of different depth cannot share a wall)",
  "rooms": [
   {
    "id": "hall_main",
    "kind": "hall",
    "rect": [
-    -14,
-    14,
-    -14,
-    8
+    -17.0,
+    17.0,
+    -14.0,
+    8.0
    ],
    "depth": 0,
    "gateline": {
@@ -17,20 +17,20 @@
    },
    "doors": [
     {
-     "ref": "1",
-     "c": -10.5
+     "c": -13.5,
+     "ref": "1"
     },
     {
-     "ref": "2",
-     "c": -3.5
+     "c": -4.5,
+     "ref": "2"
     },
     {
-     "ref": "3",
-     "c": 3.5
+     "c": 4.5,
+     "ref": "3"
     },
     {
-     "ref": "4",
-     "c": 10.5
+     "c": 13.5,
+     "ref": "4"
     }
    ]
   },
@@ -38,8 +38,8 @@
    "id": "conc_n",
    "kind": "landing",
    "size": [
-    40,
-    18
+    36.0,
+    16.0
    ],
    "depth": 27.4
   },
@@ -47,8 +47,8 @@
    "id": "conc_p",
    "kind": "landing",
    "size": [
-    36,
-    14
+    36.0,
+    16.0
    ],
    "depth": 32.3
   }
@@ -75,18 +75,18 @@
    "c": 0.0,
    "lanes": [
     1,
-    -1
+    -1,
+    1
    ],
-   "stairs": true,
    "to_off": 0.0
   }
  ],
  "modules": [
   {
    "attach": "conc_n",
-   "lane_z": 0,
+   "lane_z": 0.0,
    "lane_rel": true,
-   "corr_len": 12,
+   "corr_len": 36.0,
    "group": "northern",
    "faces": [
     [
@@ -101,9 +101,9 @@
   },
   {
    "attach": "conc_p",
-   "lane_z": 0,
+   "lane_z": 0.0,
    "lane_rel": true,
-   "corr_len": 12,
+   "corr_len": 36.0,
    "group": "piccadilly",
    "faces": [
     [
