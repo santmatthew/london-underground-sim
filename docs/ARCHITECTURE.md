@@ -68,6 +68,20 @@ a list of stations against the real colliders and the analytic roof. Real Tube p
 roundels and names flat on the tile wall. On platform walls the station name is **always** the TfL roundel (name in the blue bar across the red ring, every ~13 m on the
 track-side wall and behind the platform); there is no plain-text or tile-lettering name (the white fascia carries only way-out boards).
 
+## Station dressing
+What fills a station (ticket-hall furniture, shops, posters, benches, clocks) is placed by `StationDressing.gd` after the architecture and signs are built.
+Rules come from real-station research (private photos/specs under `build/refs_dress/`, never committed): halls have no bins or benches, ticket machines sit
+in wall bays, platforms carry an ad run across the track between roundel plates, deep-tube platforms get perforated-steel benches and sub-surface ones timber.
+* **Nothing may block a walking route.** `DressMap` samples every route `route_audit_test` sweeps (door<->platform, platform<->platform, start spots) into grid cells;
+  `StationDressing.floor_prop/floor_node/kit_prop` refuse a footprint on a route cell, on the gateline band or on anything already placed. Wall items claim free wall
+  (`wall_slot`: openings and signs excluded). Footprints are read from each prop's collision shapes.
+* **Props:** Blender glbs (`tools/blender/props`, `assets/models/props`, e.g. ticket machines, gates, stands) plus procedural ones in `PropKit.gd` (benches, bin hoops,
+  ceiling speaker clusters, ticket bay surround) and `ShopKit.gd` (kiosks, generic names). Posters go through `PosterKit.gd`: real formats (4/6/16/48-sheet, Double/Quad
+  Royal), one merged mesh per surface, a per-station `Picker` bounds the texture count. Art: `tools/gen_posters3.py` (invented brands) -> `assets/textures/props/posters2`.
+* **Live displays:** analogue clocks are driven by `StationClocks` (hands from `Clock.now`), platform indicators show two trains + a seconds clock. Do not place a prop
+  whose texture has a time baked in (CID totem, departure_board_dm) without making the time live.
+* Tests after any change: `route_audit_test --all`, `sign_audit_test`, `wall_audit_test` (ghost counts vs baseline), `tools/hub_walks.sh`; `station_test` prints draw calls.
+
 ## Tests worth knowing
 `walkbot_test` (real capsule along routes; `--reverse`, `--rot=180`, `--trace`), `walk_test` (floor audit), `spine_wall_test`, `sign_audit_test`,
 `tools/hub_walks.sh` (walkbot on every authored hub, all halls + reverse, in parallel) and `tools/hub_journeys.sh [file]` (autopilot journeys between hubs in parallel; flags falls, stuck events, missed trains),

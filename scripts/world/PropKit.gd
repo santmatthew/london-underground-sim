@@ -271,28 +271,47 @@ static func newspaper_stand() -> Node3D:
 	return n
 
 
-## A wall bay of ticket machines: a stainless-and-charcoal surround (protruding 0.4 m, 2.3 m tall) with a lit 'Tickets' sign band over
-## `n_mfm` multi-fare machines (0.9 m) and `n_tvm` narrow card-only ones (0.5 m). Origin on the wall at the bay's centre, body toward -Z.
+## A wall bay of ticket machines: a charcoal surround (0.52 m deep, 2.3 m tall) with a header carrying the lit 'Tickets' sign, around `n_mfm`
+## multi-fare machines (0.9 m) and `n_tvm` narrow card-only ones (0.5 m), modelled props set back inside it. Origin on the wall at the bay's
+## centre, body toward -Z. Falls back to flat machine fronts when the machine models are missing.
 static func ticket_bay(n_mfm: int, n_tvm: int) -> Node3D:
+	var have := ResourceLoader.exists(StationProps.DIR + "ticket_machine_mfm.glb") and ResourceLoader.exists(StationProps.DIR + "ticket_machine_tvm.glb")
 	var kit := MeshKit.new()
-	var w := n_mfm * 0.95 + n_tvm * 0.6 + 0.2
-	var d := 0.42
-	kit.box("charcoal", Vector3(0, 1.15, -d * 0.5), Vector3(w, 2.3, d), 0.0)                              # the bay
-	kit.box("steel", Vector3(0, 2.32, -d * 0.5), Vector3(w + 0.06, 0.04, d + 0.04), 0.0)                   # cap
-	kit.box("steel", Vector3(0, 0.03, -d * 0.5), Vector3(w + 0.04, 0.06, d + 0.04), 0.0)                   # plinth
-	var x := -w * 0.5 + 0.1
+	var w := n_mfm * 1.0 + n_tvm * 0.62 + 0.24
+	var d := 0.52
+	kit.box("charcoal", Vector3(0, 1.15, -0.03), Vector3(w, 2.3, 0.06), 0.0)                              # back panel on the wall
+	for sx in [-1.0, 1.0]:
+		kit.box("charcoal", Vector3(sx * (w * 0.5 - 0.03), 1.15, -d * 0.5), Vector3(0.06, 2.3, d), 0.0)   # sides
+	kit.box("charcoal", Vector3(0, 2.15, -d * 0.5), Vector3(w, 0.3, d), 0.0)                              # header
+	kit.box("steel", Vector3(0, 2.32, -d * 0.5), Vector3(w + 0.06, 0.04, d + 0.04), 0.0)                  # cap
+	kit.box("charcoal", Vector3(0, 0.05, -d * 0.5), Vector3(w - 0.1, 0.1, d - 0.05), 0.0)                 # plinth
+	var x := -w * 0.5 + 0.12
 	var items: Array = []
 	for i in n_mfm:
 		items.append("mfm")
 	for i in n_tvm:
 		items.append("tvm")
+	var root: Node3D = null
+	var slots: Array = []
 	for it in items:
-		var mw := 0.9 if it == "mfm" else 0.5
-		_front(kit, it, -(x + mw * 0.5), 1.05, -d - 0.004, mw, 1.4)                                       # machine front (mirrored x: see _front)
-		x += mw + 0.05
-	_front(kit, "sign_blue", 0.0, 2.05, -d - 0.006, minf(w - 0.1, 1.6), 0.22)
-	var n := _node(kit, "TicketBay")
-	_solid(n, Vector3(0, 1.15, -d * 0.5), Vector3(w, 2.3, d))
-	_fp(n, Vector2(0, -d * 0.5), Vector2(w * 0.5, d * 0.5))
-	n.set_meta("width", w)
-	return n
+		var mw := 0.92 if it == "mfm" else 0.52
+		slots.append([it, x + mw * 0.5])
+		if not have:
+			_front(kit, it, -(x + mw * 0.5), 1.05, -d + 0.05, mw, 1.4)
+		x += mw + 0.1
+	if not have:
+		_front(kit, "sign_blue", 0.0, 2.15, -d - 0.004, minf(w - 0.1, 1.6), 0.22)
+	root = _node(kit, "TicketBay")
+	if have:
+		for sl in slots:
+			var m := StationProps.inst("ticket_machine_mfm" if sl[0] == "mfm" else "ticket_machine_tvm")
+			root.add_child(m)
+			m.position = Vector3(sl[1], 0.1, -0.36)
+			m.rotation.y = 0.0
+		var sg := StationProps.inst("tickets_sign")
+		root.add_child(sg)
+		sg.position = Vector3(0, 2.1, -d - 0.005)
+	_solid(root, Vector3(0, 1.15, -d * 0.5), Vector3(w, 2.3, d))
+	_fp(root, Vector2(0, -d * 0.5), Vector2(w * 0.5, d * 0.5))
+	root.set_meta("width", w)
+	return root

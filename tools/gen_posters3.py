@@ -69,6 +69,8 @@ def text_block(d, txt, x, y, w, kind, max_size, fill, h=None, align="l", lh=1.05
     for size in range(int(max_size), 11, -3):
         lines = wrap(txt, kind, size, w)
         hh = len(lines) * size * lh
+        if max(tw(ln, kind, size) for ln in lines) > w:
+            continue
         if h is None or hh <= h:
             best = (size, lines)
             break
@@ -106,11 +108,33 @@ def layer(W, H):
 
 def glow(img, cx, cy, r, col, alpha=180):
     W, H = img.size
-    l = layer(W, H)
+    q = 4
+    l = layer(W // q, H // q)
     d = ImageDraw.Draw(l)
-    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=col + (alpha,))
-    l = l.filter(ImageFilter.GaussianBlur(r * 0.45))
-    return over(img, l)
+    d.ellipse([(cx - r) / q, (cy - r) / q, (cx + r) / q, (cy + r) / q], fill=col + (alpha,))
+    l = l.filter(ImageFilter.GaussianBlur(max(1.0, r * 0.45 / q)))
+    return over(img, l.resize((W, H), Image.BICUBIC))
+
+
+def stars(d, x, y, size, n=5, fill=(255, 207, 86)):
+    """n five-pointed stars in a row (the font has no star glyph)"""
+    for k in range(n):
+        cx, cy = x + size * 0.55 + k * size * 1.15, y + size * 0.55
+        pts = []
+        for j in range(10):
+            a = -math.pi / 2 + j * math.pi / 5
+            rr = size * 0.5 if j % 2 == 0 else size * 0.22
+            pts.append((cx + math.cos(a) * rr, cy + math.sin(a) * rr))
+        d.polygon(pts, fill=fill)
+
+
+def wheelchair(d, cx, cy, r, fill=(255, 255, 255)):
+    """a simple wheelchair pictogram in a circle of radius r"""
+    d.ellipse([cx - r * 0.12, cy - r * 0.62, cx + r * 0.12, cy - r * 0.38], fill=fill)                 # head
+    d.line([cx, cy - r * 0.34, cx, cy + r * 0.12], fill=fill, width=int(r * 0.13))                     # torso
+    d.line([cx, cy + r * 0.12, cx + r * 0.34, cy + r * 0.12, cx + r * 0.46, cy + r * 0.52], fill=fill, width=int(r * 0.11))
+    d.line([cx, cy - r * 0.1, cx + r * 0.3, cy - r * 0.1], fill=fill, width=int(r * 0.09))             # arm
+    d.arc([cx - r * 0.5, cy - r * 0.05, cx + r * 0.3, cy + r * 0.75], 40, 300, fill=fill, width=int(r * 0.1))   # wheel
 
 
 def grain(img, amt=3.0, seed=1):
@@ -144,6 +168,20 @@ SUBS = ["Terms apply.", "Find out more online.", "Available now.", "Limited time
 SHOWS = ["The Last Signal", "Midnight in Mayfair", "Paper Moons", "House of Embers", "Glass Harbour", "Neon Orchard", "A Quiet Storm", "The Long Winter", "Velvet Hour", "Salt & Sparrow"]
 
 
+_USED = {}
+
+
+def pick(seq, rng):
+    """the least used item of seq so far (ties broken randomly): posters in one library do not repeat a headline or brand until all are used"""
+    key = id(seq)
+    use = _USED.setdefault(key, {})
+    low = min(use.get(x, 0) for x in seq)
+    c = [x for x in seq if use.get(x, 0) == low]
+    x = rng.choice(c)
+    use[x] = use.get(x, 0) + 1
+    return x
+
+
 def pill(d, x0, y0, x1, y1, fill, txt, col, kind="bold"):
     d.rounded_rectangle([x0, y0, x1, y1], radius=(y1 - y0) // 2, fill=fill)
     s = fit(txt, kind, (x1 - x0) * 0.8, (y1 - y0) * 0.55)
@@ -171,15 +209,15 @@ def t_headline(W, H, rng):
         ld.ellipse([-W * 0.2, H * 0.52, W * 1.2, H * 1.35], fill=acc + (255,))
     img = over(img, l)
     d = ImageDraw.Draw(img)
-    head = rng.choice(HEADS)
+    head = pick(HEADS, rng)
     if land:
         text_block(d, head, W * 0.06, H * 0.14, W * 0.44, "bold", H * 0.23, (255, 255, 255) if sum(bg) < 400 else (20, 20, 24), H * 0.58)
         pill(d, W * 0.06, H * 0.76, W * 0.30, H * 0.88, acc, rng.choice(["Find out more", "Get started", "Shop now", "Book today"]), bg)
-        wordmark(d, W * 0.06, H * 0.05, rng.choice(BRANDS), (255, 255, 255) if sum(bg) < 400 else (20, 20, 24), int(H * 0.06))
+        wordmark(d, W * 0.06, H * 0.05, pick(BRANDS, rng), (255, 255, 255) if sum(bg) < 400 else (20, 20, 24), int(H * 0.06))
     else:
         text_block(d, head, W * 0.08, H * 0.1, W * 0.84, "bold", W * 0.2, (255, 255, 255) if sum(bg) < 400 else (20, 20, 24), H * 0.36)
         pill(d, W * 0.08, H * 0.55, W * 0.52, H * 0.61, acc, rng.choice(["Find out more", "Get started", "Shop now"]), bg)
-        wordmark(d, W * 0.08, H * 0.92, rng.choice(BRANDS), ink if sum(acc) < 450 else (20, 20, 24), int(W * 0.07))
+        wordmark(d, W * 0.08, H * 0.92, pick(BRANDS, rng), ink if sum(acc) < 450 else (20, 20, 24), int(W * 0.07))
     return img
 
 
@@ -196,9 +234,11 @@ def t_theatre(W, H, rng):
         hh = H * rng2.uniform(0.25, 0.42)
         d.ellipse([cx - hh * 0.13, base - hh, cx + hh * 0.13, base - hh * 0.74], fill=(6, 6, 10))
         d.polygon([(cx - hh * 0.2, base), (cx - hh * 0.12, base - hh * 0.72), (cx + hh * 0.12, base - hh * 0.72), (cx + hh * 0.2, base)], fill=(6, 6, 10))
-    title = rng.choice(SHOWS).upper()
+    title = pick(SHOWS, rng).upper()
     text_block(d, title, W * 0.06, H * 0.72, W * 0.88, "serif", W * 0.13 if W < H else H * 0.17, acc, H * 0.22, "c", 1.0)
-    d.text((W * 0.06, H * 0.05), "★★★★★  'A TRIUMPH'", font=font("semi", int(min(W, H) * 0.045)), fill=ink)
+    st = min(W, H) * 0.05
+    stars(d, W * 0.06, H * 0.045, st, 5, acc)
+    d.text((W * 0.06 + st * 6.0, H * 0.05), "'A TRIUMPH'", font=font("semi", int(min(W, H) * 0.045)), fill=ink)
     d.text((W * 0.06, H * 0.94), "BOOK NOW  ·  Royal Lantern Theatre", font=font("semi", int(min(W, H) * 0.04)), fill=ink)
     return img
 
@@ -216,7 +256,7 @@ def t_product(W, H, rng):
     if kind == "can":
         d.rounded_rectangle([cx - hh * 0.22, cy - hh * 0.5, cx + hh * 0.22, cy + hh * 0.5], radius=int(hh * 0.06), fill=col)
         d.rectangle([cx - hh * 0.22, cy - hh * 0.05, cx + hh * 0.22, cy + hh * 0.25], fill=bg)
-        d.text((cx - hh * 0.17, cy), rng.choice(BRANDS)[:8].upper(), font=font("bold", int(hh * 0.07)), fill=ink)
+        d.text((cx - hh * 0.17, cy), pick(BRANDS, rng)[:8].upper(), font=font("bold", int(hh * 0.07)), fill=ink)
     elif kind == "bottle":
         d.rounded_rectangle([cx - hh * 0.17, cy - hh * 0.25, cx + hh * 0.17, cy + hh * 0.5], radius=int(hh * 0.08), fill=col)
         d.rectangle([cx - hh * 0.07, cy - hh * 0.5, cx + hh * 0.07, cy - hh * 0.25], fill=col)
@@ -226,7 +266,7 @@ def t_product(W, H, rng):
         d.rounded_rectangle([cx - hh * 0.28, cy - hh * 0.34, cx + hh * 0.28, cy + hh * 0.42], radius=int(hh * 0.03), fill=col)
         d.rectangle([cx - hh * 0.28, cy - hh * 0.06, cx + hh * 0.28, cy + hh * 0.1], fill=bg)
     d.ellipse([cx - hh * 0.3, cy + hh * 0.5, cx + hh * 0.3, cy + hh * 0.56], fill=(0, 0, 0, 90))
-    head = rng.choice(HEADS)
+    head = pick(HEADS, rng)
     if W > H:
         text_block(d, head, W * 0.06, H * 0.15, W * 0.42, "bold", H * 0.2, (255, 255, 255) if sum(bg) < 400 else (20, 20, 24), H * 0.55)
     else:
@@ -254,12 +294,12 @@ def t_deal(W, H, rng):
     price = rng.choice(["£9.99", "£4.50", "50% off", "From £19", "£2 a week", "Save £120"])
     s = fit(price, "bold", r * 1.5, r * 0.9)
     d.text((cx - tw(price, "bold", s) / 2, cy - s * 0.6), price, font=font("bold", s), fill=bg)
-    head = rng.choice(["Big savings.", "This week only.", "Spring sale.", "Summer deals.", "Half price.", "Mega weekend."])
+    head = pick(["Big savings.", "This week only.", "Spring sale.", "Summer deals.", "Half price.", "Mega weekend.", "Final days.", "Two for one."], rng)
     if W > H:
         text_block(d, head, W * 0.06, H * 0.16, W * 0.44, "bold", H * 0.26, (255, 255, 255) if sum(bg) < 400 else (20, 20, 24), H * 0.55)
     else:
         text_block(d, head, W * 0.08, H * 0.06, W * 0.84, "bold", W * 0.2, (255, 255, 255) if sum(bg) < 400 else (20, 20, 24), H * 0.3)
-    d.text((W * 0.05, H * 0.94), "Terms and conditions apply. " + rng.choice(BRANDS), font=font("reg", int(min(W, H) * 0.028)), fill=ink)
+    d.text((W * 0.05, H * 0.94), "Terms and conditions apply. " + pick(BRANDS, rng), font=font("reg", int(min(W, H) * 0.028)), fill=ink)
     return img
 
 
@@ -282,9 +322,9 @@ def t_tourism(W, H, rng):
             x += max(10, W // 40)
         pts.append((W, H))
         d.polygon(pts, fill=col)
-    head = rng.choice(["Escape the grey.", "Sunny side up.", "Wander further.", "Coast to coast.", "Summer starts here.", "See the north."])
+    head = pick(["Escape the grey.", "Sunny side up.", "Wander further.", "Coast to coast.", "Summer starts here.", "See the north.", "Island hopping.", "Lakes and hills."], rng)
     text_block(d, head, W * 0.06, H * 0.06, W * 0.88, "bold", H * 0.1 if W > H else W * 0.17, (255, 255, 255), H * 0.3, upper=True)
-    d.text((W * 0.06, H * 0.94), rng.choice(["7 nights from £499", "Flights, transfers and more", "Book by June"]) + "  ·  " + rng.choice(BRANDS), font=font("semi", int(min(W, H) * 0.04)), fill=(255, 255, 255))
+    d.text((W * 0.06, H * 0.94), rng.choice(["7 nights from £499", "Flights, transfers and more", "Book by June"]) + "  ·  " + pick(BRANDS, rng), font=font("semi", int(min(W, H) * 0.04)), fill=(255, 255, 255))
     return img
 
 
@@ -292,12 +332,12 @@ def t_type(W, H, rng):
     bg, acc, ink = [hexc(c) for c in rng.choice(PALETTES)]
     img = Image.new("RGBA", (W, H), bg + (255,))
     d = ImageDraw.Draw(img)
-    words = rng.choice([("Less", "stress."), ("More", "sleep."), ("Go", "anywhere."), ("Try", "again."), ("Hello", "tomorrow."), ("Just", "add water.")])
-    big = fit(max(words, key=len).upper(), "bold", W * 0.88, H * 0.36)
+    words = pick([("Less", "stress."), ("More", "sleep."), ("Go", "anywhere."), ("Try", "again."), ("Hello", "tomorrow."), ("Just", "add water."), ("Think", "bigger."), ("Stay", "curious.")], rng)
+    big = fit(max(words, key=len).upper(), "bold", W * 0.88, H * 0.36, start=int(H * 0.36))
     y = H * 0.12
     d.text((W * 0.06, y), words[0].upper(), font=font("bold", big), fill=(255, 255, 255) if sum(bg) < 400 else (20, 20, 24))
     d.text((W * 0.06, y + big * 0.95), words[1].upper(), font=font("bold", big), fill=acc)
-    d.text((W * 0.06, H * 0.9), rng.choice(BRANDS) + "  —  " + rng.choice(SUBS), font=font("semi", int(min(W, H) * 0.04)), fill=(255, 255, 255) if sum(bg) < 400 else (20, 20, 24))
+    d.text((W * 0.06, H * 0.9), pick(BRANDS, rng) + "  —  " + rng.choice(SUBS), font=font("semi", int(min(W, H) * 0.04)), fill=(255, 255, 255) if sum(bg) < 400 else (20, 20, 24))
     return img
 
 
@@ -317,13 +357,13 @@ def t_app(W, H, rng):
     l = l.rotate(rng.uniform(-14, 14), center=(px, py), resample=Image.BICUBIC)
     img = over(img, l)
     d = ImageDraw.Draw(img)
-    head = rng.choice(["Find quieter times.", "Your money, sorted.", "Everything in one app.", "Order in seconds.", "Plan it. Book it."])
+    head = pick(["Find quieter times.", "Your money, sorted.", "Everything in one app.", "Order in seconds.", "Plan it. Book it.", "Split the bill.", "Track your day."], rng)
     if W > H:
         text_block(d, head, W * 0.06, H * 0.14, W * 0.44, "bold", H * 0.22, (255, 255, 255), H * 0.55)
     else:
         text_block(d, head, W * 0.08, H * 0.05, W * 0.84, "bold", W * 0.16, (255, 255, 255), H * 0.22)
     pill(d, W * 0.06, H * 0.84 if W < H else H * 0.72, W * 0.06 + min(W * 0.3, 380), (H * 0.92 if W < H else H * 0.86), (255, 255, 255), "Download the app", bg)
-    d.text((W * 0.06, H * 0.95 if W < H else H * 0.93), rng.choice(BRANDS), font=font("bold", int(min(W, H) * 0.04)), fill=(255, 255, 255))
+    d.text((W * 0.06, H * 0.95 if W < H else H * 0.93), pick(BRANDS, rng), font=font("bold", int(min(W, H) * 0.04)), fill=(255, 255, 255))
     return img
 
 
@@ -332,7 +372,7 @@ def t_minimal(W, H, rng):
     ink = (20, 20, 22) if sum(bg) > 420 else (255, 255, 255)
     img = Image.new("RGBA", (W, H), bg + (255,))
     d = ImageDraw.Draw(img)
-    sent = rng.choice(["Some of the best days start with nothing planned.", "Kindness costs nothing.", "Slow down. You're nearly there.", "Make today count.", "Someone out there needs to hear from you."])
+    sent = pick(["Some of the best days start with nothing planned.", "Kindness costs nothing.", "Slow down. You're nearly there.", "Make today count.", "Someone out there needs to hear from you.", "Be the reason someone smiles today.", "Small steps still count."], rng)
     text_block(d, sent, W * 0.1, H * 0.25, W * 0.8, "serif", min(W, H) * 0.12, ink, H * 0.5)
     d.text((W * 0.1, H * 0.88), rng.choice(["kindnessweek.example", "moreplease.example", "slowdown.example"]), font=font("semi", int(min(W, H) * 0.04)), fill=ink)
     return img
@@ -347,8 +387,8 @@ def t_exhibit(W, H, rng):
     cols = 4 if W > H else 2
     cw = (W * 0.84) / cols
     rows = 2
-    top = H * 0.08 if W > H else H * 0.2
-    rh = (H * 0.5) / rows if W > H else (H * 0.52) / 3
+    top = H * 0.08 if W > H else H * 0.1
+    rh = (H * 0.5) / rows if W > H else (H * 0.6) / 3
     for r_ in range(rows if W > H else 3):
         for c_ in range(cols):
             x0 = W * 0.08 + c_ * cw + 4
@@ -356,8 +396,8 @@ def t_exhibit(W, H, rng):
             tone = tuple(int(v) for v in (np.array(acc) * rng2.uniform(0.4, 1.0) + np.array((255, 255, 255)) * rng2.uniform(0, 0.4)).clip(0, 255))
             d.rectangle([x0, y0, x0 + cw - 8, y0 + rh - 8], fill=tone)
             d.ellipse([x0 + cw * 0.2, y0 + rh * 0.2, x0 + cw * 0.75, y0 + rh * 0.8], fill=tuple(int(v * 0.6) for v in tone))
-    title = rng.choice(["Objects of Desire", "The Art of Light", "Clay and Fire", "Machines that Move", "Small Wonders"])
-    text_block(d, title, W * 0.08, H * 0.66 if W < H else H * 0.72, W * 0.84, "serif", min(W, H) * 0.11, acc, H * 0.2)
+    title = pick(["Objects of Desire", "The Art of Light", "Clay and Fire", "Machines that Move", "Small Wonders", "Paper and Ink", "Night Garden"], rng)
+    text_block(d, title, W * 0.08, H * 0.74 if W < H else H * 0.72, W * 0.84, "serif", min(W, H) * 0.11, acc, H * 0.16)
     d.text((W * 0.08, H * 0.93), "Mosaic Museum  ·  Until 14 September  ·  Free entry", font=font("reg", int(min(W, H) * 0.035)), fill=(40, 40, 40))
     return img
 
@@ -372,9 +412,9 @@ def t_film(W, H, rng):
     hh = H * 0.55
     d.ellipse([hx - hh * 0.16, hy - hh * 0.5, hx + hh * 0.16, hy - hh * 0.18], fill=(10, 10, 14))
     d.polygon([(hx - hh * 0.32, hy + hh * 0.5), (hx - hh * 0.18, hy - hh * 0.15), (hx + hh * 0.18, hy - hh * 0.15), (hx + hh * 0.32, hy + hh * 0.5)], fill=(10, 10, 14))
-    title = rng.choice(SHOWS).upper()
+    title = pick(SHOWS, rng).upper()
     text_block(d, title, W * 0.06, H * 0.72, W * 0.88, "cond", min(W, H) * 0.16, acc, H * 0.2, "c", 1.0)
-    d.text((W * 0.06, H * 0.93), "IN CINEMAS " + rng.choice(["FRIDAY", "THIS AUTUMN", "NOVEMBER"]) + "   ·   " + rng.choice(BRANDS), font=font("semi", int(min(W, H) * 0.035)), fill=(230, 230, 230))
+    d.text((W * 0.06, H * 0.93), "IN CINEMAS " + rng.choice(["FRIDAY", "THIS AUTUMN", "NOVEMBER"]) + "   ·   " + pick(BRANDS, rng), font=font("semi", int(min(W, H) * 0.035)), fill=(230, 230, 230))
     return img
 
 
@@ -442,7 +482,7 @@ def tfl_poster(W, H, rng, kind):
     elif kind == "stepfree":
         d.text((W * 0.06, H * 0.12), "Step-free access", font=font("round", int(H * 0.04)), fill=TFL_BLUE)
         d.ellipse([W * 0.06, H * 0.2, W * 0.42, H * 0.2 + W * 0.36], fill=TFL_BLUE)
-        d.text((W * 0.17, H * 0.2 + W * 0.05), "♿", font=font("bold", int(W * 0.2)), fill=(255, 255, 255))
+        wheelchair(d, W * 0.24, H * 0.2 + W * 0.18, W * 0.17)
         text_block(d, "Lifts to all platforms. Ask staff for help or use the help point.", W * 0.06, H * 0.52, W * 0.88, "bold", H * 0.04, (10, 10, 60), H * 0.25)
     elif kind == "trains":
         d.text((W * 0.06, H * 0.12), "First and last trains", font=font("round", int(H * 0.037)), fill=TFL_BLUE)
@@ -541,10 +581,19 @@ def sheets(manifest):
 
 if __name__ == "__main__":
     manifest = []
-    make("portrait", 768, 1164, 40, 1000, manifest)
-    make("land16", 1152, 758, 30, 2000, manifest)
-    make("land48", 1536, 756, 24, 3000, manifest)
-    make_info(manifest)
+    only = [a[7:].split(",") for a in sys.argv if a.startswith("--only=")]
+    only = only[0] if only else ["portrait", "land16", "land48", "info"]
+    if "portrait" in only:
+        make("portrait", 768, 1164, 40, 1000, manifest)
+    if "land16" in only:
+        make("land16", 1152, 758, 30, 2000, manifest)
+    if "land48" in only:
+        make("land48", 1536, 756, 24, 3000, manifest)
+    if "info" in only:
+        make_info(manifest)
+    if len(only) < 4:      # partial run: keep the entries of the formats not regenerated
+        old_m = json.load(open(os.path.join(OUT, "manifest.json")))
+        manifest = [e for e in old_m if e["format"] not in ("portrait" if "portrait" in only else "", "land16" if "land16" in only else "", "land48" if "land48" in only else "", "info" if "info" in only else "", "infoq" if "info" in only else "")] + manifest
     json.dump(manifest, open(os.path.join(OUT, "manifest.json"), "w"), indent=1)
     print("wrote", len(manifest), "posters to", OUT)
     if "--sheets" in sys.argv:

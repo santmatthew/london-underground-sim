@@ -300,6 +300,23 @@ func _hall(gl: Dictionary) -> void:
 	# floor furniture that lives by the walls: info totem, help point
 	_entrance_clutter(hall_room, r, gz, imp)
 	wall_node(hall_room, "W", PropKit.help_point_disc(), 0.6, 1.3, 0.95, 1.65, gz - 2.8)
+	# safety and information fittings on free wall: a defibrillator by the gateline, a leaflet rack beside the information frames
+	wall_prop(hall_room, "W", "defibrillator_cabinet", 0.45, 1.25, 0.9, 1.6, gz - 4.2)
+	if medium:
+		for side in ["E", "W"]:
+			if wall_prop(hall_room, side, "leaflet_rack", 0.55, 1.0, 0.8, 1.5, r[2] + 4.2) != null:
+				break
+		# planters (Underground in Bloom): inside the entrance, against a side wall
+		var n_pl := 0
+		for side2 in ["W", "E"]:
+			var zpl: float = r[2] + 2.4
+			while n_pl < (1 if imp < 2.2 else 2) and zpl < gz - 4.0:
+				var wp := wall_point(hall_room, side2, zpl, 0.0, 0.3)
+				if floor_prop(root, "planter", wp[0], wp[1], 0.6) != null:
+					n_pl += 1
+					zpl += 3.0
+				else:
+					zpl += 0.8
 	wall_node(hall_room, "E", PropKit.help_point_disc(), 0.6, 1.3, 0.95, 1.65, gz + 3.0)
 	# wall furniture on free wall: clock high on a paid-side wall, a fire cabinet
 	StationClocks.register(station, wall_prop(hall_room, "E", "clock", 0.6, 3.0, 2.6, 3.4, gz + 2.5))

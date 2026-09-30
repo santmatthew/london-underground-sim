@@ -159,7 +159,7 @@ func _draw() -> void:
 # ---------------------------------------------------------------------------------------------------------------------------------
 func _draw_diagram() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.965, 0.96, 0.945))
-	var w := clampf(zoom * 0.34, 3.0, 12.0)              # line width in pixels
+	var w := clampf(zoom * 0.34, 3.0, 12.0) * (1.9 if poster_mode else 1.0)     # line width in pixels (a printed wall map has bolder lines)
 	var gap := w * 1.02                                  # centre-to-centre distance of parallel lines
 	# river
 	if _dthames.size() > 1:
@@ -279,7 +279,7 @@ func _offset_polyline(pts: PackedVector2Array, off: float) -> PackedVector2Array
 
 func _diagram_label(s: Dictionary, p: Vector2, important: bool, w: float) -> Dictionary:
 	var i: int = s["idx"]
-	var fs := int(clampf(zoom * 0.55, 10.0, 20.0))
+	var fs := int(clampf(zoom * 0.55, 10.0, 20.0) * (1.9 if poster_mode else 1.0))
 	if important:
 		fs += 2
 	var txt: String = s["name"]

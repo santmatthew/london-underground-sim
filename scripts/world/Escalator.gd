@@ -167,19 +167,20 @@ const PANEL_W := 0.419
 const PANEL_H := 0.572
 const PANEL_PITCH := 0.69
 const PANEL_ABOVE := 1.35
-const POSTER_VARIANTS := 8
+const POSTER_VARIANTS := 10
 
 
 func _poster_band(hw: float) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(rise * 100.0) * 31 + lanes.size() * 7 + 5
+	var picker := PosterKit.Picker.new(rng, POSTER_VARIANTS)
 	var n := int((run - 1.6) / PANEL_PITCH)
 	for side in [-1.0, 1.0]:
 		var u_dir: float = -side          # the viewer's right-hand direction along x when facing this wall
 		var zw: float = side * hw
 		var zf: float = zw - side * 0.011     # frame centre (0.022 thick, on the shaft side of the wall)
 		var zp: float = zw - side * 0.0225    # poster face
-		var last := -1
+		var last := ""
 		for i in n:
 			var xc: float = PLATE + 0.8 + (float(i) + 0.5) * PANEL_PITCH
 			var yb: float = slope_y(xc) + PANEL_ABOVE
@@ -187,11 +188,9 @@ func _poster_band(hw: float) -> void:
 			kit.box("metal", Vector3(xc, yc, zf), Vector3(PANEL_W, PANEL_H, 0.022), floor_y)
 			var mat := "flat:#c9cbc8"                                    # blank backing card
 			if rng.randf() < 0.9:
-				var v := rng.randi() % POSTER_VARIANTS
-				if v == last:
-					v = (v + 1 + rng.randi() % (POSTER_VARIANTS - 1)) % POSTER_VARIANTS
-				last = v
-				mat = "poster:%d" % v
+				last = picker.pick("portrait", last)
+				if last != "":
+					mat = "poster:" + last
 			var l: float = xc - u_dir * (PANEL_W - 0.032) * 0.5
 			var r: float = xc + u_dir * (PANEL_W - 0.032) * 0.5
 			var top := yc + (PANEL_H - 0.032) * 0.5
@@ -298,7 +297,7 @@ func _finish() -> void:
 			tm.uv1_scale = Vector3(1.0 / float(k.get_slice("@", 1)), 1.0 / float(k.get_slice("@", 2)), 1.0)
 			mats[k] = tm
 		elif k.begins_with("poster:"):
-			mats[k] = StationProps.band_poster_material(int(k.substr(7)), PANEL_W - 0.032, PANEL_H - 0.032)
+			mats[k] = PosterKit._material(k.substr(7), PANEL_W - 0.032, PANEL_H - 0.032)
 		else:
 			mats[k] = Mats.get_mat(k)
 	var mi := MeshInstance3D.new()
