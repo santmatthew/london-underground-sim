@@ -267,6 +267,18 @@ func _refresh_scores() -> void:
 func _show_menu() -> void:
 	_refresh_scores()
 	state = State.MENU
+	# nothing from a journey may stay on top of the main menu: the pause panel (Give up), the briefing, the map overlay
+	paused = false
+	if _pause:
+		_pause.queue_free()
+		_pause = null
+	if _brief:
+		_brief.queue_free()
+		_brief = null
+	if map_open:
+		map_open = false
+		map.visible = false
+	player.frozen = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	player.enabled = false
 	_menu.visible = true
