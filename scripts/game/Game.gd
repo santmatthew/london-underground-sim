@@ -546,6 +546,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_H:
 				if state == State.PLAYING:
 					_toggle_hint()
+			KEY_G:
+				if map_open:
+					map.toggle_mode()          # tube map: diagram <-> geographic
 			KEY_F3:
 				hud.toggle_perf()
 			KEY_ESCAPE:
