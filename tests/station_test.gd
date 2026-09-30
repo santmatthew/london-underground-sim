@@ -23,6 +23,11 @@ func _ready() -> void:
 	var pos := Vector3.ZERO
 	var look := Vector3.ZERO
 	var r: Array = plan.hall["rect"]
+	var cam_a := ""
+	var look_a := ""
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--cam="): cam_a = a.substr(6)
+		if a.begins_with("--look="): look_a = a.substr(7)
 	match view:
 		"street":
 			var d: Dictionary = plan.street_doors[0]
@@ -30,7 +35,11 @@ func _ready() -> void:
 		"hall":
 			pos = Vector3(0, 1.65, plan.gates["z"] - 5.0); look = Vector3(0, 1.3, plan.gates["z"] + 6)
 		"exits":
-			pos = Vector3(0, 1.65, gz_hall(plan) - 1.5); look = Vector3(0, 2.6, r[2] + 0.5)
+			# the first street door, seen from inside its hall (authored halls have doors off-centre)
+			var sd0: Dictionary = plan.street_doors[0]
+			var hr0: Array = plan.hall_rect_for_door(sd0)
+			var dcx: float = sd0["c"]
+			pos = Vector3(dcx + 3.0, 1.65, hr0[2] + 7.0); look = Vector3(dcx, 2.0, hr0[2])
 		"hall2":
 			pos = Vector3(r[0] + 2, 1.65, r[2] + 2); look = Vector3(0, 1.3, plan.gates["z"] + 4)
 		"gates":
@@ -81,6 +90,11 @@ func _ready() -> void:
 		st.trains._process(0.6)
 		st.trains._process(0.1)
 		pos = Vector3(fc["x0"] + 20, fc["y"] + 1.65, fc["edge_z"] - fc["side"] * 1.2); look = Vector3(fc["x0"] + 60, fc["y"] + 1.2, fc["edge_z"] + fc["side"] * 3.0)
+	if cam_a != "" and look_a != "":
+		var cp := cam_a.split(",")
+		var lp := look_a.split(",")
+		pos = Vector3(float(cp[0]), float(cp[1]), float(cp[2]))
+		look = Vector3(float(lp[0]), float(lp[1]), float(lp[2]))
 	cam.position = pos
 	cam.look_at(look)
 	for i in 20: await get_tree().process_frame

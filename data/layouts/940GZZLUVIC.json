@@ -1,0 +1,152 @@
+{
+ "note": "Victoria, from TfL layout diagram V047-02 (topology; dimensions estimated): Victoria line ticket hall (A, F), D&C ticket hall (B, C), interchange concourse, D&C platforms 1-2 at 6.4 m, Victoria line platforms 3-4 at 17.9 m",
+ "rooms": [
+  {
+   "id": "hall_vl",
+   "kind": "hall",
+   "rect": [
+    -12,
+    12,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 12
+   },
+   "doors": [
+    {
+     "ref": "A",
+     "name": "Victoria Station",
+     "c": -8.5
+    },
+    {
+     "ref": "F",
+     "name": "Victoria Station",
+     "c": 8.5
+    }
+   ]
+  },
+  {
+   "id": "hall_dc",
+   "kind": "hall",
+   "rect": [
+    -36,
+    -20,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 8
+   },
+   "doors": [
+    {
+     "ref": "B",
+     "c": -32.5
+    },
+    {
+     "ref": "C",
+     "c": -23.5
+    }
+   ]
+  },
+  {
+   "id": "conc",
+   "kind": "landing",
+   "size": [
+    44,
+    22
+   ],
+   "depth": 6.4
+  },
+  {
+   "id": "vl_low",
+   "kind": "landing",
+   "size": [
+    36,
+    16
+   ],
+   "depth": 17.9
+  }
+ ],
+ "esc": [
+  {
+   "id": "conc_0",
+   "from": "hall_vl",
+   "to": "conc",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": -14.0
+  },
+  {
+   "id": "conc_1",
+   "from": "hall_dc",
+   "to": "conc",
+   "dir": "S",
+   "c": -28.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true
+  },
+  {
+   "id": "vl_low_0",
+   "from": "conc",
+   "to": "vl_low",
+   "dir": "S",
+   "c": -14.0,
+   "lanes": [
+    1,
+    -1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "conc",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "ss",
+   "faces": [
+    [
+     "ss:Eastbound",
+     0
+    ],
+    [
+     "ss:Westbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "vl_low",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "victoria",
+   "faces": [
+    [
+     "victoria:Northbound",
+     0
+    ],
+    [
+     "victoria:Southbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

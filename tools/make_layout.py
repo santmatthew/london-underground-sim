@@ -5,7 +5,7 @@ west of all modules, so shafts never cross platforms.  Writes data/layouts/<napt
 
 usage (as a module):  from make_layout import make ; make("940GZZLUTCR", note, halls=[...], landings=[...], modules=[...])
   halls:    [{"id","x0","x1","gates","doors":[{"ref"?, "name"?}...]}]   (first hall = primary; doors are spread evenly)
-  landings: [{"id","depth","w","d","parents":[{"from","lanes"}...]}]      depth = metres below the ticket-hall floor
+  landings: [{"id","depth","w","d","parents":[{"from","lanes","stairs"?}...]}]      depth = metres below the ticket-hall floor
   modules:  [{"attach","group","faces":[[pid,face],..],"lane":offset from the landing centre,"corr":metres}]
 """
 import json, os
@@ -35,6 +35,8 @@ def make(naptan, note, halls, landings, modules):
         for pi, par in enumerate(L["parents"]):
             c = info[par["from"]]["cx"]
             e = {"id": "%s_%d" % (L["id"], pi), "from": par["from"], "to": L["id"], "dir": "S", "c": c, "lanes": par["lanes"]}
+            if par.get("stairs"):
+                e["stairs"] = True
             if pi == 0:
                 e["to_off"] = round(cx - c, 1)
             esc.append(e)
