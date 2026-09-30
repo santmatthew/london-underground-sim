@@ -17,6 +17,11 @@ func _ready() -> void:
 	add_child(st)
 	st.build(plan)
 	print("plan ms ", t1 - t0, " build ms ", Time.get_ticks_msec() - t1, " tris ", st.stats["tris"], " lights ", st.stats["lights"], " levels ", plan.escs.size(), " modules ", plan.modules.size())
+	var props_root := st.get_node_or_null("Props")
+	if props_root:
+		for c in props_root.get_children():
+			if str(c.name).begins_with("Shop_") or str(c.name).begins_with("@Node3D@") and c.get_child_count() > 0 and str(c.get_child(0).name) == "Mesh":
+				print("shop ", c.name, " at ", (c as Node3D).position, " yaw ", rad_to_deg((c as Node3D).rotation.y))
 	var cam := Camera3D.new()
 	add_child(cam)
 	cam.fov = 75
@@ -46,6 +51,15 @@ func _ready() -> void:
 			pos = Vector3(0, 1.65, plan.gates["z"] + 5.0); look = Vector3(0, 1.2, plan.gates["z"] - 4)
 		"esc":
 			pos = Vector3(0, 1.65, r[3] - 5.0); look = Vector3(0, -3.0, r[3] + 12)
+		"shaft", "shaft_up":
+			# standing on an escalator lane (--ei=escalator index, --lane=lane index) looking down ("shaft") or, from the foot, up the slope ("shaft_up")
+			var ei := int(sys_arg("ei", "0"))
+			var e: Dictionary = plan.escs[ei]
+			var lz := plan.esc_lane_z(ei, int(sys_arg("lane", "0")))
+			if view == "shaft":
+				pos = plan.esc_point(ei, Vector3(float(sys_arg("x", "0.5")), 1.65, lz)); look = plan.esc_point(ei, Vector3(e["length"], -e["rise"] + 0.9, lz))
+			else:
+				pos = plan.esc_point(ei, Vector3(e["length"] - 0.8, -e["rise"] + 1.65, lz)); look = plan.esc_point(ei, Vector3(0.0, 1.2, lz))
 		"landing":
 			var l: Dictionary = plan.rooms[plan.rooms.size() - 1]
 			for rm in plan.rooms:
@@ -107,6 +121,8 @@ func _ready() -> void:
 	cam.position = pos
 	cam.look_at(look)
 	for i in 20: await get_tree().process_frame
+	var rs := RenderingServer
+	print("render: draw calls %d, primitives %d, objects %d" % [rs.get_rendering_info(rs.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), rs.get_rendering_info(rs.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME), rs.get_rendering_info(rs.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)])
 	get_viewport().get_texture().get_image().save_png("res://build/shot_station_%s.png" % view)
 	get_tree().quit()
 

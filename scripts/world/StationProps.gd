@@ -49,6 +49,18 @@ static func poster_material(index: int) -> StandardMaterial3D:
 	return m
 
 
+## a poster material for a quad whose UVs are in metres (MeshKit): the texture is scaled to the quad's real size
+static func band_poster_material(index: int, w: float, h: float) -> StandardMaterial3D:
+	var key := "band_%d_%.3f_%.3f" % [index, w, h]
+	if _poster_mats.has(key):
+		return _poster_mats[key]
+	var m := poster_material(index).duplicate() as StandardMaterial3D
+	m.uv1_scale = Vector3(1.0 / w, 1.0 / h, 1.0)
+	m.emission_energy_multiplier = 0.3
+	_poster_mats[key] = m
+	return m
+
+
 static func put_poster(parent: Node3D, kind: String, wall_pos: Vector3, normal: Vector3, rng: RandomNumberGenerator, bottom := -1.0) -> Node3D:
 	var name := "poster_frame_6sheet" if kind == "6" else ("poster_frame_4sheet" if kind == "4" else "poster_frame_48sheet")
 	var n := put(parent, name, wall_pos + Vector3(0, bottom if bottom >= 0.0 else (0.45 if kind == "6" else 0.5), 0), normal)

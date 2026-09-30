@@ -11,7 +11,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import importlib
 import propcore
-for m in ('props_gates', 'props_furniture', 'props_wall', 'props_adverts', 'props_retail'):
+for m in ('props_gates', 'props_furniture', 'props_wall', 'props_adverts', 'props_retail',
+          'props_hall_a', 'props_hall_b', 'props_plat_a', 'props_plat_b', 'props_ads', 'props_shop'):
     try:
         importlib.import_module(m)
     except ModuleNotFoundError as e:

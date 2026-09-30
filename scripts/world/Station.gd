@@ -79,6 +79,10 @@ func build_async(p: StationPlan, use_async := true) -> void:
 	_t0 = _t("gates+doors", _t0)
 	StationSigns.place(self)
 	_t0 = _t("signs", _t0)
+	StationDressing.place(self)
+	_t0 = _t("props", _t0)
+	StationDecals.place(self)
+	_t0 = _t("decals", _t0)
 	await _yield()
 	trains = TrainService.new()
 	trains.name = "Trains"

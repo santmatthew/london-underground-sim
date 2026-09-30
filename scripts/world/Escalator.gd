@@ -111,6 +111,7 @@ func build(p_rise: float, p_lanes: Array, p_wall_mat := "tile_white", p_stairs :
 	for bi in lanes.size() + 1:
 		var zb := (bi - lanes.size() * 0.5) * PITCH
 		_balustrade(zb)
+	_poster_band(hw)
 	_collision()
 	_finish()
 
@@ -156,6 +157,45 @@ func _stairs_collision(hw: float) -> void:
 	_cols.append([Vector3(PLATE + run + PLATE * 0.5, -rise - 0.5, 0.0), Vector3(PLATE, 1.0, hw * 2.0), null])
 	for sgn in [-1.0, 1.0]:
 		_guard_slab(sgn * (hw - 0.05), 0.12)
+
+
+## The escalator poster band: portrait 419 x 572 mm panels (display area 387 x 540 mm) hung PLUMB on both shaft walls, stepping down with the
+## slope (0.69 m along, 0.40 m down between frames: a 30 degree slope), their bottom edge about 1.35 m above the tread line. Unused slots hold a
+## blank backing card. (Measured from photographs of London Underground escalators; see build/refs_dress/passages/SPEC.md 1.5.)
+const PANEL_W := 0.419
+const PANEL_H := 0.572
+const PANEL_PITCH := 0.69
+const PANEL_ABOVE := 1.35
+const POSTER_VARIANTS := 8
+
+
+func _poster_band(hw: float) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(rise * 100.0) * 31 + lanes.size() * 7 + 5
+	var n := int((run - 1.6) / PANEL_PITCH)
+	for side in [-1.0, 1.0]:
+		var u_dir: float = -side          # the viewer's right-hand direction along x when facing this wall
+		var zw: float = side * hw
+		var zf: float = zw - side * 0.011     # frame centre (0.022 thick, on the shaft side of the wall)
+		var zp: float = zw - side * 0.0225    # poster face
+		var last := -1
+		for i in n:
+			var xc: float = PLATE + 0.8 + (float(i) + 0.5) * PANEL_PITCH
+			var yb: float = slope_y(xc) + PANEL_ABOVE
+			var yc := yb + PANEL_H * 0.5
+			kit.box("metal", Vector3(xc, yc, zf), Vector3(PANEL_W, PANEL_H, 0.022), floor_y)
+			var mat := "flat:#c9cbc8"                                    # blank backing card
+			if rng.randf() < 0.9:
+				var v := rng.randi() % POSTER_VARIANTS
+				if v == last:
+					v = (v + 1 + rng.randi() % (POSTER_VARIANTS - 1)) % POSTER_VARIANTS
+				last = v
+				mat = "poster:%d" % v
+			var l: float = xc - u_dir * (PANEL_W - 0.032) * 0.5
+			var r: float = xc + u_dir * (PANEL_W - 0.032) * 0.5
+			var top := yc + (PANEL_H - 0.032) * 0.5
+			var bot := yc - (PANEL_H - 0.032) * 0.5
+			kit.quad(mat, Vector3(l, top, zp), Vector3(l, bot, zp), Vector3(r, bot, zp), Vector3(r, top, zp), floor_y, Vector2.ZERO, 0.0, true)
 
 
 func _balustrade(z: float) -> void:
@@ -215,6 +255,8 @@ func _finish() -> void:
 			mats[k] = m
 		elif k.begins_with("flat:"):
 			mats[k] = Mats.flat(Color.html(k.substr(5)), 0.4)
+		elif k.begins_with("poster:"):
+			mats[k] = StationProps.band_poster_material(int(k.substr(7)), PANEL_W - 0.032, PANEL_H - 0.032)
 		else:
 			mats[k] = Mats.get_mat(k)
 	var mi := MeshInstance3D.new()
