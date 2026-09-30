@@ -24,7 +24,8 @@ HUBS=(
   "Bond Street:hall_unpaid"
   "Canary Wharf:hall_unpaid"
 )
-pids=()
+JOBS=${JOBS:-12}          # at most this many Godot instances at once (dozens in parallel made an engine crash in ~1 of 47 runs)
+running=0
 for h in "${HUBS[@]}"; do
   st="${h%%:*}"; halls="${h#*:}"; slug=$(echo "$st" | tr -c 'A-Za-z0-9\n' '_')
   for from in $halls reverse; do
@@ -32,10 +33,11 @@ for h in "${HUBS[@]}"; do
     [ "$from" = reverse ] && args+=(--reverse) || args+=(--from=$from)
     log="build/hubwalks/${slug}__${from}.log"
     ( GTEST_TIMEOUT=${GTEST_TIMEOUT:-1200} GTEST_LINES=200 GTEST_ENGINE_ARGS="--fixed-fps 60" tools/gtest.sh walkbot_test "${args[@]}" > "$log" 2>&1 ) &
-    pids+=($!)
+    running=$((running+1))
+    if [ "$running" -ge "$JOBS" ]; then wait -n; running=$((running-1)); fi
   done
 done
-wait "${pids[@]}"
+wait
 for log in build/hubwalks/*.log; do
   line=$(grep -a "routes, " "$log" | tail -1)
   echo "$(basename "$log" .log): ${line:-NO RESULT (see log)}"
