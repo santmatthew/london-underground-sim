@@ -88,6 +88,11 @@ static func get_mat(name: String) -> Material:
 			s.albedo_color = Color(0.93, 0.74, 0.05)
 			s.roughness = 0.55
 			m = s
+		"white_paint":
+			var sw := StandardMaterial3D.new()
+			sw.albedo_color = Color(0.88, 0.88, 0.86)
+			sw.roughness = 0.6
+			m = sw
 		"black":
 			var s2 := StandardMaterial3D.new()
 			s2.albedo_color = Color(0.03, 0.03, 0.035)

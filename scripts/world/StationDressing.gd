@@ -298,8 +298,9 @@ func _hall(gl: Dictionary) -> void:
 		_retail(hall_room, r, gz, imp)
 	_ticket_machines(hall_room, r, gz, 2 if not medium else (3 if imp < 2.2 else 4))
 	# floor furniture that lives by the walls: info totem, help point
-	floor_prop(root, "info_totem", Vector3(r[1] - 5.0, 0, r[2] + 3.6), Vector3(0, 0, 1))
-	floor_prop(root, "help_point", Vector3(r[0] + 0.3, 0, gz + 4.0), Vector3(1, 0, 0))
+	_entrance_clutter(hall_room, r, gz, imp)
+	wall_node(hall_room, "W", PropKit.help_point_disc(), 0.6, 1.3, 0.95, 1.65, gz - 2.8)
+	wall_node(hall_room, "E", PropKit.help_point_disc(), 0.6, 1.3, 0.95, 1.65, gz + 3.0)
 	# wall furniture on free wall: clock high on a paid-side wall, a fire cabinet
 	wall_prop(hall_room, "E", "clock", 0.6, 3.0, 2.6, 3.4, gz + 2.5)
 	wall_prop(hall_room, "E", "fire_cabinet", 0.6, 0.3, 0.3, 1.3, gz + 6.0)
@@ -338,25 +339,68 @@ func _room_for_rect(r: Array) -> Dictionary:
 	return plan.rooms[0]
 
 
-## a run of wall-bay ticket machines on the unpaid side (real halls: machines are set in wall bays, never free-standing)
+## ticket machines in wall bays on the unpaid side (real halls: machines are set in a wall bay under a 'Tickets' sign, never free-standing):
+## 2 machines in small halls, 3 in medium, 4-5 in big ones, as one bay or two
 func _ticket_machines(rm: Dictionary, r: Array, gz: float, n: int) -> void:
+	var bays: Array = []
+	if n <= 2:
+		bays = [[1, 1]]
+	elif n == 3:
+		bays = [[2, 1]]
+	else:
+		bays = [[2, 1], [2, 0]]
+	for bay in bays:
+		var placed := false
+		for side in ["W", "E"]:
+			if placed:
+				break
+			var node := PropKit.ticket_bay(bay[0], bay[1])
+			var w: float = node.get_meta("width")
+			for iv in wall_free(rm, side, 0.0, 2.4):
+				var z0: float = maxf(iv[0], r[2] + 1.8) + w * 0.5
+				var z1: float = minf(iv[1], gz - 2.5) - w * 0.5
+				var z := z0
+				while z <= z1 and not placed:
+					var wp := wall_point(rm, side, z, 0.0, 0.0)
+					if floor_node(root, node, wp[0], wp[1], node.get_meta("fp")["h"], node.get_meta("fp")["c"], 0.9):
+						wall_take(rm, side, z - w * 0.5 - 0.1, z + w * 0.5 + 0.1, 0.0, 2.4)
+						placed = true
+					else:
+						z += 0.5
+				if placed:
+					break
+			if not placed and side == "E":
+				node.free()
+
+
+## information and newspaper stands crowded near the entrance (real small halls: 3-5 grey poster stands, a blue newspaper stand or two)
+func _entrance_clutter(rm: Dictionary, r: Array, gz: float, imp: float) -> void:
+	var n_stands := 4 if imp < 1.2 else (3 if imp < 2.2 else 2)
 	var placed := 0
 	for side in ["W", "E"]:
-		var free: Array = wall_free(rm, side, 0.0, 2.2)
-		for iv in free:
-			var z0: float = maxf(iv[0], r[2] + 3.0)
-			var z1: float = minf(iv[1], gz - 3.2)
-			var z: float = z0 + 0.6
-			while placed < n and z + 0.5 < z1:
-				var wp := wall_point(rm, side, z, 0.0, 0.32)
-				if floor_prop(root, "ticket_machine", wp[0], wp[1]) != null:
-					placed += 1
-					wall_take(rm, side, z - 0.55, z + 0.55, 0.0, 2.4)
-					z += 1.05
-				else:
-					z += 0.5
-		if placed >= n:
-			return
+		if placed >= n_stands:
+			break
+		var z: float = r[2] + 1.6
+		while placed < n_stands and z < minf(gz - 3.0, r[2] + 9.0):
+			var node := PropKit.poster_stand(picker.pick("info"))
+			var wp := wall_point(rm, side, z, 0.0, 0.35)
+			if kit_prop(root, node, wp[0], wp[1], 0.55):
+				placed += 1
+				z += 1.1
+			else:
+				z += 0.45
+	for side in ["E", "W"]:
+		var z2: float = r[2] + 1.4
+		var done := false
+		while not done and z2 < minf(gz - 3.0, r[2] + 8.0):
+			var ns := PropKit.newspaper_stand()
+			var wp2 := wall_point(rm, side, z2, 0.0, 0.25)
+			if kit_prop(root, ns, wp2[0], wp2[1], 0.5):
+				done = true
+			else:
+				z2 += 0.5
+		if done:
+			break
 
 
 ## retail units against the side walls (real halls: shops stand against a wall by the gateline or the entrance, on the unpaid side; big
@@ -396,9 +440,9 @@ func _retail(rm: Dictionary, r: Array, gz: float, imp: float) -> void:
 
 
 ## place a procedural node (origin on its wall/back edge, front facing -Z) if its footprint is clear; half/centre are in the node's own frame
-func floor_node(parent: Node3D, n: Node3D, pos: Vector3, dir: Vector3, half: Vector2, centre: Vector2, margin := ROUTE_MARGIN) -> bool:
+func floor_node(parent: Node3D, n: Node3D, pos: Vector3, dir: Vector3, half: Vector2, centre: Vector2, margin := ROUTE_MARGIN, map_off := Vector3.ZERO) -> bool:
 	var yaw := atan2(-dir.x, -dir.z)
-	var world_c := pos + Basis(Vector3.UP, yaw) * Vector3(centre.x, 0, centre.y)
+	var world_c := pos + map_off + Basis(Vector3.UP, yaw) * Vector3(centre.x, 0, centre.y)
 	if not map.is_clear(world_c, half, yaw, margin):
 		stats["refused"] += 1
 		return false
@@ -432,7 +476,8 @@ func _platform(mi: int) -> void:
 	for fi in faces.size():
 		var s := 1.0 if fi == 0 else -1.0
 		_far_wall(kit, s, zfar, L)
-		_platform_wall(kit, pm, s, zwall, L, ox)
+		if not pm.box:
+			_platform_wall(kit, pm, s, zwall, L, ox)       # (island box halls have no platform-side wall: nothing to hang on)
 		_platform_furniture(holder, pm, s, zwall, zedge, zfar, L, ox)
 	var mi_node := PosterKit.finish(kit, holder, "Posters")
 	if mi_node != null:
@@ -531,34 +576,106 @@ func _platform_wall(kit: MeshKit, pm: PlatformModule, s: float, zwall: float, L:
 
 func _platform_furniture(holder: Node3D, pm: PlatformModule, s: float, zwall: float, zedge: float, zfar: float, L: float, ox: Array) -> void:
 	var off := pm.position
-	# benches against the platform-side wall, away from the cross-passages
-	var n_b := clampi(int(L / 34.0), 2, 4)
-	for k in n_b:
-		var x := -L * 0.5 + (k + 0.5) * L / n_b + rng.randf_range(-2.0, 2.0)
-		if StationProps._near(x, ox, 4.0):
-			x += 6.0
-		floor_prop(holder, "bench_platform", Vector3(x, 0, s * (zwall + 0.30)), Vector3(0, 0, s), 0.5, off)
-	# a bin by an exit end, help points at both ends
-	floor_prop(holder, "bin", Vector3(-L * 0.5 + 12.0, 0, s * (zwall + 0.3)), Vector3(0, 0, s), 0.4, off)
-	floor_prop(holder, "help_point", Vector3(-L * 0.5 + 3.0, 0, s * (zwall + 0.25)), Vector3(0, 0, s), 0.4, off)
-	floor_prop(holder, "help_point", Vector3(L * 0.5 - 3.0, 0, s * (zwall + 0.25)), Vector3(0, 0, s), 0.4, off)
-	for ex in [-L * 0.5 + 1.0, L * 0.5 - 1.0]:
-		StationProps.put(holder, "platform_edge_marker", Vector3(ex, 0, s * (zedge - 0.3)), Vector3(0, 0, s))
-	# cameras, clocks and speakers on the platform wall
-	var x3 := -L * 0.5 + 10.0
-	while x3 < L * 0.5 - 6.0:
-		StationProps.put(holder, "cctv_dome", Vector3(x3, 2.15, s * (zwall + 0.1)), Vector3(0, 0, s))
-		x3 += 26.0
+	var seps: Array = StationSigns.far_wall_separators(L)
+	var deep := plan.kind == "deep"
+	# benches go beneath the wall roundels (TfL design rule), away from the cross-passages; deep-tube platforms carry the perforated-steel
+	# beam seat, open-air and sub-surface ones the timber-slat bench with yellow arms
+	var n_b := clampi(int(L / 34.0), 2, 4) if deep else clampi(int(L / 26.0), 3, 6)
+	var spots: Array = []
+	if not pm.box:
+		for k in seps.size():
+			if k % 2 == 1:
+				spots.append(seps[k] + 1.5)
+	var cand: Array = []
+	for x in spots:
+		if not StationProps._near(x, ox, 4.5):
+			cand.append(x)
+	# top up with evenly spaced spots when there are too few roundels
+	var extra := -L * 0.5 + 8.0
+	while cand.size() < n_b and extra < L * 0.5 - 6.0:
+		if not StationProps._near(extra, ox, 4.5) and not StationProps._near(extra, cand, 5.0):
+			cand.append(extra)
+		extra += 7.0
+	cand.shuffle()
+	var placed_b := 0
+	for x in cand:
+		if placed_b >= n_b:
+			break
+		var bench := PropKit.bench_toro() if deep else PropKit.bench_timber()
+		if kit_prop(holder, bench, Vector3(x, 0, s * (zwall + 0.36)), Vector3(0, 0, s), 0.45, off):
+			placed_b += 1
+	# a clear-sack bin by the exit end of the platform (green = recycling) and another mid-platform
+	kit_prop(holder, PropKit.bin_hoop(false), Vector3(-L * 0.5 + 11.0, 0, s * (zwall + 0.45)), Vector3(0, 0, s), 0.4, off)
+	if L > 60.0:
+		kit_prop(holder, PropKit.bin_hoop(true), Vector3(L * 0.5 - 12.0, 0, s * (zwall + 0.45)), Vector3(0, 0, s), 0.4, off)
+	# help points at both ends, on the platform wall
+	for ex in [-L * 0.5 + 3.0, L * 0.5 - 3.0]:
+		var hp := PropKit.help_point_disc()
+		holder.add_child(hp)
+		hp.position = Vector3(ex, 1.3, s * (zwall + 0.0))
+		hp.rotation.y = atan2(0.0, -s)
+		stats["placed"] += 1
+	for ex2 in [-L * 0.5 + 1.0, L * 0.5 - 1.0]:
+		StationProps.put(holder, "platform_edge_marker", Vector3(ex2, 0, s * (zedge - 0.3)), Vector3(0, 0, s))
+	# ceiling-hung bracket clusters (two black ball loudspeakers + cameras) every ~18 m over the platform centre line
+	var pz := s * (zwall + (zedge - zwall) * 0.5)
+	var ceil_y := pm.ceiling_at(pz)
+	var cx := -L * 0.5 + 10.0
+	while cx < L * 0.5 - 6.0:
+		var cc := PropKit.crown_cluster()
+		holder.add_child(cc)
+		cc.position = Vector3(cx, ceil_y, pz)
+		cc.rotation.y = 0.0 if s > 0.0 else PI
+		cx += 18.0
+		stats["placed"] += 1
+	# clocks on the platform wall
 	StationProps.put(holder, "clock", Vector3(-L * 0.25, 2.1, s * (zwall + 0.03)), Vector3(0, 0, s))
 	StationProps.put(holder, "clock", Vector3(L * 0.25, 2.1, s * (zwall + 0.03)), Vector3(0, 0, s))
-	var x4 := -L * 0.5 + 18.0
-	while x4 < L * 0.5 - 8.0:
-		StationProps.put(holder, "pa_speaker", Vector3(x4, 2.3, s * (zwall + 0.1)), Vector3(0, 0, s))
-		x4 += 20.0
+	# "MIND THE GAP" stencilled in yellow on the edge strip, every ~14 m (letters about 0.13 m tall, reading from the platform)
+	var gx := -L * 0.5 + 9.0
+	while gx < L * 0.5 - 4.0:
+		var lab := Label3D.new()
+		lab.text = "MIND THE GAP"
+		lab.font = load("res://assets/fonts/Barlow-Bold.ttf")
+		lab.font_size = 96
+		lab.pixel_size = 0.0019
+		lab.modulate = Color(0.93, 0.76, 0.05)
+		lab.shaded = false
+		lab.double_sided = false
+		lab.alpha_cut = Label3D.ALPHA_CUT_DISCARD
+		lab.position = Vector3(gx, 0.012, s * (zedge - 0.25))
+		lab.rotation = Vector3(-PI * 0.5, PI if s > 0.0 else 0.0, 0.0)
+		lab.visibility_range_end = 30.0
+		holder.add_child(lab)
+		gx += 14.0
 	# tunnel-mouth signals
 	var ztrack := zedge + PlatformModule.TRACK_TO_EDGE
 	StationProps.put(holder, "signal_lamp", Vector3(L * 0.5 + 18.0, PlatformModule.BED_Y, s * (ztrack + 1.35)), Vector3(0, 0, -s))
 	StationProps.put(holder, "signal_lamp", Vector3(-L * 0.5 - 18.0, PlatformModule.BED_Y, s * (ztrack + 1.35)), Vector3(0, 0, -s))
+
+
+## place a PropKit node (footprint from its "fp" meta)
+func kit_prop(parent: Node3D, n: Node3D, pos: Vector3, dir: Vector3, margin := ROUTE_MARGIN, map_off := Vector3.ZERO) -> bool:
+	var fp: Dictionary = n.get_meta("fp", {"c": Vector2.ZERO, "h": Vector2(0.3, 0.3)})
+	if floor_node(parent, n, pos, dir, fp["h"], fp["c"], margin, map_off):
+		return true
+	n.free()
+	return false
+
+
+## a wall-mounted PropKit node (Help Point ...): takes `width` metres of wall near `near`
+func wall_node(rm: Dictionary, side: String, n: Node3D, width: float, y_origin: float, y0: float, y1: float, near := NAN) -> bool:
+	var t := wall_slot(rm, side, width, y0, y1, near)
+	if is_nan(t):
+		n.free()
+		stats["refused"] += 1
+		return false
+	var wp := wall_point(rm, side, t, float(rm["y"]) + y_origin, 0.0)
+	root.add_child(n)
+	n.position = wp[0]
+	n.rotation.y = atan2(-wp[1].x, -wp[1].z)
+	stats["placed"] += 1
+	return true
 
 
 ## a wall-mounted prop: origin on the wall surface, front facing `dir` (into the room); no route test (it is off the floor)

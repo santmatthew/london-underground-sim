@@ -80,7 +80,7 @@ func build(p_spec: Dictionary) -> void:
 		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 
 	var mats := {}
-	for n in ["tile_white", "tile_cream", "panel_white", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "black", "tunnel_dark", "light_emissive", "glass_roof"]:
+	for n in ["tile_white", "tile_cream", "panel_white", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof"]:
 		mats[n] = Mats.get_mat(n)
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
@@ -124,14 +124,16 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	var zlo := minf(s * zwall, s * zedge)
 	var zhi := maxf(s * zwall, s * zedge)
 	kit.horiz("floor_platform", x0, x1, zlo, zhi, 0.0, true, 0.0)
-	# tactile strip along the edge (0.6 m)
-	var tz0 := minf(s * (zedge - 0.6), s * zedge)
-	var tz1 := maxf(s * (zedge - 0.6), s * zedge)
+	# edge stack, from the track: white coping line, a dark ribbed strip with the yellow line on its inner half (real deep-tube platforms)
+	var tz0 := minf(s * (zedge - 0.50), s * (zedge - 0.06))
+	var tz1 := maxf(s * (zedge - 0.50), s * (zedge - 0.06))
 	kit.horiz("tactile", x0, x1, tz0, tz1, 0.004, true, 0.0)
-	# yellow safety line 5 cm wide inboard of the tactile strip
-	var lz0 := minf(s * (zedge - 0.10), s * (zedge - 0.0))
-	var lz1 := maxf(s * (zedge - 0.10), s * (zedge - 0.0))
-	kit.horiz("yellow_paint", x0, x1, lz0, lz1, 0.005, true, 0.0)
+	var wz0 := minf(s * (zedge - 0.06), s * zedge)
+	var wz1 := maxf(s * (zedge - 0.06), s * zedge)
+	kit.horiz("white_paint", x0, x1, wz0, wz1, 0.005, true, 0.0)
+	var lz0 := minf(s * (zedge - 0.42), s * (zedge - 0.32))
+	var lz1 := maxf(s * (zedge - 0.42), s * (zedge - 0.32))
+	kit.horiz("yellow_paint", x0, x1, lz0, lz1, 0.006, true, 0.0)
 	# platform front face toward the track (from y=0 down to bed)
 	if s > 0.0:
 		kit.wall("concrete", Vector3(x1, 0, s * zedge), Vector3(x0, 0, s * zedge), BED_Y, 0.0, BED_Y, false)

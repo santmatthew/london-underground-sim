@@ -20,8 +20,8 @@ func _ready() -> void:
 	var props_root := st.get_node_or_null("Props")
 	if props_root:
 		for c in props_root.get_children():
-			if str(c.name).begins_with("Shop_") or str(c.name).begins_with("@Node3D@") and c.get_child_count() > 0 and str(c.get_child(0).name) == "Mesh":
-				print("shop ", c.name, " at ", (c as Node3D).position, " yaw ", rad_to_deg((c as Node3D).rotation.y))
+			if str(c.name).begins_with("Shop_") or str(c.name).begins_with("TicketBay") or str(c.name).begins_with("PosterStand") or str(c.name).begins_with("NewspaperStand") or str(c.name).begins_with("HelpPoint"):
+				print("prop ", c.name, " at ", (c as Node3D).position, " yaw ", rad_to_deg((c as Node3D).rotation.y))
 	var cam := Camera3D.new()
 	add_child(cam)
 	cam.fov = 75
