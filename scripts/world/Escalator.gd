@@ -12,6 +12,7 @@ const PITCH := 1.5
 const CLEARANCE := 3.7
 const SPEED := 0.75               # m/s along the slope
 const BALUSTRADE := 0.28
+const TREAD_SEG := 6.0             # length of one tread collision box
 const GUARD_H := 3.4               # collision height of the balustrades: full shaft height, so nobody can stand on (or vault) a handrail
 
 var rise := 12.0
@@ -21,6 +22,7 @@ var length := 0.0                 # total plan length incl. plates
 var width := 0.0
 var kit := MeshKit.new()
 var _cols: Array = []
+var _slabs: Array = []            # convex guard slabs (PackedVector3Array each)
 var _bodies: Array = []           # [AnimatableBody3D, dir(+1 down/-1 up)]
 var wall_mat := "tile_white"
 var stairs := false             # fixed stairs instead of moving treads
@@ -153,10 +155,7 @@ func _stairs_collision(hw: float) -> void:
 	_cols.append([Vector3(PLATE * 0.5, -0.5, 0.0), Vector3(PLATE, 1.0, hw * 2.0), null])
 	_cols.append([Vector3(PLATE + run + PLATE * 0.5, -rise - 0.5, 0.0), Vector3(PLATE, 1.0, hw * 2.0), null])
 	for sgn in [-1.0, 1.0]:
-		var n := 8
-		for k in n:
-			var x := PLATE + run * (float(k) + 0.5) / n
-			_cols.append([Vector3(x, slope_y(x) + GUARD_H * 0.5, sgn * (hw - 0.05)), Vector3(run / n + 0.05, GUARD_H, 0.12), null])
+		_guard_slab(sgn * (hw - 0.05), 0.12)
 
 
 func _balustrade(z: float) -> void:
@@ -189,13 +188,20 @@ func _collision() -> void:
 	# balustrade / outer walls (vertical, full height so nobody clips into the shaft edge)
 	for bi in lanes.size() + 1:
 		var zb := (bi - lanes.size() * 0.5) * PITCH
-		# split into slope-following boxes
-		var n := 8
-		for k in n:
-			var x := PLATE + run * (float(k) + 0.5) / n
-			_cols.append([Vector3(x, slope_y(x) + GUARD_H * 0.5, zb), Vector3(run / n + 0.05, GUARD_H, BALUSTRADE), null])
+		_guard_slab(zb, BALUSTRADE)
 		_cols.append([Vector3(PLATE * 0.5, GUARD_H * 0.5, zb), Vector3(PLATE, GUARD_H, BALUSTRADE), null])
 		_cols.append([Vector3(PLATE + run + PLATE * 0.5, -rise + GUARD_H * 0.5, zb), Vector3(PLATE, GUARD_H, BALUSTRADE), null])
+
+
+## a wall along the slope: a parallelogram prism whose lower edge is exactly the tread line and whose height is GUARD_H
+## (axis-aligned boxes left a gap under the downhill end of each box, wide enough to walk through on a very long escalator)
+func _guard_slab(z: float, thick: float) -> void:
+	var pts := PackedVector3Array()
+	for zz in [z - thick * 0.5, z + thick * 0.5]:
+		for x in [PLATE, PLATE + run]:
+			pts.append(Vector3(x, slope_y(x), zz))
+			pts.append(Vector3(x, slope_y(x) + GUARD_H, zz))
+	_slabs.append(pts)
 
 
 func _finish() -> void:
@@ -224,18 +230,29 @@ func _finish() -> void:
 		cs.shape = sh
 		cs.position = c[0]
 		body.add_child(cs)
+	for pts in _slabs:
+		var cs3 := CollisionShape3D.new()
+		var hull := ConvexPolygonShape3D.new()
+		hull.points = pts
+		cs3.shape = hull
+		body.add_child(cs3)
 	add_child(body)
 	# moving tread bodies (one per lane)
 	for li in lanes.size():
 		var ab := AnimatableBody3D.new()
 		ab.name = "Tread%d" % li
 		ab.sync_to_physics = false
-		var cs2 := CollisionShape3D.new()
-		var sh2 := BoxShape3D.new()
 		var slope_len := run / cos(ANGLE)
-		sh2.size = Vector3(slope_len, 0.4, LANE_W)
-		cs2.shape = sh2
-		ab.add_child(cs2)
+		# short boxes rather than one 60 m slab: on a very long escalator the player used to sink 0.44 m into a single long tread collider
+		var nseg := maxi(1, ceili(slope_len / TREAD_SEG))
+		var seg := slope_len / float(nseg)
+		for si in nseg:
+			var cs2 := CollisionShape3D.new()
+			var sh2 := BoxShape3D.new()
+			sh2.size = Vector3(seg + 0.04, 0.4, LANE_W)
+			cs2.shape = sh2
+			cs2.position = Vector3(-slope_len * 0.5 + seg * (si + 0.5), 0, 0)
+			ab.add_child(cs2)
 		ab.position = Vector3(PLATE + run * 0.5, -rise * 0.5, lane_z(li)) + Basis(Vector3(0, 0, 1), -ANGLE) * Vector3(0, -0.2, 0)
 		ab.rotation = Vector3(0, 0, -ANGLE)
 		add_child(ab)

@@ -80,6 +80,7 @@ func run():
 				player.bot_move = Vector2.ZERO
 				for i in 6: await get_tree().physics_frame
 				var worst_h := -99.0
+				var worst_sink := 99.0
 				var worst_z := 0.0
 				var min_y := 99.0
 				var t := 0.0
@@ -127,6 +128,7 @@ func run():
 					var lp := esc.to_local(player.global_position)
 					if lp.x >= -0.2 and lp.x <= esc.length + 0.2:
 						worst_h = maxf(worst_h, lp.y - esc.slope_y(lp.x))
+						worst_sink = minf(worst_sink, lp.y - esc.slope_y(lp.x))
 						worst_z = maxf(worst_z, absf(lp.z))
 						min_y = minf(min_y, lp.y + esc.rise)      # a fall is only a fall inside the shaft: walking off the end and down the next flight is fine
 				player.bot_move = Vector2.ZERO
@@ -135,6 +137,9 @@ func run():
 				riders.clear()
 				total += 1
 				var hw := esc.width * 0.5
+				if worst_sink < -0.3 and worst_sink > -3.0:
+					bad += 1
+					print("  FAIL esc%d lane %d s=%.2f %s : sank %.2f m into the tread (feet below the surface)" % [ei, li, s_frac, r[0], -worst_sink])
 				if worst_h > 0.6 or worst_z > hw + 0.05 or min_y < -1.0:
 					bad += 1
 					print("  FAIL esc%d lane %d s=%.2f %s : max height above surface %.2f, max |z| %.2f (half width %.2f), min y above bottom %.2f" % [ei, li, s_frac, r[0], worst_h, worst_z, hw, min_y])

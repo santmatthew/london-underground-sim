@@ -142,7 +142,7 @@ func _sweep(st: Station, pts: Array, step: float) -> String:
 				fy = _floor(x, z, y_prev + 0.7, 1.6)
 			if is_nan(fy):
 				return "no floor at (%.1f, %.1f) after %.1f m (last floor y %.1f)" % [x, z, _len(pts, i, t), y_prev if not is_nan(y_prev) else a.y]
-			if not is_nan(y_prev) and absf(fy - y_prev) > step * 1.3 + 0.08:
+			if not is_nan(y_prev) and absf(fy - y_prev) > step * 0.6 + 0.12:        # a 30 degree ramp rises 0.58 m per metre; anything more is a step you would feel
 				return "floor jumps %.2f m at (%.1f, %.1f)" % [fy - y_prev, x, z]
 			var q := PhysicsShapeQueryParameters3D.new()
 			q.shape = _shape

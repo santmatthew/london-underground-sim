@@ -34,8 +34,23 @@ func run():
 	st.attach_crowd(player)
 	st.crowd.enabled = false
 	for i in 6: await get_tree().physics_frame
+	if "--mute-cycle" in OS.get_cmdline_user_args():
+		# what a ride does to the destination station: every collider off, then back on (Ride._mute / _unmute)
+		var muted: Array = []
+		for n in st.find_children("*", "CollisionObject3D", true, false):
+			var co := n as CollisionObject3D
+			if co.collision_layer != 0:
+				muted.append([co, co.collision_layer])
+				co.collision_layer = 0
+		for i in 30: await get_tree().physics_frame
+		for pair in muted:
+			(pair[0] as CollisionObject3D).collision_layer = pair[1]
+		for i in 6: await get_tree().physics_frame
 	var routes := 0
 	var fails := 0
+	var y_last := NAN
+	var steps_reported := 0
+	var step_events := 0
 	for fk in plan.faces:
 		if routes >= maxr: break
 		routes += 1
@@ -60,6 +75,7 @@ func run():
 			w["pos"] = st.to_global(w["pos"])
 		player.global_position = wps[0]["pos"] + Vector3(0, 0.1, 0)
 		player.velocity = Vector3.ZERO
+		y_last = NAN
 		await get_tree().physics_frame
 		var ok := true
 		var k := 1
@@ -78,6 +94,13 @@ func run():
 			player.bot_move = Vector2(0, -1.0 if yaw_err < 0.6 else -0.1)
 			await get_tree().physics_frame
 			t_wp += get_physics_process_delta_time()
+			# a single-frame drop while standing on something is a jolt the player would feel (a step, or losing the tread of an escalator)
+			var yn := player.global_position.y
+			if not is_nan(y_last) and yn < y_last - 0.3 and player.is_on_floor() and steps_reported < 3:
+				steps_reported += 1
+				print("  STEP %s wp %d: dropped %.2f m in one frame at %s" % [fk, k, y_last - yn, str(player.global_position.snapped(Vector3(0.1, 0.1, 0.1)))])
+				step_events += 1
+			y_last = yn
 			if trace and int(t_wp * 60.0) % 30 == 0:
 				var sc := player.get_last_slide_collision()
 				print("    t=%.1f wp %d pos %s vel %s floor %s slide %s" % [t_wp, k, str(player.global_position.snapped(Vector3(0.01, 0.01, 0.01))), str(player.velocity.snapped(Vector3(0.1, 0.1, 0.1))), str(player.is_on_floor()), sc.get_collider().get_path().get_name(sc.get_collider().get_path().get_name_count() - 1) if sc else "-"])
@@ -107,4 +130,4 @@ func run():
 		player.bot_move = Vector2.ZERO
 		if not ok: fails += 1
 		else: print("  ok   ", fk)
-	print("%s: %d routes, %d failed" % [sname, routes, fails])
+	print("%s: %d routes, %d failed, %d step jolts" % [sname, routes, fails, step_events])

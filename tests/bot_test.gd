@@ -59,6 +59,43 @@ func run():
 					var co := fl as CollisionObject3D
 					var cs := co.get_child(0) as CollisionShape3D if co.get_child_count() > 0 and co.get_child(0) is CollisionShape3D else null
 					print("     floor body ", co.get_path().get_name(co.get_path().get_name_count() - 2), "/", co.name, " layer ", co.collision_layer, " at ", str(co.global_position.snapped(Vector3(0.1, 0.1, 0.1))), " disabled ", str(cs.disabled) if cs else "?")
+			if drops <= 2 and g.station != null and not g.riding:
+				var sp := g.get_world_3d().direct_space_state
+				var lp0: Vector3 = g.station.to_local(g.player.global_position)
+				var sq := PhysicsShapeQueryParameters3D.new()
+				var capq := CapsuleShape3D.new()
+				capq.radius = 0.27
+				capq.height = 1.76
+				sq.shape = capq
+				sq.collision_mask = 0xffff
+				sq.transform = Transform3D(Basis.IDENTITY, g.player.global_position + Vector3(0, 0.88, 0))
+				for hq in sp.intersect_shape(sq, 8):
+					var cq := hq["collider"] as Node
+					if cq != g.player:
+						print("   OVERLAPS %s (layer %d)" % [str(cq.get_path()).replace("/root/Runner/", ""), (cq as CollisionObject3D).collision_layer])
+				var sph := SphereShape3D.new()
+				sph.radius = 1.3
+				var sq2 := PhysicsShapeQueryParameters3D.new()
+				sq2.shape = sph
+				sq2.collision_mask = 0xffff
+				sq2.transform = Transform3D(Basis.IDENTITY, g.player.global_position + Vector3(0, 1.0, 0))
+				var near_names := {}
+				for hq2 in sp.intersect_shape(sq2, 32):
+					var c2 := hq2["collider"] as Node
+					if c2 != g.player:
+						var cs2 := (c2 as CollisionObject3D).shape_owner_get_shape(0, 0) if (c2 as CollisionObject3D).get_shape_owners().size() > 0 else null
+						near_names["%s shape %d %s" % [str(c2.get_path()).replace("/root/Runner/", ""), int(hq2.get("shape", -1)), (cs2 as Shape3D).get_class() if cs2 else "?"]] = true
+				print("   within 1.3 m: ", near_names.keys())
+				print("   station-local %s; colliders below (ray from +1 m to -1.5 m):" % str(lp0.snapped(Vector3(0.1, 0.1, 0.1))))
+				var from_p: Vector3 = g.player.global_position + Vector3(0, 1.0, 0)
+				var ex: Array = []
+				for k in 4:
+					var qq := PhysicsRayQueryParameters3D.create(from_p, from_p + Vector3(0, -2.5, 0))
+					qq.exclude = ex
+					var hh := sp.intersect_ray(qq)
+					if hh.is_empty(): break
+					print("      %s at y %.2f" % [str((hh["collider"] as Node).get_path()).replace("/root/Runner/", ""), (hh["position"] as Vector3).y])
+					ex.append(hh["rid"])
 			if drops == 1:
 				print("   TRAIL (last %d samples, 1/6 s apart):" % trail.size())
 				for tl in trail:
