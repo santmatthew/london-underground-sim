@@ -28,6 +28,8 @@ as you can. Time of day (crowds and train frequency), the real train timetable, 
 tools/setup_assets.sh      # once: fetch/generate the large assets that are not stored in git (see docs/ASSETS.md; some steps take a while)
 godot --path .             # or open the project in Godot 4.7 and press F5
 ```
+Jump straight to a journey (handy for the authored stations): `godot --path . -- --start=Victoria --dest=Bank --spot=street_entrance --hour=8.5 --auto-start`
+(station names with underscores for spaces; `--spot=platform` or `street_entrance`; `--seed=N`).
 Controls: **WASD** move · **Shift** hurry (stamina) · **M** tube map · **H** route hint · **Tab** skip time (when standing still or riding) ·
 **F3** performance overlay · **Esc** pause/menu. Settings (graphics quality, crowd density, volume, mouse sensitivity) are on the main menu.
 
@@ -39,7 +41,7 @@ See `docs/ARCHITECTURE.md` and `docs/ASSETS.md`. Code: `scripts/autoload` (Net, 
 
 ## Known issues / roadmap
 - Surface (outer-zone) stations are glass-roofed halls; rides between them still show a tunnel rather than open-air scenery.
-- Station layouts are procedural per station (stable between runs); matching the real stations' layouts is a planned next step.
+- 19 major stations have layouts authored from TfL's station diagrams (Oxford Circus, King's Cross, Bank, Waterloo, Victoria, ... see docs/REAL_LAYOUTS.md); the rest are procedural per station (stable between runs) but use the real exit numbers, platform numbers and depths.
 - The autopilot's multi-stop mode is slower than the planner's par (85-90%) and can wander into the wrong platform strip in crowds; it recovers by re-routing.
 - Escalators use a simple shader for treads; no lifts or fixed stairs yet; buskers are audio-only.
 - Performance was measured on an RTX 3050 Ti laptop under a virtual display only; use F3 and the Graphics setting to tune on your machine.
