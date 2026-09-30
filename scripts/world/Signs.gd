@@ -191,7 +191,7 @@ static func board(rows: Array, width := 2.4, row_h := 0.34, _bg := Color.WHITE, 
 
 
 ## Long white enamel fascia with the station name in Underground blue and a blue stripe along the top edge. Faces +z.
-static func fascia(station_name: String, length: float, wayout_x: Array = [], wayout_arrow := 0) -> Node3D:
+static func fascia(station_name: String, length: float, wayout_x: Array = [], wayout_arrow := 0, show_name := true) -> Node3D:
 	var root := Node3D.new()
 	var h := 0.46
 	var panel := _quad(Vector2(length, h), _mat(Color(0.95, 0.955, 0.96), 0.2, 0.25))
@@ -204,9 +204,10 @@ static func fascia(station_name: String, length: float, wayout_x: Array = [], wa
 	var x := -length * 0.5 + 6.0
 	var flip := false
 	while x < length * 0.5 - 4.0:
-		var l := label(nm, 0.24, NAVY, true, HORIZONTAL_ALIGNMENT_CENTER)
-		l.position = Vector3(x, -0.03, 0.012)
-		root.add_child(l)
+		if show_name:
+			var l := label(nm, 0.24, NAVY, true, HORIZONTAL_ALIGNMENT_CENTER)
+			l.position = Vector3(x, -0.03, 0.012)
+			root.add_child(l)
 		var wo := Node3D.new()
 		var b := board([{"text": "Way out", "arrow": wayout_arrow}], 1.0, 0.24)
 		wo.add_child(b)

@@ -389,32 +389,26 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 		var s := 1.0 if fi == 0 else -1.0
 		var pid2: String = f2["pid"]
 		var gp: int = Timetable.plat_index[plan.idx][pid2]
-		# station name: white fascia + tile lettering + roundels on the track-side wall (facing the platform), roundels behind the platform
+		# station name: always the TfL roundel (the name in the blue bar across the red ring), repeated along the track-side wall so it is seen from the platform
+		# and from a train; the white fascia above carries only the way-out boards (no plain-text names, no tile lettering)
 		var short_name: String = plan.name.replace(" (H&C)", "").replace(" (D&P)", "").replace(" (Circle)", "")
-		var style := (plan.seed_value + mi) % 3
-		var fas := Signs.fascia(short_name, L - 10.0, [1], 0)
+		var fas := Signs.fascia(short_name, L - 10.0, [1], 0, false)
 		fas.position = Vector3(0, 1.98, s * (zfar - 0.03))
 		fas.rotation.y = atan2(0.0, -s)
 		pm.add_child(fas)
-		var n := maxi(2, int(L / 30.0))
+		var n := maxi(3, int(L / 13.0))
 		for k in n:
 			var x := -L * 0.5 + (k + 0.5) * L / n
-			if (k + style) % 2 == 0:
-				var tn := Signs.tile_name(short_name, 0.8)
-				tn.position = Vector3(x, 1.0, s * (zfar - 0.03))
-				tn.rotation.y = atan2(0.0, -s)
-				pm.add_child(tn)
-			else:
-				var rd := Signs.roundel(short_name, 0.95, style == 1)
-				rd.position = Vector3(x, 1.0, s * (zfar - 0.03))
-				rd.rotation.y = atan2(0.0, -s)
-				pm.add_child(rd)
+			var rd := Signs.roundel(short_name, 0.9, false)
+			rd.position = Vector3(x, 1.26, s * (zfar - 0.03))       # clear of the cable trays below (top 0.79 m) and the fascia above (1.75 m)
+			rd.rotation.y = atan2(0.0, -s)
+			pm.add_child(rd)
 			var near_open := false
 			for o in ox:
 				if absf(x + L / n * 0.3 - o) < 4.0:
 					near_open = true
 			if not near_open and not box:
-				var rd2 := Signs.roundel(short_name, 0.85, style == 1)
+				var rd2 := Signs.roundel(short_name, 0.85, false)
 				rd2.position = Vector3(x + L / n * 0.3, 1.75, s * (zwall + 0.03))
 				rd2.rotation.y = atan2(0.0, s)
 				pm.add_child(rd2)

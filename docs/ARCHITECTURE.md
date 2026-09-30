@@ -65,7 +65,8 @@ layout -> `data/tube_diagram.json` (~42 KB). The layout is cached in `build/diag
 Every sign is tagged (`meta "sign"`, `meta "size"`), hung through `StationSigns.hang_room / hang_blade / mount_wall` and fitted by
 `PlatformModule.ceiling_at / fit_blade` (roof arch, walls, columns, headroom `HEAD` = 2.15 m). `tests/sign_audit_test.gd` checks every sign of
 a list of stations against the real colliders and the analytic roof. Real Tube proportions: blades/indicators ~1-2.6 m wide on short stems,
-roundels and names flat on the tile wall.
+roundels and names flat on the tile wall. On platform walls the station name is **always** the TfL roundel (name in the blue bar across the red ring, every ~13 m on the
+track-side wall and behind the platform); there is no plain-text or tile-lettering name (the white fascia carries only way-out boards).
 
 ## Tests worth knowing
 `walkbot_test` (real capsule along routes; `--reverse`, `--rot=180`, `--trace`), `walk_test` (floor audit), `spine_wall_test`, `sign_audit_test`,
