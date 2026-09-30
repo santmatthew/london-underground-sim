@@ -701,5 +701,41 @@ func put_wall(parent: Node3D, name: String, pos: Vector3, dir: Vector3) -> Node3
 	return StationProps.put(parent, name, pos, dir)
 
 
+## landings and passages: 4/6-sheet adverts between the cross-passages of the tiles, a Tube map (Quad Royal) at each end where people choose a way,
+## cameras; no bins (none in real passages)
 func _room(rm: Dictionary) -> void:
-	StationProps._room_dressing(root, rm, rng)
+	var r: Array = rm["rect"]
+	var y: float = rm["y"]
+	var h: float = rm["h"]
+	var nm: String = rm["name"]
+	if nm.begins_with("landing"):
+		# a Tube map on the wall facing the escalator arrival, adverts down both side walls
+		for side in ["E", "W"]:
+			if wall_frame(rm, side, "qr", r[2] + 3.0, "@tubemap", 0.0, 2.0):
+				break
+		for side2 in ["W", "E"]:
+			var z: float = r[2] + 6.0
+			while z < r[3] - 3.0:
+				var t := wall_slot(rm, side2, 1.25, 0.4, 2.3, z)
+				if is_nan(t):
+					break
+				var wp := wall_point(rm, side2, t, y, 0.0)
+				PosterKit.add(kit_for(rm), "6", wp[0] + Vector3(0, 0.4, 0) - Vector3(0, 0, 0), wp[1], picker.pick("portrait"), "silver", y)
+				stats["placed"] += 1
+				z = t + 6.5
+		put_wall(root, "cctv_dome", Vector3((r[0] + r[1]) * 0.5, y + h, (r[2] + r[3]) * 0.5), Vector3(0, 0, 1))
+	else:
+		# corridor: pairs of 4-sheets on alternating walls about every 12 m, a Tube map near each end
+		for side3 in ["N", "S"]:
+			if wall_frame(rm, side3, "qr", r[0] + 4.0, "@tubemap", 0.0, 2.0):
+				break
+		var x: float = r[0] + 9.0
+		var flip := rng.randf() < 0.5
+		while x < r[1] - 5.0:
+			var side4 := "S" if flip else "N"
+			var fmt := "4" if rng.randf() < 0.6 else "6"
+			wall_frame(rm, side4, fmt, x, picker.pick("portrait"), 0.45)
+			wall_frame(rm, side4, fmt, x + 1.5, picker.pick("portrait"), 0.45)
+			flip = not flip
+			x += 12.0
+		put_wall(root, "cctv_dome", Vector3((r[0] + r[1]) * 0.5, y + h, (r[2] + r[3]) * 0.5), Vector3(1, 0, 0))
