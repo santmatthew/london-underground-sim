@@ -345,7 +345,9 @@ func set_bag(enabled: bool, kind: String = "") -> void:
 		var bi := skeleton.find_bone(attach.bone_name)
 		var rest_global: Transform3D = skeleton.get_bone_global_rest(bi)
 		var off := Vector3(0, -0.03, 0.185) if k == "backpack" else Vector3(0.23, -0.06, 0.03)
-		var desired := Transform3D(Basis().scaled(Vector3.ONE * s), rest_global.origin + off * s)
+		# the bag models are built with the wearer's chest on their -Y side, which glTF turns into +Z; people face -Z, so turn the bag round
+		# (without this the shoulder straps stick out of the back of the pack)
+		var desired := Transform3D(Basis(Vector3.UP, PI).scaled(Vector3.ONE * s), rest_global.origin + off * s)
 		inst.transform = rest_global.affine_inverse() * desired
 		_bag_node = attach
 	else:
