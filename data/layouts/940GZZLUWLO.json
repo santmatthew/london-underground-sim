@@ -1,0 +1,210 @@
+{
+ "note": "Waterloo from TfL diagram N115: LUL main ticket hall + Shell Centre hall, lower concourse, Bakerloo/Northern level, Jubilee interchange passage, W&C via the long 'Drain' (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall_main",
+   "kind": "hall",
+   "rect": [
+    -14,
+    14,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 16
+   },
+   "doors": [
+    {
+     "c": -9,
+     "name": "Waterloo Road"
+    },
+    {
+     "c": 0,
+     "name": "York Road"
+    },
+    {
+     "c": 9,
+     "ref": "5",
+     "name": "Waterloo Bridge"
+    }
+   ]
+  },
+  {
+   "id": "hall_shell",
+   "kind": "hall",
+   "rect": [
+    -44,
+    -24,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 8
+   },
+   "doors": [
+    {
+     "c": -38,
+     "name": "Shell Centre"
+    },
+    {
+     "c": -30,
+     "name": "Belvedere Road"
+    }
+   ]
+  },
+  {
+   "id": "conc",
+   "kind": "landing",
+   "size": [
+    62,
+    14
+   ],
+   "depth": 8.0
+  },
+  {
+   "id": "land_b",
+   "kind": "landing",
+   "size": [
+    40,
+    28
+   ],
+   "depth": 14.5
+  },
+  {
+   "id": "land_j",
+   "kind": "landing",
+   "size": [
+    30,
+    16
+   ],
+   "depth": 24.5
+  }
+ ],
+ "esc": [
+  {
+   "id": "s0",
+   "from": "hall_shell",
+   "to": "conc",
+   "dir": "S",
+   "c": -34,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 19
+  },
+  {
+   "id": "m0",
+   "from": "hall_main",
+   "to": "conc",
+   "dir": "S",
+   "c": 0,
+   "lanes": [
+    1,
+    -1,
+    1,
+    -1
+   ]
+  },
+  {
+   "id": "b1",
+   "from": "conc",
+   "to": "land_b",
+   "dir": "S",
+   "c": -2,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 8
+  },
+  {
+   "id": "j1",
+   "from": "land_b",
+   "to": "land_j",
+   "dir": "S",
+   "c": 0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ]
+  }
+ ],
+ "modules": [
+  {
+   "attach": "conc",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 32,
+   "group": "waterloo-city",
+   "faces": [
+    [
+     "waterloo-city:Westbound",
+     0
+    ],
+    [
+     "waterloo-city:Westbound",
+     1
+    ]
+   ]
+  },
+  {
+   "attach": "land_b",
+   "lane_z": -9,
+   "lane_rel": true,
+   "corr_len": 10,
+   "group": "bakerloo",
+   "faces": [
+    [
+     "bakerloo:Northbound",
+     0
+    ],
+    [
+     "bakerloo:Southbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "land_b",
+   "lane_z": 9,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "northern",
+   "faces": [
+    [
+     "northern:Northbound",
+     0
+    ],
+    [
+     "northern:Southbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "land_j",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "jubilee",
+   "faces": [
+    [
+     "jubilee:Eastbound",
+     0
+    ],
+    [
+     "jubilee:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

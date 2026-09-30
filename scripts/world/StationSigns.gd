@@ -214,6 +214,8 @@ static func _hall_signs_at(root: Node3D, plan: StationPlan, gl: Dictionary, line
 		if sd.get("hall", "hall") != hall_name:
 			continue
 		var rows5: Array = [{"text": "Way out", "bold": true, "arrow": 1}]
+		if str(sd.get("exit_ref", "")) == "" and str(sd.get("exit_name", "")) != "":
+			rows5.append({"text": str(sd["exit_name"]).split(" / ")[0], "text_color": Color(0.8, 0.8, 0.8)})
 		if str(sd.get("exit_ref", "")) != "":
 			# real exit number and street (OpenStreetMap), first street only to keep the board readable
 			var st1: String = str(sd["exit_name"]).split(" / ")[0]

@@ -1,0 +1,141 @@
+{
+ "note": "Tottenham Court Road from TfL diagram N105 (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall",
+   "kind": "hall",
+   "rect": [
+    -14,
+    14,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 12
+   },
+   "doors": [
+    {
+     "ref": "A",
+     "c": -10.5
+    },
+    {
+     "ref": "B",
+     "c": -3.5
+    },
+    {
+     "ref": "C",
+     "c": 3.5
+    },
+    {
+     "ref": "D",
+     "c": 10.5
+    }
+   ]
+  },
+  {
+   "id": "conc",
+   "kind": "landing",
+   "size": [
+    40,
+    14
+   ],
+   "depth": 9.0
+  },
+  {
+   "id": "land_c",
+   "kind": "landing",
+   "size": [
+    36,
+    16
+   ],
+   "depth": 22.2
+  },
+  {
+   "id": "land_n",
+   "kind": "landing",
+   "size": [
+    36,
+    16
+   ],
+   "depth": 25.8
+  }
+ ],
+ "esc": [
+  {
+   "id": "conc_0",
+   "from": "hall",
+   "to": "conc",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "land_c_0",
+   "from": "conc",
+   "to": "land_c",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "land_n_0",
+   "from": "land_c",
+   "to": "land_n",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "land_c",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "central",
+   "faces": [
+    [
+     "central:Eastbound",
+     0
+    ],
+    [
+     "central:Westbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "land_n",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "northern",
+   "faces": [
+    [
+     "northern:Northbound",
+     0
+    ],
+    [
+     "northern:Southbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

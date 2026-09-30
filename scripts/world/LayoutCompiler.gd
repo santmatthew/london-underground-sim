@@ -106,6 +106,8 @@ static func compile(p: StationPlan, spec: Dictionary) -> bool:
 			rd["openings"].append({"side": "N", "c": c, "w": 3.2, "h": 3.0, "id": sid})
 			var sdoor := {"id": sid, "pos": Vector3(c, 0.0, r[2] - len + 0.4), "dir": Vector3(0, 0, -1), "c": c, "len": len, "hall": rd["name"]}
 			var ref := str(dd.get("ref", ""))
+			if ref == "" and str(dd.get("name", "")) != "":
+				sdoor["exit_name"] = str(dd["name"])           # a street name without an exit number
 			if ref != "":
 				for re in real_ents:
 					if str(re.get("ref", "")) == ref:
@@ -164,6 +166,9 @@ static func compile(p: StationPlan, spec: Dictionary) -> bool:
 			lane_z += (float(rect[2]) + float(rect[3])) * 0.5          # relative to the room's centre line
 		var group: String = md["group"]
 		var faces_def: Array = md["faces"]
+		for fdef0 in faces_def:
+			if not st["platforms"].has(fdef0[0]):
+				return _err(p, "module uses unknown platform %s (station has %s)" % [str(fdef0[0]), str(st["platforms"].keys())])
 		var pid0: String = faces_def[0][0]
 		var line_id: String = st["platforms"][pid0]["lines"][0]
 		var cars: Array = StationPlan.CARS.get(line_id, [6, 16.0])

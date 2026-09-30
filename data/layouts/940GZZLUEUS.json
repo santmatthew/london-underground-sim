@@ -1,0 +1,138 @@
+{
+ "note": "Euston from TfL diagram N095 (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall",
+   "kind": "hall",
+   "rect": [
+    -14,
+    14,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 14
+   },
+   "doors": [
+    {
+     "name": "Euston Road",
+     "c": -10.5
+    },
+    {
+     "name": "Euston Station concourse",
+     "c": 0.0
+    },
+    {
+     "name": "Cardington Street",
+     "c": 10.5
+    }
+   ]
+  },
+  {
+   "id": "conc",
+   "kind": "landing",
+   "size": [
+    40,
+    14
+   ],
+   "depth": 8.5
+  },
+  {
+   "id": "land_cx",
+   "kind": "landing",
+   "size": [
+    36,
+    16
+   ],
+   "depth": 16.4
+  },
+  {
+   "id": "land_v",
+   "kind": "landing",
+   "size": [
+    36,
+    16
+   ],
+   "depth": 25.8
+  }
+ ],
+ "esc": [
+  {
+   "id": "conc_0",
+   "from": "hall",
+   "to": "conc",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "land_cx_0",
+   "from": "conc",
+   "to": "land_cx",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "land_v_0",
+   "from": "land_cx",
+   "to": "land_v",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "land_cx",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "northern",
+   "faces": [
+    [
+     "northern:Northbound",
+     0
+    ],
+    [
+     "northern:Southbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "land_v",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "victoria",
+   "faces": [
+    [
+     "victoria:Northbound",
+     0
+    ],
+    [
+     "victoria:Southbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

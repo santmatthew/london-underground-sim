@@ -1,0 +1,175 @@
+{
+ "note": "Green Park from TfL diagram P065 (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall",
+   "kind": "hall",
+   "rect": [
+    -14,
+    14,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 14
+   },
+   "doors": [
+    {
+     "name": "Piccadilly",
+     "c": -10.5
+    },
+    {
+     "name": "Green Park",
+     "c": 0.0
+    },
+    {
+     "name": "Arlington Street",
+     "c": 10.5
+    }
+   ]
+  },
+  {
+   "id": "conc",
+   "kind": "landing",
+   "size": [
+    40,
+    14
+   ],
+   "depth": 10.0
+  },
+  {
+   "id": "land_v",
+   "kind": "landing",
+   "size": [
+    36,
+    16
+   ],
+   "depth": 18.9
+  },
+  {
+   "id": "land_p",
+   "kind": "landing",
+   "size": [
+    36,
+    16
+   ],
+   "depth": 22.9
+  },
+  {
+   "id": "land_j",
+   "kind": "landing",
+   "size": [
+    36,
+    16
+   ],
+   "depth": 26.6
+  }
+ ],
+ "esc": [
+  {
+   "id": "conc_0",
+   "from": "hall",
+   "to": "conc",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "land_v_0",
+   "from": "conc",
+   "to": "land_v",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "land_p_0",
+   "from": "land_v",
+   "to": "land_p",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "land_j_0",
+   "from": "land_p",
+   "to": "land_j",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "land_v",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "victoria",
+   "faces": [
+    [
+     "victoria:Northbound",
+     0
+    ],
+    [
+     "victoria:Southbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "land_p",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "piccadilly",
+   "faces": [
+    [
+     "piccadilly:Eastbound",
+     0
+    ],
+    [
+     "piccadilly:Westbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "land_j",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "jubilee",
+   "faces": [
+    [
+     "jubilee:Eastbound",
+     0
+    ],
+    [
+     "jubilee:Northbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

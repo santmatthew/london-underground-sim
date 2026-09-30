@@ -1,0 +1,201 @@
+{
+ "note": "Bank from TfL diagram N133: Central ticket hall, Northern & DLR ticket hall, lower concourse subways, Central/W&C platforms, Northern platforms (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall_central",
+   "kind": "hall",
+   "rect": [
+    -14,
+    14,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 14
+   },
+   "doors": [
+    {
+     "c": -9,
+     "ref": "1"
+    },
+    {
+     "c": -3,
+     "ref": "2"
+    },
+    {
+     "c": 3,
+     "ref": "3"
+    },
+    {
+     "c": 9,
+     "ref": "4"
+    }
+   ]
+  },
+  {
+   "id": "hall_north",
+   "kind": "hall",
+   "rect": [
+    -44,
+    -24,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 9
+   },
+   "doors": [
+    {
+     "c": -41,
+     "ref": "6"
+    },
+    {
+     "c": -35,
+     "ref": "7"
+    },
+    {
+     "c": -29,
+     "ref": "8"
+    }
+   ]
+  },
+  {
+   "id": "conc",
+   "kind": "landing",
+   "size": [
+    62,
+    14
+   ],
+   "depth": 9.0
+  },
+  {
+   "id": "land_c",
+   "kind": "landing",
+   "size": [
+    40,
+    26
+   ],
+   "depth": 16.7
+  },
+  {
+   "id": "land_n",
+   "kind": "landing",
+   "size": [
+    30,
+    16
+   ],
+   "depth": 26.5
+  }
+ ],
+ "esc": [
+  {
+   "id": "n0",
+   "from": "hall_north",
+   "to": "conc",
+   "dir": "S",
+   "c": -34,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 19
+  },
+  {
+   "id": "c0",
+   "from": "hall_central",
+   "to": "conc",
+   "dir": "S",
+   "c": 0,
+   "lanes": [
+    1,
+    -1,
+    1,
+    -1
+   ]
+  },
+  {
+   "id": "c1",
+   "from": "conc",
+   "to": "land_c",
+   "dir": "S",
+   "c": -2,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 8
+  },
+  {
+   "id": "n1",
+   "from": "conc",
+   "to": "land_n",
+   "dir": "S",
+   "c": -34,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 8
+  }
+ ],
+ "modules": [
+  {
+   "attach": "land_c",
+   "lane_z": -9,
+   "lane_rel": true,
+   "corr_len": 10,
+   "group": "central",
+   "faces": [
+    [
+     "central:Eastbound",
+     0
+    ],
+    [
+     "central:Westbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "land_c",
+   "lane_z": 9,
+   "lane_rel": true,
+   "corr_len": 14,
+   "group": "waterloo-city",
+   "faces": [
+    [
+     "waterloo-city:Eastbound",
+     0
+    ],
+    [
+     "waterloo-city:Eastbound",
+     1
+    ]
+   ]
+  },
+  {
+   "attach": "land_n",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "northern",
+   "faces": [
+    [
+     "northern:Northbound",
+     0
+    ],
+    [
+     "northern:Southbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

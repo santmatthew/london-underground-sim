@@ -1,0 +1,165 @@
+{
+ "note": "Liverpool Street from TfL diagram C101 (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall_a",
+   "kind": "hall",
+   "rect": [
+    -14,
+    14,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 12
+   },
+   "doors": [
+    {
+     "name": "Liverpool Street Station",
+     "c": -10.5
+    },
+    {
+     "name": "Bishopsgate",
+     "c": 10.5
+    }
+   ]
+  },
+  {
+   "id": "hall_b",
+   "kind": "hall",
+   "rect": [
+    -40,
+    -24,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 8
+   },
+   "doors": [
+    {
+     "name": "Old Broad Street",
+     "c": -32.0
+    }
+   ]
+  },
+  {
+   "id": "hall_c",
+   "kind": "hall",
+   "rect": [
+    -62,
+    -46,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 6
+   },
+   "doors": [
+    {
+     "name": "Sun Street",
+     "c": -54.0
+    }
+   ]
+  },
+  {
+   "id": "land_ss",
+   "kind": "landing",
+   "size": [
+    40,
+    12
+   ],
+   "depth": 3.6
+  },
+  {
+   "id": "land_c",
+   "kind": "landing",
+   "size": [
+    40,
+    16
+   ],
+   "depth": 11.8
+  }
+ ],
+ "esc": [
+  {
+   "id": "land_ss_0",
+   "from": "hall_a",
+   "to": "land_ss",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "land_c_0",
+   "from": "hall_b",
+   "to": "land_c",
+   "dir": "S",
+   "c": -32.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": -11.0
+  },
+  {
+   "id": "land_c_1",
+   "from": "hall_c",
+   "to": "land_c",
+   "dir": "S",
+   "c": -54.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ]
+  }
+ ],
+ "modules": [
+  {
+   "attach": "land_ss",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 10,
+   "group": "ss",
+   "faces": [
+    [
+     "ss:Westbound",
+     0
+    ],
+    [
+     "ss:Eastbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "land_c",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 14,
+   "group": "central",
+   "faces": [
+    [
+     "central:Eastbound",
+     0
+    ],
+    [
+     "central:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}
