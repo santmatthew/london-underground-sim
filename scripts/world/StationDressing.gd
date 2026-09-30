@@ -18,6 +18,8 @@ var rng := RandomNumberGenerator.new()
 var root: Node3D
 var _wall_used: Dictionary = {}           # "room|side" -> Array of [t0, t1, y0, y1] already taken on that wall
 var stats := {"placed": 0, "refused": 0}
+var picker: PosterKit.Picker
+var _kits: Dictionary = {}                # room name -> MeshKit collecting that room's framed posters
 
 
 static func place(st: Station) -> void:
@@ -30,6 +32,7 @@ func run(st: Station) -> void:
 	plan = st.plan
 	rng.seed = plan.seed_value + 4242
 	map = DressMap.build(st)
+	picker = PosterKit.Picker.new(rng)
 	root = Node3D.new()
 	root.name = "Props"
 	station.add_child(root)
@@ -41,7 +44,12 @@ func run(st: Station) -> void:
 		if nm.begins_with("landing") or nm.begins_with("corridor"):
 			_room(rm)
 	for mi in plan.modules.size():
-		StationProps._platform(station.modules[mi], plan, mi, rng)
+		_platform(mi)
+	for k in _kits:
+		var mi := PosterKit.finish(_kits[k], root, "Posters_" + String(k))
+		if mi != null:
+			mi.visibility_range_end = 45.0
+			mi.visibility_range_end_margin = 4.0
 	StationSigns.cull(root, 55.0)
 	for pm in station.modules:
 		var ph: Node = pm.get_node_or_null("Props")
@@ -218,6 +226,30 @@ func _note_signs() -> void:
 				wall_take(rm, "E", lo.z, hi.z, lo.y - y, hi.y - y)
 
 
+func kit_for(rm: Dictionary) -> MeshKit:
+	var k: String = rm["name"]
+	if not _kits.has(k):
+		var kit := MeshKit.new()
+		kit.seed_rng(plan.seed_value + k.hash())
+		_kits[k] = kit
+	return _kits[k]
+
+
+## a framed poster of format `fmt` on a free stretch of `side`. Frame bottom at `bottom` m above the room floor (or its top at `top` when given).
+## art: a Picker file, "@tubemap", or "" for a blank card. Returns false when the wall has no room for it.
+func wall_frame(rm: Dictionary, side: String, fmt: String, near: float, art: String, bottom := 0.4, top := -1.0, frame := "silver") -> bool:
+	var ov: Vector2 = PosterKit.FORMATS[fmt]["o"]
+	var y0 := bottom if top < 0.0 else top - ov.y
+	var t := wall_slot(rm, side, ov.x + 0.12, y0, y0 + ov.y, near)
+	if is_nan(t):
+		stats["refused"] += 1
+		return false
+	var wp := wall_point(rm, side, t, float(rm["y"]) + y0, 0.0)
+	PosterKit.add(kit_for(rm), fmt, wp[0], wp[1], art, frame, float(rm["y"]))
+	stats["placed"] += 1
+	return true
+
+
 ## claim `width` metres of a wall for something mounted between heights y0..y1 (relative to the floor); returns the wall coordinate of its
 ## centre, or NAN when there is no room. `near` prefers the free spot closest to that coordinate; `from_end` measures spacing from the wall start.
 func wall_slot(rm: Dictionary, side: String, width: float, y0: float, y1: float, near := NAN) -> float:
@@ -278,16 +310,24 @@ func _hall(gl: Dictionary) -> void:
 		put_wall(root, "cctv_dome", Vector3(cx, h, cz), Vector3(0, 0, 1))
 	for k in 3:
 		put_wall(root, "pa_speaker", Vector3(lerpf(r[0] + 4.0, r[1] - 4.0, k / 2.0), h - 0.6, (r[2] + r[3]) * 0.5), Vector3(0, 0, 1))
-	# posters on the paid-side E/W walls, on whatever wall is still free
+	# TfL information: a Tube map (Quad Royal) beside the gateline on the unpaid side, a cluster of Double Royal frames (customer information)
+	# next to the ticket machines; commercial 6-sheets on the paid-side walls, on whatever wall is still free
+	for side in ["W", "E"]:
+		if wall_frame(hall_room, side, "qr", gz - 4.0, "@tubemap", 0.0, 2.0):
+			break
+	for side in ["E", "W"]:
+		var n_info := 0
+		for k in 3:
+			if wall_frame(hall_room, side, "dr", r[2] + 6.5 + k * 0.9, picker.pick("info"), 0.0, 2.0):
+				n_info += 1
+		if n_info > 0:
+			break
 	for side in ["W", "E"]:
 		var z: float = gz + 3.5
 		while z < r[3] - 4.0:
-			var t := wall_slot(hall_room, side, 1.35, 0.4, 2.35, z)
-			if is_nan(t):
+			if not wall_frame(hall_room, side, "6", z, picker.pick("portrait"), 0.4):
 				break
-			var wp := wall_point(hall_room, side, t, float(hall_room["y"]), 0.02)
-			StationProps.put_poster(root, "6", wp[0], wp[1], rng)
-			z = t + 1.35 * 0.5 + 4.5
+			z += 6.0
 
 
 func _room_for_rect(r: Array) -> Dictionary:
@@ -311,6 +351,7 @@ func _ticket_machines(rm: Dictionary, r: Array, gz: float, n: int) -> void:
 				var wp := wall_point(rm, side, z, 0.0, 0.32)
 				if floor_prop(root, "ticket_machine", wp[0], wp[1]) != null:
 					placed += 1
+					wall_take(rm, side, z - 0.55, z + 0.55, 0.0, 2.4)
 					z += 1.05
 				else:
 					z += 0.5
@@ -367,6 +408,157 @@ func floor_node(parent: Node3D, n: Node3D, pos: Vector3, dir: Vector3, half: Vec
 	map.add_placed(world_c, half, yaw)
 	stats["placed"] += 1
 	return true
+
+
+# ---------------------------------------------------------------------------------------------------
+# platforms
+# ---------------------------------------------------------------------------------------------------
+func _platform(mi: int) -> void:
+	var pm: PlatformModule = station.modules[mi]
+	var m: Dictionary = plan.modules[mi]
+	var spec: Dictionary = m["spec"]
+	var L: float = spec["length"]
+	var pw: float = spec["pw"]
+	var ox: Array = spec["openings_x"]
+	var zwall := PlatformModule.GAP * 0.5
+	var zedge := zwall + pw
+	var zfar := zedge + PlatformModule.TRACK_TO_EDGE + PlatformModule.TRACK_TO_WALL
+	var faces: Array = spec["faces"]
+	var holder := Node3D.new()
+	holder.name = "Props"
+	pm.add_child(holder)
+	var kit := MeshKit.new()
+	kit.seed_rng(plan.seed_value + mi * 31)
+	for fi in faces.size():
+		var s := 1.0 if fi == 0 else -1.0
+		_far_wall(kit, s, zfar, L)
+		_platform_wall(kit, pm, s, zwall, L, ox)
+		_platform_furniture(holder, pm, s, zwall, zedge, zfar, L, ox)
+	var mi_node := PosterKit.finish(kit, holder, "Posters")
+	if mi_node != null:
+		mi_node.visibility_range_end = 60.0
+		mi_node.visibility_range_end_margin = 6.0
+
+
+## the wall across the track: a near-continuous run of posters from platform level up to the arch spring, broken by the white roundel plates
+## (real deep-tube platforms show 80-100 % of the wall carrying paid sites at busy stations, under 20 % at suburban ones)
+func _far_wall(kit: MeshKit, s: float, zfar: float, L: float) -> void:
+	var seps: Array = StationSigns.far_wall_separators(L)
+	var normal := Vector3(0, 0, -s)
+	var coverage := 0.92 if plan.imp >= 2.0 else (0.6 if plan.imp >= 1.2 else 0.16)
+	var y0 := 0.27
+	for x in seps:
+		PosterKit.add_plate(kit, Vector2(1.4, 2.03), Vector3(x, y0, s * zfar), normal)
+	var cuts: Array = [-L * 0.5 + 0.7]
+	for x in seps:
+		cuts.append(x - 0.75)
+		cuts.append(x + 0.75)
+	cuts.append(L * 0.5 - 0.7)
+	var prev := ""
+	for gi in range(0, cuts.size(), 2):
+		var x: float = cuts[gi]
+		var x_end: float = cuts[gi + 1]
+		while x_end - x > 1.0:
+			var room := x_end - x
+			var fmt := "6"
+			var r := rng.randf()
+			if room >= 3.1 and r < 0.6:
+				fmt = "16"
+			elif room >= 1.1 and r < 0.85:
+				fmt = "6"
+			elif room >= 1.05:
+				fmt = "4"
+			else:
+				break
+			var ov: Vector2 = PosterKit.FORMATS[fmt]["o"]
+			if rng.randf() < coverage:
+				var lib: String = PosterKit.FORMATS[fmt]["lib"]
+				var art := picker.pick(lib, prev) if rng.randf() > 0.06 else ""
+				prev = art
+				PosterKit.add(kit, fmt, Vector3(x + ov.x * 0.5, y0, s * zfar), normal, art, "black" if fmt == "16" else "silver")
+				stats["placed"] += 1
+			x += ov.x + 0.04
+
+
+## the wall behind the waiting passengers: TfL information beside each cross-passage (Tube map + Double Royal frames, top edge at 2.0 m)
+## and a few adverts between openings; roundel spots are kept free
+func _platform_wall(kit: MeshKit, pm: PlatformModule, s: float, zwall: float, L: float, ox: Array) -> void:
+	var normal := Vector3(0, 0, s)
+	var cuts: Array = []
+	for o in ox:
+		cuts.append([o - PlatformModule.OPEN_W * 0.5 - 0.5, o + PlatformModule.OPEN_W * 0.5 + 0.5])
+	var seps: Array = StationSigns.far_wall_separators(L)
+	if not pm.box:
+		for k in seps.size():
+			if k % 2 == 1:
+				var xr: float = seps[k] + 1.5
+				var near_open := false
+				for o in ox:
+					if absf(xr - o) < 4.0:
+						near_open = true
+				if not near_open:
+					cuts.append([xr - 1.0, xr + 1.0])
+	cuts.sort_custom(func(a, b): return a[0] < b[0])
+	var free: Array = []
+	var cur := -L * 0.5 + 1.0
+	for c in cuts:
+		if c[0] > cur:
+			free.append([cur, minf(c[0], L * 0.5 - 1.0)])
+		cur = maxf(cur, c[1])
+	if cur < L * 0.5 - 1.0:
+		free.append([cur, L * 0.5 - 1.0])
+	var ad_p := 0.25 if plan.imp >= 2.0 else 0.08
+	for iv in free:
+		var x: float = iv[0]
+		var end: float = iv[1]
+		# an information group at the start of each stretch that follows an opening
+		if end - x >= 3.0 and not pm.box:
+			var g := [["qr", "@tubemap"], ["dr", picker.pick("info")]]
+			for it in g:
+				var ov: Vector2 = PosterKit.FORMATS[it[0]]["o"]
+				if x + ov.x > end:
+					break
+				PosterKit.add(kit, it[0], Vector3(x + ov.x * 0.5, 2.0 - ov.y, s * zwall), normal, it[1], "silver")
+				x += ov.x + 0.06
+				stats["placed"] += 1
+		while end - x >= 1.1:
+			var ov4: Vector2 = PosterKit.FORMATS["4"]["o"]
+			if rng.randf() < ad_p:
+				PosterKit.add(kit, "4", Vector3(x + ov4.x * 0.5, 0.45, s * zwall), normal, picker.pick("portrait"), "silver")
+				stats["placed"] += 1
+			x += ov4.x + 1.2 + rng.randf() * 2.5
+
+
+func _platform_furniture(holder: Node3D, pm: PlatformModule, s: float, zwall: float, zedge: float, zfar: float, L: float, ox: Array) -> void:
+	var off := pm.position
+	# benches against the platform-side wall, away from the cross-passages
+	var n_b := clampi(int(L / 34.0), 2, 4)
+	for k in n_b:
+		var x := -L * 0.5 + (k + 0.5) * L / n_b + rng.randf_range(-2.0, 2.0)
+		if StationProps._near(x, ox, 4.0):
+			x += 6.0
+		floor_prop(holder, "bench_platform", Vector3(x, 0, s * (zwall + 0.30)), Vector3(0, 0, s), 0.5, off)
+	# a bin by an exit end, help points at both ends
+	floor_prop(holder, "bin", Vector3(-L * 0.5 + 12.0, 0, s * (zwall + 0.3)), Vector3(0, 0, s), 0.4, off)
+	floor_prop(holder, "help_point", Vector3(-L * 0.5 + 3.0, 0, s * (zwall + 0.25)), Vector3(0, 0, s), 0.4, off)
+	floor_prop(holder, "help_point", Vector3(L * 0.5 - 3.0, 0, s * (zwall + 0.25)), Vector3(0, 0, s), 0.4, off)
+	for ex in [-L * 0.5 + 1.0, L * 0.5 - 1.0]:
+		StationProps.put(holder, "platform_edge_marker", Vector3(ex, 0, s * (zedge - 0.3)), Vector3(0, 0, s))
+	# cameras, clocks and speakers on the platform wall
+	var x3 := -L * 0.5 + 10.0
+	while x3 < L * 0.5 - 6.0:
+		StationProps.put(holder, "cctv_dome", Vector3(x3, 2.15, s * (zwall + 0.1)), Vector3(0, 0, s))
+		x3 += 26.0
+	StationProps.put(holder, "clock", Vector3(-L * 0.25, 2.1, s * (zwall + 0.03)), Vector3(0, 0, s))
+	StationProps.put(holder, "clock", Vector3(L * 0.25, 2.1, s * (zwall + 0.03)), Vector3(0, 0, s))
+	var x4 := -L * 0.5 + 18.0
+	while x4 < L * 0.5 - 8.0:
+		StationProps.put(holder, "pa_speaker", Vector3(x4, 2.3, s * (zwall + 0.1)), Vector3(0, 0, s))
+		x4 += 20.0
+	# tunnel-mouth signals
+	var ztrack := zedge + PlatformModule.TRACK_TO_EDGE
+	StationProps.put(holder, "signal_lamp", Vector3(L * 0.5 + 18.0, PlatformModule.BED_Y, s * (ztrack + 1.35)), Vector3(0, 0, -s))
+	StationProps.put(holder, "signal_lamp", Vector3(-L * 0.5 - 18.0, PlatformModule.BED_Y, s * (ztrack + 1.35)), Vector3(0, 0, -s))
 
 
 ## a wall-mounted prop: origin on the wall surface, front facing `dir` (into the room); no route test (it is off the floor)

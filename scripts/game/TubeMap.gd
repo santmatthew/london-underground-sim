@@ -27,6 +27,7 @@ var here := -1
 var dest := -1
 var stops: Array = []            # extra targets (multi-stop)
 var hover := -1
+var poster_mode := false        # a printed wall map (TubeMapTexture): no hint line, button, hover or markers
 var font: Font
 var _dragging := false
 var _drag_moved := 0.0
@@ -348,6 +349,9 @@ func _draw_common() -> void:
 	var light := mode == Mode.DIAGRAM
 	var ink := Color(0.08, 0.09, 0.14) if light else Color.WHITE
 	var ink2 := Color(0.08, 0.09, 0.14, 0.6) if light else Color(1, 1, 1, 0.6)
+	if poster_mode:
+		_draw_print_key(ink)
+		return
 	# markers
 	if here >= 0:
 		_marker(_sp(here), Color(0.05, 0.6, 0.25) if light else Color(0.2, 1.0, 0.4), "YOU ARE HERE")
@@ -387,6 +391,21 @@ func _draw_common() -> void:
 		var lp := get_local_mouse_position() + Vector2(14, 18)
 		draw_rect(Rect2(lp - Vector2(6, 16), Vector2(font.get_string_size(txt2, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x + 12, 24)), Color(0, 0, 0, 0.82))
 		draw_string(font, lp, txt2, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color.WHITE)
+
+
+## the key of a printed wall map: title and line colours, bottom left
+func _draw_print_key(ink: Color) -> void:
+	var fs := maxf(14.0, size.y * 0.02)
+	var row := fs * 1.45
+	var x0 := size.x * 0.025
+	var y0 := size.y - (Net.line_ids.size() * row + fs * 3.4) - size.y * 0.02
+	draw_rect(Rect2(x0 - fs * 0.6, y0 - fs * 0.4, fs * 12.0, Net.line_ids.size() * row + fs * 3.2), Color(0.965, 0.96, 0.945))
+	draw_string(font, Vector2(x0, y0 + fs * 1.1), "LONDON UNDERGROUND", HORIZONTAL_ALIGNMENT_LEFT, -1, int(fs * 1.25), ink)
+	var y := y0 + fs * 2.9
+	for lid in Net.line_ids:
+		draw_rect(Rect2(x0, y - fs * 0.72, fs * 1.8, fs * 0.5), Net.line_color(lid))
+		draw_string(font, Vector2(x0 + fs * 2.3, y - fs * 0.15), Net.line_name(lid), HORIZONTAL_ALIGNMENT_LEFT, -1, int(fs), ink)
+		y += row
 
 
 func _marker(p0: Vector2, col: Color, label: String) -> void:

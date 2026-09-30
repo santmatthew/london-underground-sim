@@ -392,24 +392,27 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 		# station name: always the TfL roundel (the name in the blue bar across the red ring), repeated along the track-side wall so it is seen from the platform
 		# and from a train; the white fascia above carries only the way-out boards (no plain-text names, no tile lettering)
 		var short_name: String = plan.name.replace(" (H&C)", "").replace(" (D&P)", "").replace(" (Circle)", "")
-		var fas := Signs.fascia(short_name, L - 10.0, [1], 0, false)
-		fas.position = Vector3(0, 1.98, s * (zfar - 0.03))
-		fas.rotation.y = atan2(0.0, -s)
-		pm.add_child(fas)
-		var n := maxi(3, int(L / 13.0))
-		for k in n:
-			var x := -L * 0.5 + (k + 0.5) * L / n
-			var rd := Signs.roundel(short_name, 0.9, false)
-			rd.position = Vector3(x, 1.26, s * (zfar - 0.03))       # clear of the cable trays below (top 0.79 m) and the fascia above (1.75 m)
+		# the far wall: white separator plates carrying the roundel (and, on every other one, a way-out board), with the poster run between them
+		# (StationDressing._far_wall); real platforms show a roundel every 4-9 m across the track
+		var seps := far_wall_separators(L)
+		for k in seps.size():
+			var x: float = seps[k]
+			var rd := Signs.roundel(short_name, 0.62, false)
+			rd.position = Vector3(x, 1.72, s * (zfar - 0.05))
 			rd.rotation.y = atan2(0.0, -s)
 			pm.add_child(rd)
+			if k % 2 == 0:
+				var wo := Signs.board([{"text": "Way out", "arrow": 0}], 1.0, 0.24)
+				wo.position = Vector3(x, 1.02, s * (zfar - 0.05))
+				wo.rotation.y = atan2(0.0, -s)
+				pm.add_child(wo)
 			var near_open := false
 			for o in ox:
-				if absf(x + L / n * 0.3 - o) < 4.0:
+				if absf(x + 1.5 - o) < 4.0:
 					near_open = true
-			if not near_open and not box:
+			if not near_open and not box and k % 2 == 1:
 				var rd2 := Signs.roundel(short_name, 0.85, false)
-				rd2.position = Vector3(x + L / n * 0.3, 1.75, s * (zwall + 0.03))
+				rd2.position = Vector3(x + 1.5, 1.75, s * (zwall + 0.03))
 				rd2.rotation.y = atan2(0.0, s)
 				pm.add_child(rd2)
 		# dot-matrix indicators hung from the crown, double sided
@@ -438,6 +441,15 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 				var a := _arrow_for(view_dir, target)
 				var wb := Signs.board([{"text": "Way out", "bold": true, "arrow": a, "arrow_side": "left" if a == 2 else "right"}, {"text": "Other platform", "text_color": Color(0.8, 0.8, 0.8), "arrow": a, "arrow_side": "left" if a == 2 else "right"}], 1.9, 0.28, Color.WHITE, 2.1)
 				hang_blade(pm, s, o + (0.15 if view_dir.x > 0 else -0.15), s * (zwall + 1.1), PlatformModule.SPRING_Y + 0.9, wb, null, -view_dir.x)
+
+
+## x positions (module frame) of the white roundel plates on the far (track-side) wall of a platform of length L: about every 9 m
+static func far_wall_separators(L: float) -> Array:
+	var n := maxi(3, int(round(L / 9.0)))
+	var out: Array = []
+	for k in n:
+		out.append(-L * 0.5 + (k + 0.5) * L / n)
+	return out
 
 
 static func _rods(holder: Node3D, length: float) -> void:

@@ -170,8 +170,8 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 		if not box:
 			_band(key, s * zwall, x0, x1, y0, st["y1"], s < 0.0, false, holes)
 	# cable tray on the track-side wall
-	kit.box("metal", Vector3((x0 + x1) * 0.5, 0.75, s * (zfar - 0.15)), Vector3(x1 - x0, 0.08, 0.3), 0.0)
-	kit.box("metal", Vector3((x0 + x1) * 0.5, 0.35, s * (zfar - 0.15)), Vector3(x1 - x0, 0.08, 0.3), 0.0)
+	# (one low tray: real platforms carry the poster run down to platform level, see StationDressing._far_wall)
+	kit.box("metal", Vector3((x0 + x1) * 0.5, 0.10, s * (zfar - 0.15)), Vector3(x1 - x0, 0.08, 0.3), 0.0)
 
 	# --- collision ---
 	var pcenter := Vector3((x0 + x1) * 0.5, -0.5, s * (zwall + zedge) * 0.5)

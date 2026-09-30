@@ -74,6 +74,13 @@ static func get_mat(name: String) -> Material:
 			m = _surface("Rubber004", "jpg", 1.0 / 0.8, Color(0.6, 0.6, 0.6), {"dirt": 0.4, "floor_dirt_height": 0.0})
 		"metal":
 			m = _surface("Metal032", "jpg", 1.0 / 1.0, Color(0.85, 0.85, 0.88), {"metallic_amount": 1.0, "dirt": 0.3})
+		"steel":
+			# brushed stainless as it looks underground: mostly diffuse (a fully metallic surface has nothing to reflect down there and goes black)
+			var st := StandardMaterial3D.new()
+			st.albedo_color = Color(0.50, 0.52, 0.54)
+			st.metallic = 0.55
+			st.roughness = 0.55
+			m = st
 		"rail":
 			m = _surface("Metal063", "jpg", 1.0 / 1.0, Color(0.55, 0.42, 0.35), {"metallic_amount": 0.8, "dirt": 0.6, "rough_add": 0.25})
 		"yellow_paint":

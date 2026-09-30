@@ -112,6 +112,7 @@ func build(p_rise: float, p_lanes: Array, p_wall_mat := "tile_white", p_stairs :
 		var zb := (bi - lanes.size() * 0.5) * PITCH
 		_balustrade(zb)
 	_poster_band(hw)
+	_deck_fittings(hw)
 	_collision()
 	_finish()
 
@@ -198,13 +199,46 @@ func _poster_band(hw: float) -> void:
 			kit.quad(mat, Vector3(l, top, zp), Vector3(l, bot, zp), Vector3(r, bot, zp), Vector3(r, top, zp), floor_y, Vector2.ZERO, 0.0, true)
 
 
+## Small deck furniture seen in every real shaft: red STOP pods at each end of each balustrade, blue/orange "hold the handrail / stand on the
+## right" wedge signs along the decks, and the standard notice board on the walls at the head and foot.
+func _deck_fittings(hw: float) -> void:
+	var rot := Basis(Vector3(0, 0, 1), -ANGLE)
+	var slope_len := run / cos(ANGLE)
+	var rail_top := 1.0 + 0.035
+	for bi in lanes.size() + 1:
+		var zb := (bi - lanes.size() * 0.5) * PITCH
+		# emergency stop pods on the newel tops (about 0.12 m cubes)
+		kit.box("flat:#c62020", Vector3(0.3, 1.0 + 0.06, zb), Vector3(0.13, 0.12, 0.13), floor_y)
+		kit.box("flat:#c62020", Vector3(length - 0.3, -rise + 1.0 + 0.06, zb), Vector3(0.13, 0.12, 0.13), floor_y)
+		# wedge signs on the decks, every ~6 m along the slope, alternating the lane they face (0.42 x 0.12 m: orange half + navy half)
+		var n := int(slope_len / 6.0)
+		for k in n:
+			var d0 := 2.0 + (k + 0.5) * (slope_len - 4.0) / maxf(n, 1)
+			var mid := Vector3(PLATE + d0 * cos(ANGLE), -d0 * sin(ANGLE), zb)
+			var face: float = 1.0 if (k + bi) % 2 == 0 else -1.0
+			for half in [0, 1]:
+				var off: float = (-0.105 if half == 0 else 0.105)
+				var col := "flat:#f48733" if half == 0 else "flat:#232b78"
+				kit.box_xf(col, Transform3D(rot, mid + rot * Vector3(off, rail_top + 0.05, face * 0.03)), Vector3(0.21, 0.10, 0.09), floor_y)
+	# the notice board on each side wall, beside the top and bottom newel (0.5 x 1.0 m, eye height)
+	for side in [-1.0, 1.0]:
+		var u_dir: float = -side
+		for at in [[1.1, 0.0], [length - 1.1, -rise]]:
+			var xc: float = at[0]
+			var yb: float = at[1] + 0.85
+			var zp: float = side * hw - side * 0.02
+			var l: float = xc - u_dir * 0.25
+			var r: float = xc + u_dir * 0.25
+			kit.quad("tex:notice@0.500@1.000", Vector3(l, yb + 1.0, zp), Vector3(l, yb, zp), Vector3(r, yb, zp), Vector3(r, yb + 1.0, zp), floor_y, Vector2.ZERO, 0.0, true)
+
+
 func _balustrade(z: float) -> void:
 	var t := BALUSTRADE
 	var slope_len := run / cos(ANGLE)
 	var rot := Basis(Vector3(0, 0, 1), -ANGLE)
 	var mid := Vector3(PLATE + run * 0.5, -rise * 0.5, z)
 	# sloped inner panel (black glossy), steel top cover, handrail (offsets follow the slope normal)
-	kit.box_xf({"*": "metal", "top": "metal"}, Transform3D(rot, mid + rot * Vector3(0, 0.45, 0)), Vector3(slope_len, 0.9, t), floor_y)
+	kit.box_xf({"*": "steel", "top": "steel"}, Transform3D(rot, mid + rot * Vector3(0, 0.45, 0)), Vector3(slope_len, 0.9, t), floor_y)
 	kit.box_xf("black", Transform3D(rot, mid + rot * Vector3(0, 0.97, 0)), Vector3(slope_len + 0.02, 0.07, 0.09), floor_y)
 	# under-lit skirt strip
 	kit.box_xf("light_emissive", Transform3D(rot, mid + rot * Vector3(0, 0.03, 0)), Vector3(slope_len, 0.04, t + 0.02), floor_y)
@@ -212,11 +246,11 @@ func _balustrade(z: float) -> void:
 	for xr in [[0.0, PLATE, 0.0], [PLATE + run, length, -rise]]:
 		var cx: float = (xr[0] + xr[1]) * 0.5
 		var w: float = xr[1] - xr[0]
-		kit.box({"*": "metal", "top": "metal"}, Vector3(cx, xr[2] + 0.45, z), Vector3(w, 0.9, t), floor_y)
+		kit.box({"*": "steel", "top": "steel"}, Vector3(cx, xr[2] + 0.45, z), Vector3(w, 0.9, t), floor_y)
 		kit.box("black", Vector3(cx, xr[2] + 0.98, z), Vector3(w, 0.07, 0.09), floor_y)
 	# newel at each end (rounded cap approximated by a box)
-	kit.box("metal", Vector3(0.0, 0.5, z), Vector3(0.2, 1.0, t + 0.04), floor_y)
-	kit.box("metal", Vector3(length, -rise + 0.5, z), Vector3(0.2, 1.0, t + 0.04), floor_y)
+	kit.box("steel", Vector3(0.0, 0.5, z), Vector3(0.2, 1.0, t + 0.04), floor_y)
+	kit.box("steel", Vector3(length, -rise + 0.5, z), Vector3(0.2, 1.0, t + 0.04), floor_y)
 
 
 func _collision() -> void:
@@ -255,6 +289,14 @@ func _finish() -> void:
 			mats[k] = m
 		elif k.begins_with("flat:"):
 			mats[k] = Mats.flat(Color.html(k.substr(5)), 0.4)
+		elif k.begins_with("tex:"):
+			var tp := "res://assets/textures/props/esc/%s.png" % k.substr(4).get_slice("@", 0)
+			var tm := StandardMaterial3D.new()
+			if ResourceLoader.exists(tp):
+				tm.albedo_texture = load(tp)
+			tm.roughness = 0.4
+			tm.uv1_scale = Vector3(1.0 / float(k.get_slice("@", 1)), 1.0 / float(k.get_slice("@", 2)), 1.0)
+			mats[k] = tm
 		elif k.begins_with("poster:"):
 			mats[k] = StationProps.band_poster_material(int(k.substr(7)), PANEL_W - 0.032, PANEL_H - 0.032)
 		else:
