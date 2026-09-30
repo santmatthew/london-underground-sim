@@ -1,0 +1,134 @@
+{
+ "note": "Piccadilly Circus, from TfL layout diagram P063-02 (topology; dimensions estimated): circular ticket hall with 7 exits, 5 escalators to the Bakerloo platforms (28.0 m), link to the Piccadilly line platforms (32.3 m)",
+ "rooms": [
+  {
+   "id": "hall_main",
+   "kind": "hall",
+   "rect": [
+    -20,
+    20,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 16
+   },
+   "doors": [
+    {
+     "ref": "1",
+     "c": -16.5
+    },
+    {
+     "ref": "2",
+     "c": -11.0
+    },
+    {
+     "ref": "3",
+     "c": -5.5
+    },
+    {
+     "ref": "4",
+     "c": 0.0
+    },
+    {
+     "ref": "5",
+     "c": 5.5
+    },
+    {
+     "ref": "6",
+     "c": 11.0
+    },
+    {
+     "ref": "7",
+     "c": 16.5
+    }
+   ]
+  },
+  {
+   "id": "land_b",
+   "kind": "landing",
+   "size": [
+    44,
+    20
+   ],
+   "depth": 28.0
+  },
+  {
+   "id": "land_p",
+   "kind": "landing",
+   "size": [
+    36,
+    14
+   ],
+   "depth": 32.3
+  }
+ ],
+ "esc": [
+  {
+   "id": "land_b_0",
+   "from": "hall_main",
+   "to": "land_b",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "land_p_0",
+   "from": "land_b",
+   "to": "land_p",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true,
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "land_b",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "bakerloo",
+   "faces": [
+    [
+     "bakerloo:Northbound",
+     0
+    ],
+    [
+     "bakerloo:Southbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "land_p",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "piccadilly",
+   "faces": [
+    [
+     "piccadilly:Eastbound",
+     0
+    ],
+    [
+     "piccadilly:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

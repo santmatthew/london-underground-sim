@@ -31,7 +31,11 @@ so signage, crowds, planner and bot keep working. Author from the diagrams; vali
 
 ## Authored so far, and known limitations
 Authored (data/layouts/, built from the TfL diagrams with tools/make_layout.py; per-station scripts in tools/layouts/ where kept):
-Oxford Circus, King's Cross St. Pancras, Bank, Waterloo, Tottenham Court Road, Euston, Green Park, Liverpool Street, Victoria.
+Oxford Circus, King's Cross St. Pancras, Bank, Waterloo, Tottenham Court Road, Euston, Green Park, Liverpool Street, Victoria, Piccadilly Circus,
+Leicester Square, Charing Cross, Embankment, Westminster, Holborn, London Bridge, Paddington (Circle/District/Bakerloo), Bond Street, Canary Wharf - 19 hubs.
+Where a real station has two banks leaving the same hall (Leicester Square, Charing Cross, Holborn) the compiler's one-placement-per-room rule
+folds them into a chain with the same total drop; depths are the diagrams' depth tables (Westminster's District & Circle level is assumed).
+Street names are only used where the diagram or OSM gives them; exits the diagram merely letters get a number or the area they open onto.
 `tools/hub_walks.sh` walks every one of them (each ticket hall -> every platform, and every platform -> street) in one go.
 
 - **Tunnel stubs cross landings (visual only).** Every platform module continues its running tunnel `PlatformModule.TUNNEL_EXT` = 170 m past

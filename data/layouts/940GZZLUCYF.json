@@ -1,0 +1,79 @@
+{
+ "note": "Canary Wharf, from TfL layout diagram J007-02 (topology; dimensions estimated): ticket hall with 3 entrances, escalators to Jubilee 23.0 m",
+ "rooms": [
+  {
+   "id": "hall_main",
+   "kind": "hall",
+   "rect": [
+    -18,
+    18,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 18
+   },
+   "doors": [
+    {
+     "name": "West Entrance (Plaza)",
+     "c": -14.5
+    },
+    {
+     "name": "Fosterito Entrance",
+     "c": 0.0
+    },
+    {
+     "name": "East Entrance",
+     "c": 14.5
+    }
+   ]
+  },
+  {
+   "id": "conc_j",
+   "kind": "landing",
+   "size": [
+    44,
+    16
+   ],
+   "depth": 23.0
+  }
+ ],
+ "esc": [
+  {
+   "id": "conc_j_0",
+   "from": "hall_main",
+   "to": "conc_j",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "conc_j",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "jubilee",
+   "faces": [
+    [
+     "jubilee:Eastbound",
+     0
+    ],
+    [
+     "jubilee:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

@@ -1,0 +1,120 @@
+{
+ "note": "Charing Cross, from TfL layout diagram N109-02 (topology; dimensions estimated): Northern ticket hall, Northern platforms 19.5 m, Bakerloo platforms 26.2 m",
+ "rooms": [
+  {
+   "id": "hall_main",
+   "kind": "hall",
+   "rect": [
+    -16,
+    16,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 10
+   },
+   "doors": [
+    {
+     "name": "Strand",
+     "c": -12.5
+    },
+    {
+     "name": "Trafalgar Square",
+     "c": -4.2
+    },
+    {
+     "name": "Northumberland Avenue",
+     "c": 4.2
+    },
+    {
+     "name": "Charing Cross Station",
+     "c": 12.5
+    }
+   ]
+  },
+  {
+   "id": "conc_n",
+   "kind": "landing",
+   "size": [
+    40,
+    18
+   ],
+   "depth": 19.5
+  },
+  {
+   "id": "conc_b",
+   "kind": "landing",
+   "size": [
+    36,
+    16
+   ],
+   "depth": 26.2
+  }
+ ],
+ "esc": [
+  {
+   "id": "conc_n_0",
+   "from": "hall_main",
+   "to": "conc_n",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "conc_b_0",
+   "from": "conc_n",
+   "to": "conc_b",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "conc_n",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "northern",
+   "faces": [
+    [
+     "northern:Northbound",
+     0
+    ],
+    [
+     "northern:Southbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "conc_b",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "bakerloo",
+   "faces": [
+    [
+     "bakerloo:Northbound",
+     0
+    ],
+    [
+     "bakerloo:Southbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

@@ -1,0 +1,112 @@
+{
+ "note": "Holborn, from TfL layout diagram P055-02 (topology; dimensions estimated): ticket hall A/B, Central platforms 27.4 m, Piccadilly platforms 33.8 m",
+ "rooms": [
+  {
+   "id": "hall_main",
+   "kind": "hall",
+   "rect": [
+    -14,
+    14,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 12
+   },
+   "doors": [
+    {
+     "ref": "A",
+     "c": -10.5
+    },
+    {
+     "ref": "B",
+     "c": 10.5
+    }
+   ]
+  },
+  {
+   "id": "conc_c",
+   "kind": "landing",
+   "size": [
+    40,
+    16
+   ],
+   "depth": 27.4
+  },
+  {
+   "id": "conc_p",
+   "kind": "landing",
+   "size": [
+    36,
+    14
+   ],
+   "depth": 33.8
+  }
+ ],
+ "esc": [
+  {
+   "id": "conc_c_0",
+   "from": "hall_main",
+   "to": "conc_c",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "conc_p_0",
+   "from": "conc_c",
+   "to": "conc_p",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "conc_c",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "central",
+   "faces": [
+    [
+     "central:Eastbound",
+     0
+    ],
+    [
+     "central:Westbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "conc_p",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "piccadilly",
+   "faces": [
+    [
+     "piccadilly:Northbound",
+     0
+    ],
+    [
+     "piccadilly:Southbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

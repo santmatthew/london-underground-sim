@@ -1,0 +1,112 @@
+{
+ "note": "Westminster, from TfL layout diagram D101-02 (topology; dimensions estimated): ticket hall, D&C platforms (~7 m), Jubilee platforms 33.0 m",
+ "rooms": [
+  {
+   "id": "hall_main",
+   "kind": "hall",
+   "rect": [
+    -14,
+    14,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 12
+   },
+   "doors": [
+    {
+     "ref": "1",
+     "c": -10.5
+    },
+    {
+     "ref": "2",
+     "c": 10.5
+    }
+   ]
+  },
+  {
+   "id": "conc_dc",
+   "kind": "landing",
+   "size": [
+    40,
+    16
+   ],
+   "depth": 7.0
+  },
+  {
+   "id": "conc_j",
+   "kind": "landing",
+   "size": [
+    40,
+    16
+   ],
+   "depth": 33.0
+  }
+ ],
+ "esc": [
+  {
+   "id": "conc_dc_0",
+   "from": "hall_main",
+   "to": "conc_dc",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "conc_j_0",
+   "from": "conc_dc",
+   "to": "conc_j",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1,
+    -1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "conc_dc",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "ss",
+   "faces": [
+    [
+     "ss:Eastbound",
+     0
+    ],
+    [
+     "ss:Westbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "conc_j",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "jubilee",
+   "faces": [
+    [
+     "jubilee:Eastbound",
+     0
+    ],
+    [
+     "jubilee:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

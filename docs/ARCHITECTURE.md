@@ -47,6 +47,8 @@ The planner and the world share the same `StationPlan`, so the "par" time and th
   upwards - onto the rider's head or the rail top - and from there the player slid off the outside edge into the void (Oxford Circus, found
   by a hub journey). `esc_edge_test --crowd` reproduces it.
 - `Autopilot` stuck recovery is per waypoint (`_wp_sides`): a re-route from the nearest visible node after 3 stuck events at the same waypoint.
+- `Autopilot` also: boards early when the doors are open and it is on the platform; steps back out if a boarding passenger pushes it into a standing
+  train; never dodges a person into a train; picks the exit door by walking time (as the planner does), not by node count.
 
 ## Signage
 Every sign is tagged (`meta "sign"`, `meta "size"`), hung through `StationSigns.hang_room / hang_blade / mount_wall` and fitted by
@@ -56,7 +58,9 @@ roundels and names flat on the tile wall.
 
 ## Tests worth knowing
 `walkbot_test` (real capsule along routes; `--reverse`, `--rot=180`, `--trace`), `walk_test` (floor audit), `spine_wall_test`, `sign_audit_test`,
-`esc_edge_test` (real capsule pinned on every escalator lane, incl. `--crowd` = the station's real crowd at 08:50; fails if the player climbs a
+`tools/hub_walks.sh` (walkbot on every authored hub, all halls + reverse, in parallel) and `tools/hub_journeys.sh [file]` (autopilot journeys between hubs in parallel; flags falls, stuck events, missed trains),
+`layouts_test` (every data/layouts file maps to a station and compiles), `plan_dump_test` (`--station`, optional `--from/--to`: platform ids, rooms, modules, waypoints of a route),
+`ray_probe_test` (what is at a point), `esc_edge_test` (real capsule pinned on every escalator lane, incl. `--crowd` = the station's real crowd at 08:50; fails if the player climbs a
 balustrade or leaves the shaft), `bot_test` (autopilot journey; `--seed`, `--multi=N`, `--start/--dest/--spot/--hour`, `--every`, `--frames`; prints DROP/TRAIL diagnostics
 when the player falls), `shots_test` (autopilot journey with screenshots), `overlap_test`.
 

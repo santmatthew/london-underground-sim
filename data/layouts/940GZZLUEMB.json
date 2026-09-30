@@ -1,0 +1,184 @@
+{
+ "note": "Embankment, from TfL layout diagram N113-02 (topology; dimensions estimated): two ticket halls, D&C 5.5 m, Northern 16.2 m, Bakerloo 21.0 m",
+ "rooms": [
+  {
+   "id": "hall_main",
+   "kind": "hall",
+   "rect": [
+    -16,
+    16,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 10
+   },
+   "doors": [
+    {
+     "ref": "A",
+     "c": -12.5
+    },
+    {
+     "name": "Villiers Street",
+     "c": 12.5
+    }
+   ]
+  },
+  {
+   "id": "hall_s",
+   "kind": "hall",
+   "rect": [
+    -44,
+    -28,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 6
+   },
+   "doors": [
+    {
+     "ref": "B",
+     "c": -36.0
+    }
+   ]
+  },
+  {
+   "id": "conc_dc",
+   "kind": "landing",
+   "size": [
+    60,
+    16
+   ],
+   "depth": 5.5
+  },
+  {
+   "id": "conc_n",
+   "kind": "landing",
+   "size": [
+    40,
+    16
+   ],
+   "depth": 16.2
+  },
+  {
+   "id": "conc_b",
+   "kind": "landing",
+   "size": [
+    36,
+    14
+   ],
+   "depth": 21.0
+  }
+ ],
+ "esc": [
+  {
+   "id": "conc_dc_0",
+   "from": "hall_main",
+   "to": "conc_dc",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true,
+   "to_off": -18.0
+  },
+  {
+   "id": "conc_dc_1",
+   "from": "hall_s",
+   "to": "conc_dc",
+   "dir": "S",
+   "c": -36.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true
+  },
+  {
+   "id": "conc_n_0",
+   "from": "conc_dc",
+   "to": "conc_n",
+   "dir": "S",
+   "c": -18.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "conc_b_0",
+   "from": "conc_n",
+   "to": "conc_b",
+   "dir": "S",
+   "c": -18.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true,
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "conc_dc",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "ss",
+   "faces": [
+    [
+     "ss:Eastbound",
+     0
+    ],
+    [
+     "ss:Westbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "conc_n",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "northern",
+   "faces": [
+    [
+     "northern:Northbound",
+     0
+    ],
+    [
+     "northern:Southbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "conc_b",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "bakerloo",
+   "faces": [
+    [
+     "bakerloo:Northbound",
+     0
+    ],
+    [
+     "bakerloo:Southbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

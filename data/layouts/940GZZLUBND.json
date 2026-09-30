@@ -1,0 +1,116 @@
+{
+ "note": "Bond Street, from TfL layout diagram C125-02 (topology; dimensions estimated): ticket hall, Central 22.2 m, Jubilee 32.0 m",
+ "rooms": [
+  {
+   "id": "hall_main",
+   "kind": "hall",
+   "rect": [
+    -14,
+    14,
+    -14,
+    8
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 12
+   },
+   "doors": [
+    {
+     "name": "Oxford Street",
+     "c": -10.5
+    },
+    {
+     "name": "Davies Street",
+     "c": 0.0
+    },
+    {
+     "name": "Marylebone Lane",
+     "c": 10.5
+    }
+   ]
+  },
+  {
+   "id": "conc_c",
+   "kind": "landing",
+   "size": [
+    40,
+    16
+   ],
+   "depth": 22.2
+  },
+  {
+   "id": "conc_j",
+   "kind": "landing",
+   "size": [
+    36,
+    14
+   ],
+   "depth": 32.0
+  }
+ ],
+ "esc": [
+  {
+   "id": "conc_c_0",
+   "from": "hall_main",
+   "to": "conc_c",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "conc_j_0",
+   "from": "conc_c",
+   "to": "conc_j",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "conc_c",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "central",
+   "faces": [
+    [
+     "central:Eastbound",
+     0
+    ],
+    [
+     "central:Westbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "conc_j",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "jubilee",
+   "faces": [
+    [
+     "jubilee:Northbound",
+     0
+    ],
+    [
+     "jubilee:Southbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

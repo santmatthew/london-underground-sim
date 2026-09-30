@@ -13,6 +13,16 @@ HUBS=(
   "Euston:hall_unpaid"
   "Green Park:hall_unpaid"
   "Victoria:hall_unpaid hall2_unpaid"
+  "Piccadilly Circus:hall_unpaid"
+  "Leicester Square:hall_unpaid"
+  "Charing Cross:hall_unpaid"
+  "Embankment:hall_unpaid hall2_unpaid"
+  "Westminster:hall_unpaid"
+  "Holborn:hall_unpaid"
+  "London Bridge:hall_unpaid"
+  "Paddington:hall_unpaid hall2_unpaid"
+  "Bond Street:hall_unpaid"
+  "Canary Wharf:hall_unpaid"
 )
 pids=()
 for h in "${HUBS[@]}"; do

@@ -80,6 +80,12 @@ func _physics_process(delta: float) -> void:
 		wait_t = 0.0
 		legs = []
 		leg_i = 0
+	# shoved through the open door of a standing train (a boarding passenger pushed us): step back out before it leaves with us inside
+	if mode in ["walk", "exit"]:
+		var vin := _open_train_around_us()
+		if not vin.is_empty():
+			_log("pushed into a standing train - stepping back out")
+			_start_alighting(vin, "step_out")
 	match mode:
 		"init":
 			_plan_to_leg_platform()
@@ -101,12 +107,12 @@ func _physics_process(delta: float) -> void:
 			wait_t += delta
 			if multi and wait_t > 2.0 and game.station != null and not (game.station.plan.idx in game.journey["visited"] and game.journey["visited"].size() >= game.journey["targets"].size()):
 				mode = "init"
-		"alight":
+		"alight", "step_out":
 			_follow(delta)
 		"exit":
 			_follow(delta)
 	# stuck detection: commanding movement but not actually moving (standing on an escalator does not count)
-	if mode in ["walk", "board", "alight", "exit"]:
+	if mode in ["walk", "board", "alight", "exit", "step_out"]:
 		var real_v := player.get_real_velocity().length()
 		var commanded := player.bot_move.length() > 0.5
 		var at_target := wp_i < wps.size() and player.global_position.distance_to(wps[wp_i]) < 0.7
@@ -138,6 +144,8 @@ func _physics_process(delta: float) -> void:
 			var fwd := Vector3(0, 0, -1).rotated(Vector3.UP, player.rotation.y)
 			var side_sign := -1.0 if fwd.cross(rel).y > 0.0 else 1.0
 			_side_dir = side_sign if by_person else (1.0 if _sidesteps % 2 == 0 else -1.0)
+			if mode != "board" and _side_enters_train(_side_dir):
+				_side_dir = -_side_dir          # never dodge a passenger through an open door of a standing train
 			_side_t = 0.9
 			_sidesteps += 1
 			if wp_i != _wp_sides_at:
@@ -318,12 +326,18 @@ func _plan_exit() -> void:
 		return
 	var start := _route_start(st)
 	var best: Array = []
+	var best_door: Dictionary = st.plan.street_doors[0]
+	var best_t := INF
 	for sd in st.plan.street_doors:
-		var p := st.plan.path(start, sd["id"])
-		if best.is_empty() or (not p.is_empty() and p.size() < best.size()):
-			best = p
+		var t: float = st.plan.walk_time(start, sd["id"])       # the fastest door (what the planner assumes), not the fewest nodes
+		if t < best_t:
+			var p: Array = st.plan.path(start, sd["id"])
+			if not p.is_empty():
+				best_t = t
+				best = p
+				best_door = sd
 	wps = _waypoints_for(st, best)
-	wps.append(st.to_global(st.plan.street_doors[0]["pos"] + Vector3(0, 0, -1.5)))
+	wps.append(st.to_global((best_door["pos"] as Vector3) + Vector3(0, 0, -1.5)))
 	wp_i = 0
 	mode = "exit"
 	if OS.get_environment("BOT_DEBUG") != "":
@@ -428,6 +442,8 @@ func _arrived_at_path_end() -> void:
 					leg_i = 0
 				else:
 					_replan()
+		"step_out":
+			mode = "init"
 		"exit":
 			_log("reached the exit")
 			mode = "done_wait"
@@ -465,6 +481,32 @@ func _wait_train(delta: float) -> void:
 	# skip time while the train is far away
 	if lg["arr"] - Clock.now > 25.0:
 		game.bot_skip = true
+
+
+## the visit of a standing train (doors open) that we are inside of, or {}
+func _open_train_around_us() -> Dictionary:
+	var st := _station()
+	if st == null or game.riding:
+		return {}
+	for key in st.trains.visits:
+		var v: Dictionary = st.trains.visits[key]
+		var tr: Train = v["train"]
+		if v["doors"] and is_instance_valid(tr) and tr.contains_world_point(player.global_position):
+			return v
+	return {}
+
+
+## would a sidestep to `side` (+1 = the player's right) end up inside a train?
+func _side_enters_train(side: float) -> bool:
+	var st := _station()
+	if st == null:
+		return false
+	var probe := player.global_position + player.global_transform.basis.x * side * 1.8 + Vector3(0, 0.9, 0)
+	for key in st.trains.visits:
+		var tr: Train = (st.trains.visits[key] as Dictionary)["train"]
+		if is_instance_valid(tr) and tr.contains_world_point(probe):
+			return true
+	return false
 
 
 ## the train we are walking to is standing with its doors open and we are nearly there: get on it instead of finishing the walk to the
@@ -556,7 +598,7 @@ func _in_train(delta: float) -> void:
 	# else: still riding through an intermediate stop (doors open/close) — just wait
 
 
-func _start_alighting(v: Dictionary) -> void:
+func _start_alighting(v: Dictionary, next_mode := "alight") -> void:
 	var train: Train = v["train"]
 	var st := _station()
 	var pos := player.global_position
@@ -578,5 +620,6 @@ func _start_alighting(v: Dictionary) -> void:
 	var beyond := train.to_global(Vector3(bdx + 1.2, floor_y, local_side * (half_w + 2.0)))
 	wps = [inside, sill, outside, beyond]
 	wp_i = 0
-	mode = "alight"
-	_log("alighting at %s" % st.plan.name)
+	mode = next_mode
+	if next_mode == "alight":
+		_log("alighting at %s" % st.plan.name)
