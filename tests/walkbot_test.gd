@@ -52,6 +52,10 @@ func run():
 		else:
 			wps = plan.walk_points(names, 0)
 			wps.append({"pos": st.platform_point(fk, 0.5, 1.4), "kind": "walk"})
+		if names.is_empty():
+			print("  FAIL %s: no path in the walking graph" % fk)      # (this used to teleport straight to the platform and report ok)
+			fails += 1
+			continue
 		for w in wps:
 			w["pos"] = st.to_global(w["pos"])
 		player.global_position = wps[0]["pos"] + Vector3(0, 0.1, 0)

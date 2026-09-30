@@ -76,6 +76,10 @@ func run():
 						if v["doors"] and t_mode > 0.5:
 							snap("train_doors_open")
 			"in_train":
+				if g.riding and g.ride != null and g.ride.phase == Ride.Phase.DEPART:
+					snap("depart_%d" % int((Clock.now - g.ride.t_dep) / 2.0), true, 1.9)
+				elif g.riding and g.ride != null and g.ride.phase == Ride.Phase.ARRIVE:
+					snap("arrive_%d" % int((g.ride.t_arr - Clock.now) / 2.0), true, 1.9)
 				if g.riding and g.ride != null and g.ride.phase == Ride.Phase.TUNNEL and Clock.now - g.ride.t_dep > 20.0:
 					snap("riding_tunnel", true, 0.0)
 				elif not g.riding and t_mode > 1.0:

@@ -70,6 +70,10 @@ func _ready() -> void:
 		"plat2":
 			var f2: Dictionary = plan.faces[plan.faces.keys()[2]]
 			pos = Vector3(f2["x0"] + 12, f2["y"] + 1.65, f2["edge_z"] - f2["side"] * 1.2); look = pos + Vector3(30, 0.6, f2["side"] * 0.2)
+		"plat_w":
+			# from near the west end of a platform looking west, along the track into the (shortened) running tunnel and its cap
+			var fw: Dictionary = plan.faces[plan.faces.keys()[int(sys_arg("fi", "0"))]]
+			pos = Vector3(fw["x0"] + 6, fw["y"] + 1.65, fw["edge_z"] - fw["side"] * 1.2); look = pos + Vector3(-30, -0.3, fw["side"] * 0.6)
 		"plat":
 			var f: Dictionary = plan.faces[plan.faces.keys()[int(sys_arg("fi", "0"))]]
 			pos = Vector3(f["x0"] + 30, f["y"] + 1.65, f["edge_z"] - f["side"] * 1.2); look = pos + Vector3(30, -0.3, f["side"] * 0.6)

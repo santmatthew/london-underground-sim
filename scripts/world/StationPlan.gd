@@ -224,7 +224,7 @@ func generate(station_idx: int) -> void:
 			var cars: Array = CARS.get(line_id, [6, 16.0])
 			var L: float = cars[0] * cars[1] + 10.0
 			var pw := PlatformModule.PW_RUN
-			var corr_len := 10.0 + rng.randf() * 22.0
+			var corr_len := PlatformModule.TUNNEL_MIN + 6.0 + rng.randf() * 10.0      # the platform tunnel stops before the landing, so the passage is at least as long as the tunnel we keep
 			var is_box: bool = kind != "deep"
 			var spine_x0 := -L * 0.5 if is_box else -L * 0.5 - 6.0
 			var mx: float = rect[1] + corr_len - spine_x0
@@ -238,7 +238,8 @@ func generate(station_idx: int) -> void:
 			var openings_x := [-L * 0.5 + 8.0, -L * 0.5 + 8.0 + 14.0]
 			var wall_style := "tile_cream" if (seed_value + mi) % 3 == 0 else "tile_white"
 			var stripes := _stripes_for(seed_value + mi, faces_spec[0]["color"])
-			var mspec := {"style": "box" if is_box else "arch", "roof": "glass" if kind == "surface" else "flat", "length": L, "pw": pw, "wall": wall_style, "stripes": stripes, "seed": seed_value + li * 7 + mi, "faces": faces_spec,
+			var tun_w := corr_len - spine_x0 - L * 0.5 - 1.0     # distance from the platform's west end to the landing wall, minus a metre of rock
+			var mspec := {"tun_w": tun_w, "style": "box" if is_box else "arch", "roof": "glass" if kind == "surface" else "flat", "length": L, "pw": pw, "wall": wall_style, "stripes": stripes, "seed": seed_value + li * 7 + mi, "faces": faces_spec,
 				"openings_x": openings_x, "spine_x0": spine_x0, "spine_x1": -L * 0.5 + 8.0 + 14.0 + 6.0, "name": name, "group": group}
 			var midx := modules.size()
 			modules.append({"pos": mpos, "spec": mspec, "faces": md["faces"], "level": li, "group": group, "lane_z": lane_z, "corr": [rect[1], mpos.x + spine_x0]})

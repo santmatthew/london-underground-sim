@@ -31,6 +31,13 @@ The planner and the world share the same `StationPlan`, so the "par" time and th
 - **Audio**: `Sfx` autoload reads `assets/audio/manifest.json`; ambience layers crossfade per location; announcements are queued with subtitles.
 - **Autopilot**: `Autopilot` plays the game by following the planner's route (also multi-stop) — end-to-end test and video recorder.
 
+## Tube map (M)
+`TubeMap` has two views: the **diagram** (default; the Beck-style schematic with lines at 0/45/90 degrees, parallel lines on shared track, ticks and interchange
+capsules, the Thames) and the **geographic** map; G or the button top right switches. The diagram is generated offline from the real network by
+`tools/build_diagram.py` (needs numpy + scipy; `--png` needs matplotlib): warp the real positions to magnify the centre, optimise edge angles, anneal the stations
+on a grid so almost every edge is exactly octilinear with no crossings, route the few remaining edges as two-part doglegs, place labels, warp the river with the
+layout -> `data/tube_diagram.json` (~42 KB). The layout is cached in `build/diagram/G.npy` (`--relayout` recomputes; ~2 min). Labels are culled by priority in the game.
+
 ## Riding: things that must hold (each was a real bug)
 - The player's train is static in the world; stations slide past it. Anything of a *moving* station that could touch the carriage must be inert:
   `Ride` builds the destination **parked at y=-5000 from the first frame**, mutes the colliders of both the origin and the destination while
@@ -46,6 +53,10 @@ The planner and the world share the same `StationPlan`, so the "par" time and th
   while they ride (`CrowdManager._set_solid`). A rider that is carried into a player who is boxed in by the balustrades can only be resolved
   upwards - onto the rider's head or the rail top - and from there the player slid off the outside edge into the void (Oxford Circus, found
   by a hub journey). `esc_edge_test --crowd` reproduces it.
+- Platform tunnels: the running tunnel on the room side of a module is short (`tun_w`) and ends in a dark cap; rooms never overlap a tunnel
+  (`LayoutCompiler._check_overlaps`, `route_audit_test` asserts the length). Never add a room in line with a platform without lengthening the passage.
+- Every station must have a free path: `tests/route_audit_test.gd` sweeps the real capsule along every street door <-> platform, platform <-> platform and
+  start-spot route of all 272 stations (gates open, static, ~1 min for the whole network); an empty planner path is a failure, not a pass.
 - `Autopilot` stuck recovery is per waypoint (`_wp_sides`): a re-route from the nearest visible node after 3 stuck events at the same waypoint.
 - `Autopilot` also: boards early when the doors are open and it is on the platform; steps back out if a boarding passenger pushes it into a standing
   train; never dodges a person into a train; picks the exit door by walking time (as the planner does), not by node count.
@@ -59,6 +70,7 @@ roundels and names flat on the tile wall.
 ## Tests worth knowing
 `walkbot_test` (real capsule along routes; `--reverse`, `--rot=180`, `--trace`), `walk_test` (floor audit), `spine_wall_test`, `sign_audit_test`,
 `tools/hub_walks.sh` (walkbot on every authored hub, all halls + reverse, in parallel) and `tools/hub_journeys.sh [file]` (autopilot journeys between hubs in parallel; flags falls, stuck events, missed trains),
+`route_audit_test` (`--all` or `--stations=..`: free path everywhere), `wall_audit_test` (visible surfaces without a collider, `--range=a,b`), `tube_map_test` / `map_toggle_test`, `person_bag_test`,
 `layouts_test` (every data/layouts file maps to a station and compiles), `plan_dump_test` (`--station`, optional `--from/--to`: platform ids, rooms, modules, waypoints of a route),
 `ray_probe_test` (what is at a point), `esc_edge_test` (real capsule pinned on every escalator lane, incl. `--crowd` = the station's real crowd at 08:50; fails if the player climbs a
 balustrade or leaves the shaft), `bot_test` (autopilot journey; `--seed`, `--multi=N`, `--start/--dest/--spot/--hour`, `--every`, `--frames`; prints DROP/TRAIL diagnostics

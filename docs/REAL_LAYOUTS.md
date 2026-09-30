@@ -38,12 +38,11 @@ folds them into a chain with the same total drop; depths are the diagrams' depth
 Street names are only used where the diagram or OSM gives them; exits the diagram merely letters get a number or the area they open onto.
 `tools/hub_walks.sh` walks every one of them (each ticket hall -> every platform, and every platform -> street) in one go.
 
-- **Tunnel stubs cross landings (visual only).** Every platform module continues its running tunnel `PlatformModule.TUNNEL_EXT` = 170 m past
-  both platform ends (trains approach along it, the ride scenery joins it). In the comb layouts the landing sits in front of the platform's west end,
-  so that stub passes through the landing at the same level: from some angles a landing shows a piece of beige tunnel wall and track trough.
-  The shell has no collision there and trains are non-solid away from the platform, so nothing blocks; `_check_overlaps` deliberately models a
-  module as its platform length only. A proper fix needs the rooms beside the tunnel (not in line with it) or clipping the stub together with
-  the train visibility and the ride approach.
+- **Platform tunnels stop before the rooms.** A module's running tunnel used to continue 170 m past both platform ends, straight through the landing in
+  front of it (a visible tunnel wall with no collider: you could walk through it). Now the room-side tunnel stops at a dark, unlit cap (`tun_w` in the module
+  spec: passage length + 6 m - 1 m), the passage is at least `PlatformModule.TUNNEL_MIN + 6` = 36 m so the tunnel is long enough to hold the player's car at a
+  ride hand-over (22 m from the platform end), trains hide once they are beyond the cap (`TrainService`), and `LayoutCompiler._check_overlaps` now includes the
+  tunnels. `tests/wall_audit_test.gd` measures it: visible-but-not-solid rays per station fell from thousands to a few dozen (door trim, shaft interiors).
 - Street names for exits come from OSM where mapped; where the diagram only gives a letter (Victoria B, C) the exit has a number and no street name.
 - Dimensions are estimates (the diagrams are topological, not to scale); depths come from the diagrams' depth tables.
 

@@ -174,7 +174,7 @@ static func compile(p: StationPlan, spec: Dictionary) -> bool:
 		var cars: Array = StationPlan.CARS.get(line_id, [6, 16.0])
 		var L: float = cars[0] * cars[1] + 10.0
 		var pw := PlatformModule.PW_RUN
-		var corr_len: float = md.get("corr_len", 14.0)
+		var corr_len: float = maxf(md.get("corr_len", 14.0), PlatformModule.TUNNEL_MIN + 6.0)      # see StationPlan: the tunnel must stop before the landing
 		var is_box: bool = p.kind != "deep"
 		var spine_x0 := -L * 0.5 if is_box else -L * 0.5 - 6.0
 		var mx: float = rect[1] + corr_len - spine_x0
@@ -190,7 +190,8 @@ static func compile(p: StationPlan, spec: Dictionary) -> bool:
 		var wall_style := "tile_cream" if (p.seed_value + mod_i) % 3 == 0 else "tile_white"
 		var stripes := p._stripes_for(p.seed_value + mod_i, faces_spec[0]["color"])
 		var openings_x := [-L * 0.5 + 8.0, -L * 0.5 + 8.0 + 14.0]
-		var mspec := {"style": "box" if is_box else "arch", "roof": "glass" if p.kind == "surface" else "flat", "length": L, "pw": pw, "wall": wall_style, "stripes": stripes,
+		var tun_w := corr_len - spine_x0 - L * 0.5 - 1.0
+		var mspec := {"tun_w": tun_w, "style": "box" if is_box else "arch", "roof": "glass" if p.kind == "surface" else "flat", "length": L, "pw": pw, "wall": wall_style, "stripes": stripes,
 			"seed": p.seed_value + mod_i * 7, "faces": faces_spec, "openings_x": openings_x, "spine_x0": spine_x0, "spine_x1": -L * 0.5 + 8.0 + 14.0 + 6.0, "name": p.name, "group": group}
 		var level := int(room["name"].substr(7)) if str(room["name"]).begins_with("landing") else 0
 		p.modules.append({"pos": mpos, "spec": mspec, "faces": facelist, "level": level, "group": group, "lane_z": lane_z, "corr": [rect[1], mpos.x + spine_x0], "room": room["name"]})
@@ -454,13 +455,23 @@ static func _check_overlaps(p: StationPlan) -> bool:
 		var m: Dictionary = p.modules[mi]
 		var mp: Vector3 = m["pos"]
 		var L: float = m["spec"]["length"]
-		boxes.append({"name": "module%d" % mi, "aabb": AABB(Vector3(mp.x - L * 0.5 - 1.0, mp.y - 1.4, mp.z - 8.6), Vector3(L + 2.0, 5.8, 17.2)), "kind": "module"})
+		boxes.append({"name": "module%d" % mi, "aabb": AABB(Vector3(mp.x - L * 0.5 - 1.0, mp.y - 1.4, mp.z - 8.6), Vector3(L + 2.0, 5.8, 17.2)), "kind": "module", "mod": mi})
+		# the running tunnels beyond both platform ends (the west one is shortened to stop before the landing; a cap closes it)
+		var tw: float = m["spec"].get("tun_w", PlatformModule.TUNNEL_EXT)
+		var te: float = m["spec"].get("tun_e", PlatformModule.TUNNEL_EXT)
+		boxes.append({"name": "module%d tunnel (west)" % mi, "aabb": AABB(Vector3(mp.x - L * 0.5 - tw, mp.y - 1.4, mp.z - 8.6), Vector3(tw - 1.0, 5.8, 17.2)), "kind": "tunnel", "mod": mi})
+		boxes.append({"name": "module%d tunnel (east)" % mi, "aabb": AABB(Vector3(mp.x + L * 0.5 + 1.0, mp.y - 1.4, mp.z - 8.6), Vector3(te, 5.8, 17.2)), "kind": "tunnel", "mod": mi})
 	var ok := true
 	for i in boxes.size():
 		for j in range(i + 1, boxes.size()):
 			var bi: Dictionary = boxes[i]
 			var bj: Dictionary = boxes[j]
 			if bi["kind"] == "esc" and bj["kind"] == "esc" and bi["esc"] == bj["esc"]:
+				continue
+			if bi.get("mod", -1) == bj.get("mod", -2):
+				continue                 # a module and its own tunnels
+			# the module's own connecting passage runs between its two tunnels
+			if (bi["kind"] == "tunnel" and bj["kind"] == "room" and str(bj["name"]).begins_with("corridor")) or (bj["kind"] == "tunnel" and bi["kind"] == "room" and str(bi["name"]).begins_with("corridor")):
 				continue
 			# an escalator legitimately touches the two rooms it connects; shrink the test a little
 			var a: AABB = (bi["aabb"] as AABB).grow(-0.35)

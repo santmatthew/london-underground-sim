@@ -22,7 +22,8 @@ const TRACK_TO_WALL := 1.75
 const SPINE_H := 2.6
 const OPEN_W := 3.0
 const OPEN_H := 2.15
-const TUNNEL_EXT := 170.0    # running tunnel visible beyond the platform ends (must exceed a full train length)
+const TUNNEL_EXT := 170.0    # default running tunnel beyond each platform end (spec `tun_w` / `tun_e` shorten it where rooms lie in its way)
+const TUNNEL_MIN := 30.0     # a shortened tunnel must still hold the player's car at a ride hand-over (22 m from the platform end)
 const BOX_H := 4.7          # ceiling height of "box" halls (sub-surface / surface stations)
 const HEAD := 2.15          # lowest underside allowed for anything hanging over a walkway
 const PW_RUN := 3.2          # platform width AND running-tunnel clearance: constant so every tunnel joins invisibly
@@ -52,7 +53,8 @@ func build(p_spec: Dictionary) -> void:
 	var spine_x0: float = spec.get("spine_x0", -L * 0.5 - 6.0)
 	var spine_x1: float = spec.get("spine_x1", -L * 0.5 + 27.0)
 	kit.seed_rng(int(spec.get("seed", 1)))
-	meta = {"faces": [], "openings": openings, "spine_x0": spine_x0, "spine_x1": spine_x1, "length": L, "pw": pw, "style": spec.get("style", "arch")}
+	meta = {"faces": [], "openings": openings, "spine_x0": spine_x0, "spine_x1": spine_x1, "length": L, "pw": pw, "style": spec.get("style", "arch"),
+		"tun_w": float(spec.get("tun_w", TUNNEL_EXT)), "tun_e": float(spec.get("tun_e", TUNNEL_EXT))}
 
 	var zwall := GAP * 0.5                      # platform-side wall (abs z)
 	var zedge := zwall + pw                     # platform edge
@@ -78,7 +80,7 @@ func build(p_spec: Dictionary) -> void:
 		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 
 	var mats := {}
-	for n in ["tile_white", "tile_cream", "panel_white", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "black", "light_emissive", "glass_roof"]:
+	for n in ["tile_white", "tile_cream", "panel_white", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "black", "tunnel_dark", "light_emissive", "glass_roof"]:
 		mats[n] = Mats.get_mat(n)
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
@@ -102,8 +104,8 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	var zwall_run := zfar - (TRACK_TO_WALL + TRACK_TO_EDGE + PW_RUN)
 	var prof := _arch_profile(s, zwall, zfar)
 	var prof_run := _arch_profile(s, zwall_run, zfar)
-	var xa := x0 - TUNNEL_EXT
-	var xb := x1 + TUNNEL_EXT
+	var xa := x0 - float(meta["tun_w"])       # the running tunnel stops (black cap) before it reaches the rooms on that side
+	var xb := x1 + float(meta["tun_e"])
 	if not box:
 		kit.sweep_x(wall_mat, prof, x0, x1, 0.0)
 	kit.sweep_x(wall_mat, prof_run, xa, x0, 0.0)
@@ -395,9 +397,9 @@ func _end_cap(s: float, x: float, zwall: float, zfar: float, west: bool) -> void
 	var p2 := Vector3(x, BED_Y, zb)
 	var p3 := Vector3(x, BED_Y, za)
 	if west:
-		kit.quad("black", p0, p3, p2, p1, 0.0)      # normal +x
+		kit.quad("tunnel_dark", p0, p3, p2, p1, 0.0)      # normal +x
 	else:
-		kit.quad("black", p0, p1, p2, p3, 0.0)      # normal -x
+		kit.quad("tunnel_dark", p0, p1, p2, p3, 0.0)      # normal -x
 
 
 func _frame(zc: float, ox: float, w: float, h: float) -> void:

@@ -86,6 +86,13 @@ static func get_mat(name: String) -> Material:
 			s2.albedo_color = Color(0.03, 0.03, 0.035)
 			s2.roughness = 0.6
 			m = s2
+		"tunnel_dark":
+			# the far end of a running tunnel: pure black, unlit, so it reads as "the tunnel goes on" and never reflects the tunnel lights
+			var sd := StandardMaterial3D.new()
+			sd.albedo_color = Color(0.0, 0.0, 0.0)
+			sd.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			sd.cull_mode = BaseMaterial3D.CULL_DISABLED
+			m = sd
 		"glass_roof":
 			var gr := StandardMaterial3D.new()
 			var hh := fmod(Clock.now / 3600.0, 24.0)

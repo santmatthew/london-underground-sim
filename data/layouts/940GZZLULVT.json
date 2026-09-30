@@ -1,5 +1,5 @@
 {
- "note": "Liverpool Street from TfL diagram C101 (topology; dimensions estimated)",
+ "note": "Liverpool Street from TfL diagram C101 (topology; dimensions estimated); ticket halls A and B share a paid-side opening so Central <-> Metropolitan/Circle interchange stays inside the barriers",
  "rooms": [
   {
    "id": "hall_a",
@@ -30,8 +30,8 @@
    "id": "hall_b",
    "kind": "hall",
    "rect": [
-    -40,
-    -24,
+    -30,
+    -14,
     -14,
     8
    ],
@@ -43,7 +43,7 @@
    "doors": [
     {
      "name": "Old Broad Street",
-     "c": -32.0
+     "c": -22.0
     }
    ]
   },
@@ -72,7 +72,7 @@
    "id": "land_ss",
    "kind": "landing",
    "size": [
-    40,
+    36,
     12
    ],
    "depth": 3.6
@@ -81,7 +81,7 @@
    "id": "land_c",
    "kind": "landing",
    "size": [
-    40,
+    48,
     16
    ],
    "depth": 11.8
@@ -105,13 +105,13 @@
    "from": "hall_b",
    "to": "land_c",
    "dir": "S",
-   "c": -32.0,
+   "c": -22.0,
    "lanes": [
     1,
     -1,
     1
    ],
-   "to_off": -11.0
+   "to_off": -14.0
   },
   {
    "id": "land_c_1",
@@ -160,6 +160,17 @@
      0
     ]
    ]
+  }
+ ],
+ "links": [
+  {
+   "id": "hall_link",
+   "a": "hall_a",
+   "b": "hall_b",
+   "side": "W",
+   "c": 2.0,
+   "w": 6.0,
+   "h": 3.0
   }
  ]
 }

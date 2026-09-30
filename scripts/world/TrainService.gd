@@ -73,6 +73,11 @@ func _process(delta: float) -> void:
 		var train: Train = v["train"]
 		train.position.x = x
 		train.set_solid(absf(x) < 0.5)
+		# a running tunnel that stops short of the rooms behind it ends in a black cap: a train beyond it is not there
+		var mod: PlatformModule = v["module"]
+		var half: float = train.length * 0.5
+		var mlen: float = mod.meta["length"]
+		train.visible = x + half > -mlen * 0.5 - float(mod.meta["tun_w"]) + 0.5 and x - half < mlen * 0.5 + float(mod.meta["tun_e"]) - 0.5
 		var dwell: float = info["dep"] - info["arr"]
 		# doors
 		var want_open: bool = now >= info["arr"] + (3.0 if not v["origin"] else 0.0) and now < info["dep"] - 6.0 and dwell >= 15.0 and absf(x) < 0.5
