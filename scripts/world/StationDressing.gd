@@ -302,7 +302,7 @@ func _hall(gl: Dictionary) -> void:
 	wall_node(hall_room, "W", PropKit.help_point_disc(), 0.6, 1.3, 0.95, 1.65, gz - 2.8)
 	wall_node(hall_room, "E", PropKit.help_point_disc(), 0.6, 1.3, 0.95, 1.65, gz + 3.0)
 	# wall furniture on free wall: clock high on a paid-side wall, a fire cabinet
-	wall_prop(hall_room, "E", "clock", 0.6, 3.0, 2.6, 3.4, gz + 2.5)
+	StationClocks.register(station, wall_prop(hall_room, "E", "clock", 0.6, 3.0, 2.6, 3.4, gz + 2.5))
 	wall_prop(hall_room, "E", "fire_cabinet", 0.6, 0.3, 0.3, 1.3, gz + 6.0)
 	# cameras and speakers hang from the ceiling
 	for k in 4:
@@ -629,8 +629,8 @@ func _platform_furniture(holder: Node3D, pm: PlatformModule, s: float, zwall: fl
 		cx += 18.0
 		stats["placed"] += 1
 	# clocks on the platform wall
-	StationProps.put(holder, "clock", Vector3(-L * 0.25, 2.1, s * (zwall + 0.03)), Vector3(0, 0, s))
-	StationProps.put(holder, "clock", Vector3(L * 0.25, 2.1, s * (zwall + 0.03)), Vector3(0, 0, s))
+	for cx2 in [-L * 0.25, L * 0.25]:
+		StationClocks.register(station, StationProps.put(holder, "clock", Vector3(cx2, 2.1, s * (zwall + 0.03)), Vector3(0, 0, s)))
 	# "MIND THE GAP" stencilled in yellow on the edge strip, every ~14 m (letters about 0.13 m tall, reading from the platform)
 	var gx := -L * 0.5 + 9.0
 	while gx < L * 0.5 - 4.0:

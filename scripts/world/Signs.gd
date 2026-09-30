@@ -335,16 +335,19 @@ class Indicator:
 			labels.append(l)
 		refresh()
 
-	func _process(delta: float) -> void:
-		_accum += delta
-		if _accum >= 1.0:
-			_accum = 0.0
+	var _last_sec := -1
+
+	func _process(_delta: float) -> void:
+		var sec := int(Clock.now)
+		if sec != _last_sec:
+			_last_sec = sec
 			refresh()
 
 	func refresh() -> void:
 		var now: float = Clock.now
 		var deps: Array = Timetable.next_departures(platform_gp, now - 5.0, 3)
-		for i in 3:
+		# two trains and, on the third row, the time in seconds (as the real platform indicators show)
+		for i in 2:
 			var l: Label3D = labels[i]
 			if i < deps.size():
 				var d: Dictionary = deps[i]
@@ -359,6 +362,8 @@ class Indicator:
 				l.text = "%d %-17s %6s" % [i + 1, name, due]
 			else:
 				l.text = ""
+		var t := int(now) % 86400
+		(labels[2] as Label3D).text = "%26s" % ("%02d:%02d:%02d" % [t / 3600, (t % 3600) / 60, t % 60])
 
 
 static func indicator(gp: int, width := 2.9) -> Node3D:
