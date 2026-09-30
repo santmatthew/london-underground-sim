@@ -1,0 +1,15 @@
+{
+  "naptan": "940GZZLUBZP",
+  "source": "TfL station layout diagram N045-02",
+  "halls": [
+    {"id": "hall", "exits": [{"ref": "A", "name": "Belsize Park"}, {"ref": "B"}]}
+  ],
+  "levels": [
+    {"id": "lower", "depth": 26.0, "groups": []},
+    {"id": "plat", "depth": 31.0, "groups": ["northern"]}
+  ],
+  "banks": [
+    {"from": "hall", "to": "lower", "lanes": [1, -1]},
+    {"from": "lower", "to": "plat", "lanes": [1, -1], "stairs": true}
+  ]
+}

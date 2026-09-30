@@ -3,27 +3,14 @@
 # prints one line per run: "<station> <from>: N routes, M failed"; anything else (FAIL details) is in build/hubwalks/<name>.log
 cd "$(dirname "$0")/.."
 mkdir -p build/hubwalks; rm -f build/hubwalks/*.log
-HUBS=(
-  "Oxford Circus:hall_unpaid hall2_unpaid"
-  "King's Cross St. Pancras:hall_unpaid hall2_unpaid"
-  "Bank:hall_unpaid hall2_unpaid"
-  "Waterloo:hall_unpaid hall2_unpaid"
-  "Liverpool Street:hall_unpaid hall2_unpaid hall3_unpaid"
-  "Tottenham Court Road:hall_unpaid"
-  "Euston:hall_unpaid"
-  "Green Park:hall_unpaid"
-  "Victoria:hall_unpaid hall2_unpaid"
-  "Piccadilly Circus:hall_unpaid"
-  "Leicester Square:hall_unpaid"
-  "Charing Cross:hall_unpaid"
-  "Embankment:hall_unpaid hall2_unpaid"
-  "Westminster:hall_unpaid"
-  "Holborn:hall_unpaid"
-  "London Bridge:hall_unpaid"
-  "Paddington:hall_unpaid hall2_unpaid"
-  "Bond Street:hall_unpaid"
-  "Canary Wharf:hall_unpaid"
-)
+# every authored layout (data/layouts) is walked: "Name:hall_unpaid hall2_unpaid ..." built from layouts_test --list
+HUBS=()
+while IFS='|' read -r tag name halls naptan; do
+  [ "$tag" = "LAYOUT" ] || continue
+  hs="hall_unpaid"; for ((h = 2; h <= halls; h++)); do hs="$hs hall${h}_unpaid"; done
+  HUBS+=("$name:$hs")
+done < <(GTEST_TIMEOUT=300 GTEST_LINES=2000 tools/gtest.sh layouts_test --list 2>&1)
+echo "hub walks over ${#HUBS[@]} authored stations"
 JOBS=${JOBS:-12}          # at most this many Godot instances at once (dozens in parallel made an engine crash in ~1 of 47 runs)
 running=0
 for h in "${HUBS[@]}"; do

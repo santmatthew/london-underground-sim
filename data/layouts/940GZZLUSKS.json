@@ -1,0 +1,178 @@
+{
+ "note": "South Kensington, from TfL station layout diagram D109-02s (topology; dimensions estimated); bank hall->conc_mid rerouted from conc_dc (the landings of different depth cannot share a wall); bank conc_mid->pic_w rerouted from pic_e (the landings of different depth cannot share a wall)",
+ "rooms": [
+  {
+   "id": "hall",
+   "kind": "hall",
+   "rect": [
+    -20.0,
+    20.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 10
+   },
+   "doors": [
+    {
+     "c": -16.5,
+     "ref": "A"
+    },
+    {
+     "c": -8.2,
+     "ref": "B"
+    },
+    {
+     "c": 0.0,
+     "ref": "C"
+    },
+    {
+     "c": 8.2,
+     "ref": "D"
+    },
+    {
+     "c": 16.5,
+     "ref": "E"
+    }
+   ]
+  },
+  {
+   "id": "conc_dc",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 8.2
+  },
+  {
+   "id": "conc_mid",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 12.5
+  },
+  {
+   "id": "pic_e",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 18.9
+  },
+  {
+   "id": "pic_w",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 24.3
+  }
+ ],
+ "esc": [
+  {
+   "id": "conc_dc_0",
+   "from": "hall",
+   "to": "conc_dc",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true,
+   "to_off": 0.0
+  },
+  {
+   "id": "conc_mid_0",
+   "from": "conc_dc",
+   "to": "conc_mid",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "stairs": false,
+   "to_off": 0.0
+  },
+  {
+   "id": "pic_e_0",
+   "from": "conc_mid",
+   "to": "pic_e",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": false,
+   "to_off": 0.0
+  },
+  {
+   "id": "pic_w_0",
+   "from": "pic_e",
+   "to": "pic_w",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true,
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "conc_dc",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "ss",
+   "faces": [
+    [
+     "ss:Eastbound",
+     0
+    ],
+    [
+     "ss:Westbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "pic_e",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "piccadilly",
+   "faces": [
+    [
+     "piccadilly:Eastbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "pic_w",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "piccadilly",
+   "faces": [
+    [
+     "piccadilly:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

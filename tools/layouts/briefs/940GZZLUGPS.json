@@ -1,0 +1,13 @@
+{
+  "naptan": "940GZZLUGPS",
+  "source": "TfL station layout diagram M115-02",
+  "halls": [
+    {"id": "hall", "exits": [{"ref": "A", "name": "Great Portland Street"}, {"ref": "B", "name": "Great Portland Street"}]}
+  ],
+  "levels": [
+    {"id": "plat", "depth": 7.0, "groups": ["ss"]}
+  ],
+  "banks": [
+    {"from": "hall", "to": "plat", "lanes": [1, -1], "stairs": true}
+  ]
+}

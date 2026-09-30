@@ -1,0 +1,15 @@
+{
+  "naptan": "940GZZLUSJP",
+  "source": "TfL station layout diagram D103-02s",
+  "halls": [
+    {"id": "broadway", "exits": [{"ref": "B"}, {"ref": "C"}]},
+    {"id": "palmer", "exits": [{"ref": "D"}]}
+  ],
+  "levels": [
+    {"id": "plat", "depth": 5.8, "groups": ["ss"]}
+  ],
+  "banks": [
+    {"from": "broadway", "to": "plat", "lanes": [1, -1], "stairs": true},
+    {"from": "palmer", "to": "plat", "lanes": [1, -1], "stairs": true}
+  ]
+}

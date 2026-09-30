@@ -38,6 +38,23 @@ visible wall is walk-through, and a moving player capsule can walk every route. 
   Count the numbered units the diagram labels ("ESCALATORS 4,5,6" = 3 lanes); use `stairs: true` for fixed stairs (also automatic for drops under 6 m).
   If the diagram shows a hall reaching two levels directly, just list both banks: the builder chains the deeper one from the shallower level (same total drop).
 
+## Things that trip up briefs
+* **Every street door must reach every platform group.** Halls only share platforms through the levels they reach: two halls that lead to different levels need a
+  `hall_links` entry (paid passage between the halls) or a bank that reaches the other level, otherwise the checker reports `NO PATH street0 -> ...`.
+* **A group whose platforms sit at different depths** (the depth table lists two values for one line): put each platform in its own level with the single-platform form
+  `"groups": ["northern:Northbound"]` / `["northern:Southbound"]`; if the depths differ by under ~2 m, one level at the mean is fine (say so in your report).
+* **Different-depth landings that hang from the same hall** cannot sit side by side: the builder chains the deeper one from the shallower (same total drop) - no action needed.
+* **Landing overlaps** ("landing0 overlaps landing1"): two banks leaving a hall land too close together; the builder widens a hall with the number of banks it feeds, so give the
+  hall its real banks (or split its banks between two levels) instead of merging everything into one.
+* **Banks into one level must all start at the same depth** (a "BRIEF ERROR ... fed by banks starting at different depths"): feed the level from one room only.
+* **Hall order matters for geometry:** halls are placed east to west in list order, and a bank from one hall can run into the tunnel of another level's platforms
+  ("esc ... overlaps module ... tunnel (west)"): if you see that, swap the order of the halls (or of the hall_links pair).
+* **Lifts are not modelled.** For a short drop use a stair bank; for a long drop (over ~12 m: Hampstead, Goodge Street ...) use an escalator bank as a stand-in and note it.
+* **Escalator lanes:** count the units drawn on the diagram (the numbers in "ESCALATORS 4,5,6"); TfL's facility count printed by `layout_facts.py` is usually lower.
+* **Depths:** `layout_facts.py` prints OCR guesses that often lose a leading digit (15.5 read as 3.5) or are missing: always read the table off the image. A concourse that the
+  table does not list is an estimate (about half way between its neighbours) - say so.
+* `corr` (optional, metres): platform passage length, default and minimum 36; leave it alone unless a diagram shows a very long passage.
+
 ## Reading the diagrams
 * Axonometric drawings: the ticket hall(s) at the top (street or subway level), escalator banks as ribbons of parallel lines with an arrow, concourses as flat slabs,
   platforms as long tunnels/boxes labelled "PLATFORM n" with direction and destination, a depth table at the bottom right. Ignore lifts, emergency stairs and exits, fan

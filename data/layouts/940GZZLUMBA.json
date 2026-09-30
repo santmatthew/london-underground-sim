@@ -1,0 +1,76 @@
+{
+ "note": "Marble Arch, from TfL station layout diagram C127-02 (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall",
+   "kind": "hall",
+   "rect": [
+    -14.0,
+    14.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 9
+   },
+   "doors": [
+    {
+     "c": -10.5,
+     "ref": "1"
+    },
+    {
+     "c": 0.0,
+     "ref": "2"
+    },
+    {
+     "c": 10.5,
+     "ref": "3"
+    }
+   ]
+  },
+  {
+   "id": "plat",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 26.2
+  }
+ ],
+ "esc": [
+  {
+   "id": "plat_0",
+   "from": "hall",
+   "to": "plat",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "plat",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "central",
+   "faces": [
+    [
+     "central:Eastbound",
+     0
+    ],
+    [
+     "central:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

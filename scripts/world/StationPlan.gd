@@ -401,6 +401,7 @@ func finish_common(rng: RandomNumberGenerator = null) -> void:
 
 
 func _reset_plan() -> void:
+	authored = false        # a plan that fell back to the generator is not an authored one (layouts_test / route_audit rely on this)
 	hall = {}
 	rooms = []
 	escs = []

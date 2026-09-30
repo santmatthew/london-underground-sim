@@ -1,0 +1,111 @@
+{
+ "note": "North Greenwich, from TfL station layout diagram J005-2a (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall",
+   "kind": "hall",
+   "rect": [
+    -14.0,
+    14.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 13
+   },
+   "doors": [
+    {
+     "c": -10.5,
+     "name": "Main Entrance"
+    },
+    {
+     "c": 0.0,
+     "ref": "B"
+    },
+    {
+     "c": 10.5,
+     "ref": "C"
+    }
+   ]
+  },
+  {
+   "id": "mid",
+   "kind": "landing",
+   "size": [
+    40.0,
+    16.0
+   ],
+   "depth": 9.0
+  },
+  {
+   "id": "plat",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 18.0
+  }
+ ],
+ "esc": [
+  {
+   "id": "mid_0",
+   "from": "hall",
+   "to": "mid",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "plat_0",
+   "from": "mid",
+   "to": "plat",
+   "dir": "S",
+   "c": -10.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 10.0
+  },
+  {
+   "id": "plat_1",
+   "from": "mid",
+   "to": "plat",
+   "dir": "S",
+   "c": 10.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ]
+  }
+ ],
+ "modules": [
+  {
+   "attach": "plat",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "jubilee",
+   "faces": [
+    [
+     "jubilee:Northbound",
+     0
+    ],
+    [
+     "jubilee:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

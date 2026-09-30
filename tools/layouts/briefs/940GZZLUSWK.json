@@ -1,0 +1,17 @@
+{
+  "naptan": "940GZZLUSWK",
+  "source": "TfL station layout diagram J013-02",
+  "halls": [
+    {"id": "main", "exits": [{"ref": "A"}, {"ref": "B"}]},
+    {"id": "east", "exits": [{"ref": "D"}, {"ref": "E"}]}
+  ],
+  "levels": [
+    {"id": "conc", "depth": 10.0, "groups": []},
+    {"id": "plat", "depth": 24.0, "groups": ["jubilee"]}
+  ],
+  "banks": [
+    {"from": "main", "to": "conc", "lanes": [1, -1, 1]},
+    {"from": "east", "to": "conc", "lanes": [1, -1]},
+    {"from": "conc", "to": "plat", "lanes": [1, -1, 1]}
+  ]
+}

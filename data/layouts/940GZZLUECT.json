@@ -1,0 +1,169 @@
+{
+ "note": "Earl's Court, from TfL station layout diagram P077-02s (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall_ecr",
+   "kind": "hall",
+   "rect": [
+    -12.0,
+    12.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 10
+   },
+   "doors": [
+    {
+     "c": 0.0,
+     "ref": "A"
+    }
+   ]
+  },
+  {
+   "id": "hall_warwick",
+   "kind": "hall",
+   "rect": [
+    -44.0,
+    -20.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 10
+   },
+   "doors": [
+    {
+     "c": -40.5,
+     "ref": "B"
+    },
+    {
+     "c": -23.5,
+     "ref": "C"
+    }
+   ]
+  },
+  {
+   "id": "conc_dc",
+   "kind": "landing",
+   "size": [
+    48.0,
+    16.0
+   ],
+   "depth": 4.8
+  },
+  {
+   "id": "conc",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 11.0
+  },
+  {
+   "id": "conc_pic",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 19.8
+  }
+ ],
+ "esc": [
+  {
+   "id": "conc_dc_0",
+   "from": "hall_ecr",
+   "to": "conc_dc",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true,
+   "to_off": -16.0
+  },
+  {
+   "id": "conc_dc_1",
+   "from": "hall_warwick",
+   "to": "conc_dc",
+   "dir": "S",
+   "c": -32.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true
+  },
+  {
+   "id": "conc_0",
+   "from": "conc_dc",
+   "to": "conc",
+   "dir": "S",
+   "c": -16.0,
+   "lanes": [
+    1,
+    -1,
+    1,
+    -1
+   ],
+   "stairs": false,
+   "to_off": 0.0
+  },
+  {
+   "id": "conc_pic_0",
+   "from": "conc",
+   "to": "conc_pic",
+   "dir": "S",
+   "c": -16.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true,
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "conc_dc",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "ss",
+   "faces": [
+    [
+     "ss:Eastbound",
+     0
+    ],
+    [
+     "ss:Westbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "conc_pic",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "piccadilly",
+   "faces": [
+    [
+     "piccadilly:Eastbound",
+     0
+    ],
+    [
+     "piccadilly:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

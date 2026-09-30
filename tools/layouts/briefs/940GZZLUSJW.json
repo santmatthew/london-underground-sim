@@ -1,0 +1,13 @@
+{
+  "naptan": "940GZZLUSJW",
+  "source": "TfL station layout diagram B113-02",
+  "halls": [
+    {"id": "hall", "exits": [{"ref": "A", "name": "St. John's Wood"}]}
+  ],
+  "levels": [
+    {"id": "plat", "depth": 18.6, "groups": ["jubilee"]}
+  ],
+  "banks": [
+    {"from": "hall", "to": "plat", "lanes": [1, -1, 1]}
+  ]
+}

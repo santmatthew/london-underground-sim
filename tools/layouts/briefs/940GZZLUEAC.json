@@ -1,0 +1,19 @@
+{
+  "naptan": "940GZZLUEAC",
+  "source": "TfL station layout diagram N139-02",
+  "halls": [
+    {"id": "northern_hall", "exits": [{"ref": "B"}]},
+    {"id": "bakerloo_hall", "exits": [{"ref": "A"}]}
+  ],
+  "hall_links": [["northern_hall", "bakerloo_hall"]],
+  "levels": [
+    {"id": "bak_conc", "depth": 11.5, "groups": []},
+    {"id": "bak_plat", "depth": 23.5, "groups": ["bakerloo"]},
+    {"id": "nor_plat", "depth": 18.9, "groups": ["northern"]}
+  ],
+  "banks": [
+    {"from": "bakerloo_hall", "to": "bak_conc", "lanes": [1, -1], "stairs": true},
+    {"from": "bak_conc", "to": "bak_plat", "lanes": [1, -1], "stairs": true},
+    {"from": "northern_hall", "to": "nor_plat", "lanes": [1, -1]}
+  ]
+}

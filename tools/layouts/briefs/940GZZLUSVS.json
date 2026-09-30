@@ -1,0 +1,15 @@
+{
+  "naptan": "940GZZLUSVS",
+  "source": "TfL station layout diagram V027-02",
+  "halls": [
+    {"id": "sisters", "exits": [{"ref": "A"}, {"ref": "B"}]},
+    {"id": "highrd", "exits": [{"ref": "C"}, {"ref": "D"}, {"ref": "E"}]}
+  ],
+  "levels": [
+    {"id": "plat", "depth": 18.6, "groups": ["victoria"]}
+  ],
+  "banks": [
+    {"from": "sisters", "to": "plat", "lanes": [1, -1, 1]},
+    {"from": "highrd", "to": "plat", "lanes": [1, -1, 1, -1]}
+  ]
+}

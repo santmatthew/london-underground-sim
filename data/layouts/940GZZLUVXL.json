@@ -1,0 +1,82 @@
+{
+ "note": "Vauxhall, from TfL station layout diagram V055-02 (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall",
+   "kind": "hall",
+   "rect": [
+    -17.0,
+    17.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 8
+   },
+   "doors": [
+    {
+     "c": -13.5,
+     "ref": "1"
+    },
+    {
+     "c": -4.5,
+     "ref": "2"
+    },
+    {
+     "c": 4.5,
+     "ref": "3"
+    },
+    {
+     "c": 13.5,
+     "ref": "4"
+    }
+   ]
+  },
+  {
+   "id": "plat",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 17.5
+  }
+ ],
+ "esc": [
+  {
+   "id": "plat_0",
+   "from": "hall",
+   "to": "plat",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1,
+    -1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "plat",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "victoria",
+   "faces": [
+    [
+     "victoria:Northbound",
+     0
+    ],
+    [
+     "victoria:Southbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

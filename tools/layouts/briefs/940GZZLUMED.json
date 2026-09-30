@@ -1,0 +1,15 @@
+{
+  "naptan": "940GZZLUMED",
+  "source": "TfL station layout diagram D053-02",
+  "halls": [
+    {"id": "hall"}
+  ],
+  "levels": [
+    {"id": "ss", "depth": 7.0, "groups": ["ss"]},
+    {"id": "cen", "depth": 13.0, "groups": ["central"]}
+  ],
+  "banks": [
+    {"from": "hall", "to": "ss", "lanes": [1, -1], "stairs": true},
+    {"from": "hall", "to": "cen", "lanes": [1, -1], "stairs": true}
+  ]
+}

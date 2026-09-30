@@ -1,0 +1,15 @@
+{
+  "naptan": "940GZZLUGTR",
+  "source": "TfL station layout diagram P075-02",
+  "halls": [
+    {"id": "hall", "exits": [{"ref": "A"}, {"ref": "B"}]}
+  ],
+  "levels": [
+    {"id": "conc_dc", "depth": 7.0, "groups": ["ss"]},
+    {"id": "conc_pic", "depth": 20.0, "groups": ["piccadilly"]}
+  ],
+  "banks": [
+    {"from": "hall", "to": "conc_dc", "lanes": [1, -1], "stairs": true},
+    {"from": "conc_dc", "to": "conc_pic", "lanes": [1, -1], "stairs": true}
+  ]
+}

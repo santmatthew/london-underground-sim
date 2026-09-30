@@ -1,0 +1,73 @@
+{
+ "note": "Heathrow Terminal 4, from TfL station layout diagram D235-02 (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall",
+   "kind": "hall",
+   "rect": [
+    -14.0,
+    14.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 8
+   },
+   "doors": [
+    {
+     "c": -10.5,
+     "ref": "A"
+    },
+    {
+     "c": 0.0,
+     "ref": "B"
+    },
+    {
+     "c": 10.5,
+     "ref": "C"
+    }
+   ]
+  },
+  {
+   "id": "plat",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 8.0
+  }
+ ],
+ "esc": [
+  {
+   "id": "plat_0",
+   "from": "hall",
+   "to": "plat",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true,
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "plat",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "piccadilly",
+   "faces": [
+    [
+     "piccadilly:Southbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

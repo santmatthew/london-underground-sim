@@ -13,7 +13,8 @@ A brief is a JSON file  tools/layouts/briefs/<naptan>.json:
     ],
     "hall_links": [["A", "B"]],                     # halls joined inside the barriers (the second is placed beside the first)
     "levels": [                                    # rooms below the halls (concourses, platform-level landings), by depth below the hall floor (m)
-      {"id": "conc", "depth": 6.4, "groups": ["ss"]},              # groups = platform groups of the station whose platforms are reached here
+      {"id": "conc", "depth": 6.4, "groups": ["ss"]},              # groups = platform groups whose platforms are reached here (or single platforms, "northern:Northbound",
+                                                                   #   for a group whose platforms sit at different depths: list each on its own level)
       {"id": "low", "depth": 17.9, "groups": ["victoria"]}
     ],
     "banks": [                                     # escalator / stair banks (down); lanes: 1 = down, -1 = up; stairs true = fixed stairs
@@ -107,26 +108,30 @@ def normalise(brief):
             raise BriefError("duplicate id %s" % h["id"])
         ids.add(h["id"])
     depth_default = LAYOUT_DEPTHS.get(b["naptan"], {}).get("depths", {})
-    used_groups = set()
+    used_pids = set()
+    all_pids = set(NET[b["naptan"]]["platforms"])
     for lv in b.get("levels", []):
         if lv["id"] in ids:
             raise BriefError("duplicate id %s" % lv["id"])
         ids.add(lv["id"])
         for g in lv.get("groups", []):
-            if g not in groups:
-                raise BriefError("level %s: this station has no platform group %r (it has %s)" % (lv["id"], g, sorted(groups)))
-            if g in used_groups:
-                raise BriefError("platform group %r appears in two levels" % g)
-            used_groups.add(g)
+            # an entry is a whole platform group ("northern") or a single platform ("northern:Northbound") for groups whose platforms sit at different depths
+            pids = [g] if g in all_pids else groups.get(g)
+            if pids is None:
+                raise BriefError("level %s: %r is neither a platform group nor a platform of this station (groups: %s; platforms: %s)" % (lv["id"], g, sorted(groups), sorted(all_pids)))
+            for pid in pids:
+                if pid in used_pids:
+                    raise BriefError("platform %s is placed in two levels" % pid)
+                used_pids.add(pid)
         if "depth" not in lv:
-            gs = [g for g in lv.get("groups", []) if g in depth_default]
+            gs = [g.split(":")[0] for g in lv.get("groups", []) if g.split(":")[0] in depth_default]
             if not gs:
                 raise BriefError("level %s has no depth and no depth table for its groups" % lv["id"])
             lv["depth"] = float(depth_default[gs[0]][0])
         lv["depth"] = float(lv["depth"])
-    missing = set(groups) - used_groups
+    missing = all_pids - used_pids
     if missing:
-        raise BriefError("platform groups not placed in any level: %s (add them to a level's groups)" % sorted(missing))
+        raise BriefError("platforms not placed in any level: %s (add their group - or the single platforms - to a level's groups)" % sorted(missing))
     b.setdefault("levels", [])
     b.setdefault("banks", [])
     b.setdefault("hall_links", [])
@@ -146,6 +151,12 @@ def normalise(brief):
         for x in lk:
             if x not in hall_ids:
                 raise BriefError("hall_links: %s is not a hall" % x)
+    # banks into one level must all start at the same depth (the escalators land on one wall of one room)
+    for lv in b["levels"]:
+        srcs = sorted({round(0.0 if k["from"] in hall_ids else lvl[k["from"]]["depth"], 1) for k in b["banks"] if k["to"] == lv["id"]})
+        if len(srcs) > 1:
+            raise BriefError("level %s is fed by banks starting at different depths (%s m): every bank into a level must come from rooms at the same depth - "
+                             "feed it from one level, or give the extra bank its own intermediate level" % (lv["id"], ", ".join(str(x) for x in srcs)))
     # every level must be reachable from a hall
     reach = set(hall_ids)
     for _ in range(len(b["levels"]) + 1):
@@ -273,7 +284,7 @@ def build(brief):
             k["_c"] = round(c, 1)
             cs.append(k["_c"])
         cx = round(sum(cs) / len(cs), 1)
-        n_mod = len(lv.get("groups", []))
+        n_mod = len({(NET[naptan]["platforms"][g]["group"] if g in NET[naptan]["platforms"] else g) for g in lv.get("groups", [])})
         span = max(cs) - min(cs)
         n_out = len(out_banks.get(lv["id"], []))
         w = max(LANDING_MIN_W, span + 16.0, 14.0 * n_out + 12.0)
@@ -293,11 +304,15 @@ def build(brief):
     # ---- platform modules: one per group, east of its level, faces = every platform of the group
     mods = []
     for lv in order:
-        gs = lv.get("groups", [])
-        for gi, g in enumerate(gs):
-            lane = round((gi - (len(gs) - 1) / 2.0) * 18.0, 1)
-            faces = [[pid, 0] for pid in groups[g]]
-            mods.append({"attach": lv["id"], "lane_z": lane, "lane_rel": True, "corr_len": float(b.get("corr", CORR_MIN)), "group": g, "faces": faces})
+        by_group = {}
+        for g in lv.get("groups", []):
+            if g in NET[naptan]["platforms"]:
+                by_group.setdefault(NET[naptan]["platforms"][g]["group"], []).append(g)
+            else:
+                by_group.setdefault(g, []).extend(groups[g])
+        for gi, (g, pids) in enumerate(by_group.items()):
+            lane = round((gi - (len(by_group) - 1) / 2.0) * 18.0, 1)
+            mods.append({"attach": lv["id"], "lane_z": lane, "lane_rel": True, "corr_len": float(b.get("corr", CORR_MIN)), "group": g, "faces": [[pid, 0] for pid in pids]})
     note = "%s, from %s (topology; dimensions estimated)" % (st["name"], b.get("source", "a TfL station layout diagram"))
     if notes:
         note += "; " + "; ".join(notes)

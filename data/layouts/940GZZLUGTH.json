@@ -1,0 +1,101 @@
+{
+ "note": "Gants Hill, from TfL station layout diagram C069-02 (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall",
+   "kind": "hall",
+   "rect": [
+    -32.0,
+    32.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 8
+   },
+   "doors": [
+    {
+     "c": -28.5,
+     "ref": "A"
+    },
+    {
+     "c": -21.4,
+     "ref": "B"
+    },
+    {
+     "c": -14.2,
+     "ref": "C"
+    },
+    {
+     "c": -7.1,
+     "ref": "D"
+    },
+    {
+     "c": 0.0,
+     "ref": "E"
+    },
+    {
+     "c": 7.1,
+     "ref": "F"
+    },
+    {
+     "c": 14.2,
+     "ref": "G"
+    },
+    {
+     "c": 21.4,
+     "ref": "H"
+    },
+    {
+     "c": 28.5,
+     "ref": "I"
+    }
+   ]
+  },
+  {
+   "id": "plat",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 12.8
+  }
+ ],
+ "esc": [
+  {
+   "id": "plat_0",
+   "from": "hall",
+   "to": "plat",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "plat",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "central",
+   "faces": [
+    [
+     "central:Eastbound",
+     0
+    ],
+    [
+     "central:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

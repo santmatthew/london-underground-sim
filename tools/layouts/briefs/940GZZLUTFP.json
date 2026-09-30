@@ -1,0 +1,17 @@
+{
+  "naptan": "940GZZLUTFP",
+  "source": "TfL station layout diagram N083-02",
+  "halls": [
+    {"id": "hall", "exits": [{"ref": "A"}, {"ref": "B"}]}
+  ],
+  "levels": [
+    {"id": "lower", "depth": 14.0, "groups": []},
+    {"id": "nb", "depth": 22.0, "groups": ["northern:Northbound"]},
+    {"id": "sb", "depth": 25.0, "groups": ["northern:Southbound"]}
+  ],
+  "banks": [
+    {"from": "hall", "to": "lower", "lanes": [1, -1]},
+    {"from": "lower", "to": "nb", "lanes": [1, -1], "stairs": true},
+    {"from": "lower", "to": "sb", "lanes": [1, -1], "stairs": true}
+  ]
+}

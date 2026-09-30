@@ -1,0 +1,67 @@
+{
+  "naptan": "940GZZLUHTD",
+  "source": "TfL station layout diagram N043-02s; lifts modelled as escalators",
+  "halls": [
+    {
+      "id": "hall",
+      "exits": [
+        {
+          "ref": "A",
+          "name": "Hampstead"
+        },
+        {
+          "ref": "B"
+        }
+      ]
+    }
+  ],
+  "levels": [
+    {
+      "id": "basement",
+      "depth": 6.0,
+      "groups": []
+    },
+    {
+      "id": "lowconc",
+      "depth": 50.0,
+      "groups": []
+    },
+    {
+      "id": "plat",
+      "depth": 58.5,
+      "groups": [
+        "northern"
+      ]
+    }
+  ],
+  "banks": [
+    {
+      "from": "hall",
+      "to": "basement",
+      "lanes": [
+        1,
+        -1
+      ],
+      "stairs": true
+    },
+    {
+      "from": "basement",
+      "to": "lowconc",
+      "lanes": [
+        1,
+        -1,
+        1,
+        -1
+      ]
+    },
+    {
+      "from": "lowconc",
+      "to": "plat",
+      "lanes": [
+        1,
+        -1
+      ],
+      "stairs": true
+    }
+  ]
+}

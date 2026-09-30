@@ -1,0 +1,13 @@
+{
+  "naptan": "940GZZLUWKA",
+  "source": "TfL station layout diagram B067-02",
+  "halls": [
+    {"id": "hall", "exits": [{"ref": "A", "name": "Warwick Avenue Exit A"}, {"ref": "B", "name": "Warwick Avenue Exit B"}]}
+  ],
+  "levels": [
+    {"id": "plat", "depth": 16.2, "groups": ["bakerloo"]}
+  ],
+  "banks": [
+    {"from": "hall", "to": "plat", "lanes": [1, -1, 1]}
+  ]
+}

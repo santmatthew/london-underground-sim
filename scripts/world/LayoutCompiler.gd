@@ -430,7 +430,10 @@ static func _check_overlaps(p: StationPlan) -> bool:
 		if String(rm["name"]).begins_with("street_passage"):
 			continue
 		var r: Array = rm["rect"]
-		boxes.append({"name": rm["name"], "aabb": AABB(Vector3(r[0], rm["y"] - 0.4, r[2]), Vector3(r[1] - r[0], float(rm["h"]) + 0.8, r[3] - r[2])), "kind": "room"})
+		var rbox := {"name": rm["name"], "aabb": AABB(Vector3(r[0], rm["y"] - 0.4, r[2]), Vector3(r[1] - r[0], float(rm["h"]) + 0.8, r[3] - r[2])), "kind": "room"}
+		if String(rm["name"]).begins_with("corridor"):
+			rbox["mod"] = int(String(rm["name"]).get_slice("_", 1))          # "corridor<level>_<module>": a module and its own passage meet end to end
+		boxes.append(rbox)
 	for e in p.escs:
 		var dirv: Vector3 = DIRS[e["dir"]]
 		var pos: Vector3 = e["pos"]

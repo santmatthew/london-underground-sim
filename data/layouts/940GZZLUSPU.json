@@ -1,0 +1,93 @@
+{
+ "note": "St. Paul's, from TfL station layout diagram C113-02 (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall",
+   "kind": "hall",
+   "rect": [
+    -12.0,
+    12.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 8
+   },
+   "doors": [
+    {
+     "c": -8.5,
+     "ref": "A"
+    },
+    {
+     "c": 8.5,
+     "ref": "B"
+    }
+   ]
+  },
+  {
+   "id": "mid",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 17.5
+  },
+  {
+   "id": "low",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 22.2
+  }
+ ],
+ "esc": [
+  {
+   "id": "mid_0",
+   "from": "hall",
+   "to": "mid",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "low_0",
+   "from": "mid",
+   "to": "low",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "low",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "central",
+   "faces": [
+    [
+     "central:Eastbound",
+     0
+    ],
+    [
+     "central:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

@@ -1,0 +1,19 @@
+{
+  "naptan": "940GZZLUSKS",
+  "source": "TfL station layout diagram D109-02s",
+  "halls": [
+    {"id": "hall", "exits": [{"ref": "A"}, {"ref": "B"}, {"ref": "C"}, {"ref": "D"}, {"ref": "E"}]}
+  ],
+  "levels": [
+    {"id": "conc_dc", "depth": 8.2, "groups": ["ss"]},
+    {"id": "conc_mid", "depth": 12.5, "groups": []},
+    {"id": "pic_e", "depth": 18.9, "groups": ["piccadilly:Eastbound"]},
+    {"id": "pic_w", "depth": 24.3, "groups": ["piccadilly:Westbound"]}
+  ],
+  "banks": [
+    {"from": "hall", "to": "conc_dc", "lanes": [1, -1], "stairs": true},
+    {"from": "hall", "to": "conc_mid", "lanes": [1, -1, 1], "stairs": false},
+    {"from": "conc_mid", "to": "pic_e", "lanes": [1, -1], "stairs": false},
+    {"from": "conc_mid", "to": "pic_w", "lanes": [1, -1], "stairs": true}
+  ]
+}

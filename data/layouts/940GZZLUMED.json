@@ -1,0 +1,108 @@
+{
+ "note": "Mile End, from TfL station layout diagram D053-02 (topology; dimensions estimated); bank hall->cen rerouted from ss (the landings of different depth cannot share a wall)",
+ "rooms": [
+  {
+   "id": "hall",
+   "kind": "hall",
+   "rect": [
+    -12.0,
+    12.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 8
+   },
+   "doors": [
+    {
+     "c": 0.0,
+     "name": "Mile End"
+    }
+   ]
+  },
+  {
+   "id": "ss",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 7.0
+  },
+  {
+   "id": "cen",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 13.0
+  }
+ ],
+ "esc": [
+  {
+   "id": "ss_0",
+   "from": "hall",
+   "to": "ss",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true,
+   "to_off": 0.0
+  },
+  {
+   "id": "cen_0",
+   "from": "ss",
+   "to": "cen",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true,
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "ss",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "ss",
+   "faces": [
+    [
+     "ss:Eastbound",
+     0
+    ],
+    [
+     "ss:Westbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "cen",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "central",
+   "faces": [
+    [
+     "central:Eastbound",
+     0
+    ],
+    [
+     "central:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

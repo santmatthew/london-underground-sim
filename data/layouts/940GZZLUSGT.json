@@ -1,0 +1,73 @@
+{
+ "note": "Southgate, from TfL station layout diagram P015-02 (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall",
+   "kind": "hall",
+   "rect": [
+    -12.0,
+    12.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 8
+   },
+   "doors": [
+    {
+     "c": -8.5,
+     "ref": "A"
+    },
+    {
+     "c": 8.5,
+     "ref": "B"
+    }
+   ]
+  },
+  {
+   "id": "plat",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 12.8
+  }
+ ],
+ "esc": [
+  {
+   "id": "plat_0",
+   "from": "hall",
+   "to": "plat",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "plat",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "piccadilly",
+   "faces": [
+    [
+     "piccadilly:Northbound",
+     0
+    ],
+    [
+     "piccadilly:Southbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

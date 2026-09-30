@@ -1,0 +1,114 @@
+{
+ "note": "Aldgate East, from TfL station layout diagram D071-02s (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall_a",
+   "kind": "hall",
+   "rect": [
+    -14.0,
+    14.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 9
+   },
+   "doors": [
+    {
+     "c": -10.5,
+     "ref": "A"
+    },
+    {
+     "c": 0.0,
+     "ref": "E"
+    },
+    {
+     "c": 10.5,
+     "ref": "F"
+    }
+   ]
+  },
+  {
+   "id": "hall_b",
+   "kind": "hall",
+   "rect": [
+    -46.0,
+    -22.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 7
+   },
+   "doors": [
+    {
+     "c": -42.5,
+     "ref": "B"
+    },
+    {
+     "c": -25.5,
+     "ref": "C"
+    }
+   ]
+  },
+  {
+   "id": "plat",
+   "kind": "landing",
+   "size": [
+    50.0,
+    16.0
+   ],
+   "depth": 8.2
+  }
+ ],
+ "esc": [
+  {
+   "id": "plat_0",
+   "from": "hall_a",
+   "to": "plat",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true,
+   "to_off": -17.0
+  },
+  {
+   "id": "plat_1",
+   "from": "hall_b",
+   "to": "plat",
+   "dir": "S",
+   "c": -34.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true
+  }
+ ],
+ "modules": [
+  {
+   "attach": "plat",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "ss",
+   "faces": [
+    [
+     "ss:Eastbound",
+     0
+    ],
+    [
+     "ss:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

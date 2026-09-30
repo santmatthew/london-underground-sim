@@ -1,0 +1,53 @@
+{
+  "naptan": "940GZZLUKNG",
+  "source": "TfL station layout diagram N143-02s; lifts modelled as escalators",
+  "halls": [
+    {
+      "id": "hall",
+      "exits": [
+        {
+          "ref": "A"
+        },
+        {
+          "ref": "B"
+        },
+        {
+          "ref": "C"
+        }
+      ]
+    }
+  ],
+  "levels": [
+    {
+      "id": "lowconc",
+      "depth": 13.0,
+      "groups": []
+    },
+    {
+      "id": "plat",
+      "depth": 17.9,
+      "groups": [
+        "northern"
+      ]
+    }
+  ],
+  "banks": [
+    {
+      "from": "hall",
+      "to": "lowconc",
+      "lanes": [
+        1,
+        -1
+      ]
+    },
+    {
+      "from": "lowconc",
+      "to": "plat",
+      "lanes": [
+        1,
+        -1
+      ],
+      "stairs": true
+    }
+  ]
+}

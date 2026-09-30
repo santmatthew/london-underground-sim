@@ -1,0 +1,113 @@
+{
+ "note": "Stockwell, from TfL station layout diagram N147-02 (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall",
+   "kind": "hall",
+   "rect": [
+    -12.0,
+    12.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 8
+   },
+   "doors": [
+    {
+     "c": -8.5,
+     "ref": "A"
+    },
+    {
+     "c": 8.5,
+     "ref": "B"
+    }
+   ]
+  },
+  {
+   "id": "mid",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 6.5
+  },
+  {
+   "id": "plat",
+   "kind": "landing",
+   "size": [
+    36.0,
+    30.0
+   ],
+   "depth": 14.6
+  }
+ ],
+ "esc": [
+  {
+   "id": "mid_0",
+   "from": "hall",
+   "to": "mid",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "plat_0",
+   "from": "mid",
+   "to": "plat",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1,
+    -1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "plat",
+   "lane_z": -9.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "northern",
+   "faces": [
+    [
+     "northern:Northbound",
+     0
+    ],
+    [
+     "northern:Southbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "plat",
+   "lane_z": 9.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "victoria",
+   "faces": [
+    [
+     "victoria:Northbound",
+     0
+    ],
+    [
+     "victoria:Southbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

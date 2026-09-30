@@ -1,0 +1,106 @@
+{
+ "note": "St. James's Park, from TfL station layout diagram D103-02s (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "broadway",
+   "kind": "hall",
+   "rect": [
+    -12.0,
+    12.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 8
+   },
+   "doors": [
+    {
+     "c": -8.5,
+     "ref": "B"
+    },
+    {
+     "c": 8.5,
+     "ref": "C"
+    }
+   ]
+  },
+  {
+   "id": "palmer",
+   "kind": "hall",
+   "rect": [
+    -44.0,
+    -20.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 8
+   },
+   "doors": [
+    {
+     "c": -32.0,
+     "ref": "D"
+    }
+   ]
+  },
+  {
+   "id": "plat",
+   "kind": "landing",
+   "size": [
+    48.0,
+    16.0
+   ],
+   "depth": 5.8
+  }
+ ],
+ "esc": [
+  {
+   "id": "plat_0",
+   "from": "broadway",
+   "to": "plat",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true,
+   "to_off": -16.0
+  },
+  {
+   "id": "plat_1",
+   "from": "palmer",
+   "to": "plat",
+   "dir": "S",
+   "c": -32.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true
+  }
+ ],
+ "modules": [
+  {
+   "attach": "plat",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "ss",
+   "faces": [
+    [
+     "ss:Eastbound",
+     0
+    ],
+    [
+     "ss:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

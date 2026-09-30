@@ -1,0 +1,115 @@
+{
+ "note": "Seven Sisters, from TfL station layout diagram V027-02 (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "sisters",
+   "kind": "hall",
+   "rect": [
+    -12.0,
+    12.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 7
+   },
+   "doors": [
+    {
+     "c": -8.5,
+     "ref": "A"
+    },
+    {
+     "c": 8.5,
+     "ref": "B"
+    }
+   ]
+  },
+  {
+   "id": "highrd",
+   "kind": "hall",
+   "rect": [
+    -48.0,
+    -20.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 9
+   },
+   "doors": [
+    {
+     "c": -44.5,
+     "ref": "C"
+    },
+    {
+     "c": -34.0,
+     "ref": "D"
+    },
+    {
+     "c": -23.5,
+     "ref": "E"
+    }
+   ]
+  },
+  {
+   "id": "plat",
+   "kind": "landing",
+   "size": [
+    50.0,
+    16.0
+   ],
+   "depth": 18.6
+  }
+ ],
+ "esc": [
+  {
+   "id": "plat_0",
+   "from": "sisters",
+   "to": "plat",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": -17.0
+  },
+  {
+   "id": "plat_1",
+   "from": "highrd",
+   "to": "plat",
+   "dir": "S",
+   "c": -34.0,
+   "lanes": [
+    1,
+    -1,
+    1,
+    -1
+   ]
+  }
+ ],
+ "modules": [
+  {
+   "attach": "plat",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "victoria",
+   "faces": [
+    [
+     "victoria:Northbound",
+     0
+    ],
+    [
+     "victoria:Southbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

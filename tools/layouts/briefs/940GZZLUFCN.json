@@ -1,0 +1,13 @@
+{
+  "naptan": "940GZZLUFCN",
+  "source": "TfL station layout diagram M123-02",
+  "halls": [
+    {"id": "hall", "exits": [{"ref": "A", "name": "Cowcross Street"}, {"ref": "B"}]}
+  ],
+  "levels": [
+    {"id": "plat", "depth": 4.3, "groups": ["ss"]}
+  ],
+  "banks": [
+    {"from": "hall", "to": "plat", "lanes": [1, -1], "stairs": true}
+  ]
+}

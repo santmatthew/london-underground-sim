@@ -1,0 +1,15 @@
+{
+  "naptan": "940GZZLUBMY",
+  "source": "TfL station layout diagram J011-02",
+  "halls": [
+    {"id": "hall", "exits": [{"ref": "A", "name": "Bermondsey"}]}
+  ],
+  "levels": [
+    {"id": "lower", "depth": 6.0, "groups": []},
+    {"id": "plat", "depth": 15.0, "groups": ["jubilee"]}
+  ],
+  "banks": [
+    {"from": "hall", "to": "lower", "lanes": [1, -1], "stairs": true},
+    {"from": "lower", "to": "plat", "lanes": [1, -1, 1]}
+  ]
+}

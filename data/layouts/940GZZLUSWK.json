@@ -1,0 +1,131 @@
+{
+ "note": "Southwark, from TfL station layout diagram J013-02 (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "main",
+   "kind": "hall",
+   "rect": [
+    -12.0,
+    12.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 10
+   },
+   "doors": [
+    {
+     "c": -8.5,
+     "ref": "A"
+    },
+    {
+     "c": 8.5,
+     "ref": "B"
+    }
+   ]
+  },
+  {
+   "id": "east",
+   "kind": "hall",
+   "rect": [
+    -44.0,
+    -20.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 10
+   },
+   "doors": [
+    {
+     "c": -40.5,
+     "ref": "D"
+    },
+    {
+     "c": -23.5,
+     "ref": "E"
+    }
+   ]
+  },
+  {
+   "id": "conc",
+   "kind": "landing",
+   "size": [
+    48.0,
+    16.0
+   ],
+   "depth": 10.0
+  },
+  {
+   "id": "plat",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 24.0
+  }
+ ],
+ "esc": [
+  {
+   "id": "conc_0",
+   "from": "main",
+   "to": "conc",
+   "dir": "S",
+   "c": 0.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": -16.0
+  },
+  {
+   "id": "conc_1",
+   "from": "east",
+   "to": "conc",
+   "dir": "S",
+   "c": -32.0,
+   "lanes": [
+    1,
+    -1
+   ]
+  },
+  {
+   "id": "plat_0",
+   "from": "conc",
+   "to": "plat",
+   "dir": "S",
+   "c": -16.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  }
+ ],
+ "modules": [
+  {
+   "attach": "plat",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "jubilee",
+   "faces": [
+    [
+     "jubilee:Eastbound",
+     0
+    ],
+    [
+     "jubilee:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

@@ -76,7 +76,7 @@ def main():
     for g, pids in groups.items():
         print("   %-18s %s" % (g, ", ".join(sorted(pid.split(":")[1] for pid in pids))))
     dd = DEPTHS.get(naptan, {}).get("depths", {})
-    print("DEPTHS from the diagram's table (m below street, per group; a group with two values has platforms at two depths): %s" % (json.dumps(dd) if dd else "none read"))
+    print("DEPTHS (OCR of the diagram's depth table; UNRELIABLE - a leading digit is often lost, e.g. 15.5 read as 3.5 - and often missing: read the table off the image): %s" % (json.dumps(dd) if dd else "none read"))
     fac = r.get("facility", {})
     print("TfL FACILITIES  ticket halls %s, gates %s, escalators %s, lifts %s" % (fac.get("ticket_halls"), fac.get("gates"), fac.get("escalators"), fac.get("lifts")))
     ents = []

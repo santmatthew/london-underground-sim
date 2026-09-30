@@ -1,0 +1,17 @@
+{
+  "naptan": "940GZZLUWRR",
+  "source": "TfL station layout diagram N101-02",
+  "halls": [
+    {"id": "hall", "exits": [{"ref": "A"}, {"ref": "B"}]}
+  ],
+  "levels": [
+    {"id": "conc", "depth": 12.0, "groups": []},
+    {"id": "vic", "depth": 22.2, "groups": ["victoria"]},
+    {"id": "nor", "depth": 25.6, "groups": ["northern"]}
+  ],
+  "banks": [
+    {"from": "hall", "to": "conc", "lanes": [1, -1, 1]},
+    {"from": "conc", "to": "vic", "lanes": [1, -1]},
+    {"from": "conc", "to": "nor", "lanes": [1, -1]}
+  ]
+}

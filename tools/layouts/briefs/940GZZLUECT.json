@@ -1,0 +1,19 @@
+{
+  "naptan": "940GZZLUECT",
+  "source": "TfL station layout diagram P077-02s",
+  "halls": [
+    {"id": "hall_ecr", "exits": [{"ref": "A"}]},
+    {"id": "hall_warwick", "exits": [{"ref": "B"}, {"ref": "C"}]}
+  ],
+  "levels": [
+    {"id": "conc_dc", "depth": 4.8, "groups": ["ss"]},
+    {"id": "conc", "depth": 11.0, "groups": []},
+    {"id": "conc_pic", "depth": 19.8, "groups": ["piccadilly"]}
+  ],
+  "banks": [
+    {"from": "hall_ecr", "to": "conc_dc", "lanes": [1, -1], "stairs": true},
+    {"from": "hall_warwick", "to": "conc_dc", "lanes": [1, -1], "stairs": true},
+    {"from": "conc_dc", "to": "conc", "lanes": [1, -1, 1, -1], "stairs": false},
+    {"from": "conc", "to": "conc_pic", "lanes": [1, -1], "stairs": true}
+  ]
+}

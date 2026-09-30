@@ -1,0 +1,79 @@
+{
+ "note": "Bayswater, from TfL station layout diagram D119-02 (topology; dimensions estimated)",
+ "rooms": [
+  {
+   "id": "hall",
+   "kind": "hall",
+   "rect": [
+    -18.0,
+    18.0,
+    -14.0,
+    8.0
+   ],
+   "depth": 0,
+   "gateline": {
+    "z": -6,
+    "n": 8
+   },
+   "doors": [
+    {
+     "c": 0.0,
+     "ref": "A"
+    }
+   ]
+  },
+  {
+   "id": "plat",
+   "kind": "landing",
+   "size": [
+    36.0,
+    16.0
+   ],
+   "depth": 5.0
+  }
+ ],
+ "esc": [
+  {
+   "id": "plat_0",
+   "from": "hall",
+   "to": "plat",
+   "dir": "S",
+   "c": -9.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "to_off": 9.0
+  },
+  {
+   "id": "plat_1",
+   "from": "hall",
+   "to": "plat",
+   "dir": "S",
+   "c": 9.0,
+   "lanes": [
+    1,
+    -1
+   ]
+  }
+ ],
+ "modules": [
+  {
+   "attach": "plat",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 36.0,
+   "group": "ss",
+   "faces": [
+    [
+     "ss:Eastbound",
+     0
+    ],
+    [
+     "ss:Westbound",
+     0
+    ]
+   ]
+  }
+ ]
+}

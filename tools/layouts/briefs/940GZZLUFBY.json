@@ -1,0 +1,13 @@
+{
+  "naptan": "940GZZLUFBY",
+  "source": "TfL station layout diagram D153-02s",
+  "halls": [
+    {"id": "hall", "exits": [{"ref": "A", "name": "Shopping Arcade"}]}
+  ],
+  "levels": [
+    {"id": "plat", "depth": 4.0, "groups": ["ss"]}
+  ],
+  "banks": [
+    {"from": "hall", "to": "plat", "lanes": [1, -1], "stairs": true}
+  ]
+}

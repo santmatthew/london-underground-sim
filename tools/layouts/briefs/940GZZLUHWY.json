@@ -1,0 +1,13 @@
+{
+  "naptan": "940GZZLUHWY",
+  "source": "TfL station layout diagram P045-02",
+  "halls": [
+    {"id": "hall", "exits": [{"ref": "A"}]}
+  ],
+  "levels": [
+    {"id": "plat", "depth": 18.3, "groups": ["piccadilly"]}
+  ],
+  "banks": [
+    {"from": "hall", "to": "plat", "lanes": [1, -1]}
+  ]
+}

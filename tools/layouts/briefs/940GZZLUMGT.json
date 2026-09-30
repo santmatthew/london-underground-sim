@@ -1,0 +1,100 @@
+{
+ "naptan": "940GZZLUMGT",
+ "source": "TfL station layout diagram M135-02",
+ "halls": [
+  {
+   "id": "hall_mc",
+   "exits": [
+    {
+     "ref": "A"
+    },
+    {
+     "ref": "B"
+    },
+    {
+     "ref": "D"
+    }
+   ]
+  },
+  {
+   "id": "hall_nl",
+   "exits": [
+    {
+     "ref": "C"
+    }
+   ]
+  }
+ ],
+ "levels": [
+  {
+   "id": "conc_mc",
+   "depth": 8.5,
+   "groups": [
+    "ss"
+   ]
+  },
+  {
+   "id": "conc_low",
+   "depth": 11.0,
+   "groups": []
+  },
+  {
+   "id": "conc_nl",
+   "depth": 20.0,
+   "groups": [
+    "northern"
+   ]
+  }
+ ],
+ "banks": [
+  {
+   "from": "hall_mc",
+   "to": "conc_mc",
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true
+  },
+  {
+   "from": "hall_mc",
+   "to": "conc_mc",
+   "lanes": [
+    1,
+    -1
+   ],
+   "stairs": true
+  },
+  {
+   "from": "hall_nl",
+   "to": "conc_low",
+   "lanes": [
+    1,
+    -1
+   ]
+  },
+  {
+   "from": "hall_nl",
+   "to": "conc_low",
+   "lanes": [
+    1,
+    -1
+   ]
+  },
+  {
+   "from": "conc_low",
+   "to": "conc_nl",
+   "lanes": [
+    1,
+    -1,
+    1
+   ]
+  }
+ ],
+ "hall_links": [
+  [
+   "hall_mc",
+   "hall_nl"
+  ]
+ ]
+}

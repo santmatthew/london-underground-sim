@@ -1,0 +1,13 @@
+{
+  "naptan": "940GZZLUBBN",
+  "source": "TfL station layout diagram M133-02",
+  "halls": [
+    {"id": "hall", "exits": [{"ref": "A", "name": "Aldersgate Street"}]}
+  ],
+  "levels": [
+    {"id": "plat", "depth": 8.5, "groups": ["ss"]}
+  ],
+  "banks": [
+    {"from": "hall", "to": "plat", "lanes": [1, -1], "stairs": true}
+  ]
+}
