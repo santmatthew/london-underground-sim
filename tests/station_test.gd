@@ -24,7 +24,7 @@ func _ready() -> void:
 				print("prop ", c.name, " at ", (c as Node3D).position, " yaw ", rad_to_deg((c as Node3D).rotation.y))
 	var cam := Camera3D.new()
 	add_child(cam)
-	cam.fov = 75
+	cam.fov = float(sys_arg("fov", "75"))
 	var pos := Vector3.ZERO
 	var look := Vector3.ZERO
 	var r: Array = plan.hall["rect"]
@@ -89,6 +89,14 @@ func _ready() -> void:
 			var fwl: Dictionary = plan.faces[plan.faces.keys()[int(sys_arg("fi", "0"))]]
 			var wx: float = fwl["x0"] + float(sys_arg("x", "40"))
 			pos = Vector3(wx, fwl["y"] + 1.5, fwl["edge_z"] - fwl["side"] * 0.5); look = Vector3(wx, fwl["y"] + 1.1, fwl["track_z"] + fwl["side"] * 1.75)
+		"pwall":
+			# across the platform at its wall (the tile scheme, fascia, lettering, recesses); --x=metres from the west end, --fi=face, --dx=look offset along the wall
+			var fpw: Dictionary = plan.faces[plan.faces.keys()[int(sys_arg("fi", "0"))]]
+			var mpz: float = (plan.modules[fpw["module"]]["pos"] as Vector3).z
+			var pwx: float = fpw["x0"] + float(sys_arg("x", "40"))
+			var zwl: float = mpz + float(fpw["side"]) * PlatformModule.GAP * 0.5
+			pos = Vector3(pwx, fpw["y"] + 1.5, float(fpw["edge_z"]) - float(fpw["side"]) * 0.4)
+			look = Vector3(pwx + float(sys_arg("dx", "6")), fpw["y"] + 1.3, zwl)
 		"plat_w":
 			# from near the west end of a platform looking west, along the track into the (shortened) running tunnel and its cap
 			var fw: Dictionary = plan.faces[plan.faces.keys()[int(sys_arg("fi", "0"))]]

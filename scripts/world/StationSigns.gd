@@ -393,7 +393,7 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 		var gp: int = Timetable.plat_index[plan.idx][pid2]
 		# station name: always the TfL roundel (the name in the blue bar across the red ring), repeated along the track-side wall so it is seen from the platform
 		# and from a train; the white fascia above carries only the way-out boards (no plain-text names, no tile lettering)
-		var short_name: String = plan.name.replace(" (H&C)", "").replace(" (D&P)", "").replace(" (Circle)", "")
+		var short_name: String = StationCharacter.short_name(plan.name)
 		# the far wall: white separator plates carrying the roundel (and, on every other one, a way-out board), with the poster run between them
 		# (StationDressing._far_wall); real platforms show a roundel every 4-9 m across the track
 		var seps := far_wall_separators(L)
@@ -412,9 +412,12 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 			for o in ox:
 				if absf(x + 1.5 - o) < 4.0:
 					near_open = true
+			for rx in pm.recesses:
+				if absf(x + 1.5 - rx) < 3.2:
+					near_open = true
 			if not near_open and not box and k % 2 == 1:
-				var rd2 := Signs.roundel(short_name, 0.85, false)
-				rd2.position = Vector3(x + 1.5, 1.75, s * (zwall + 0.03))
+				var rd2 := Signs.roundel(short_name, 0.8, false)
+				rd2.position = Vector3(x + 1.5, 1.5, s * (zwall + 0.03))
 				rd2.rotation.y = atan2(0.0, s)
 				pm.add_child(rd2)
 		# dot-matrix indicators hung from the crown, double sided

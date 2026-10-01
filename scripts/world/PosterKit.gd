@@ -178,6 +178,10 @@ static func finish(kit: MeshKit, parent: Node3D, node_name := "Posters") -> Mesh
 			mats[key] = _material(parts[0], float(parts[1]), float(parts[2]))
 		elif key.begins_with("frame_"):
 			mats[key] = frame_material(key.substr(6))
+		elif key.begins_with("flat:"):
+			mats[key] = Mats.flat(Color.html(key.substr(5)), 0.4)
+		elif key.begins_with("char:"):
+			mats[key] = StationCharacter.material(key)
 		else:
 			mats[key] = Mats.get_mat(key)
 	var mi := MeshInstance3D.new()

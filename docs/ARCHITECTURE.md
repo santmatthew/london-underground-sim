@@ -65,8 +65,8 @@ layout -> `data/tube_diagram.json` (~42 KB). The layout is cached in `build/diag
 Every sign is tagged (`meta "sign"`, `meta "size"`), hung through `StationSigns.hang_room / hang_blade / mount_wall` and fitted by
 `PlatformModule.ceiling_at / fit_blade` (roof arch, walls, columns, headroom `HEAD` = 2.15 m). `tests/sign_audit_test.gd` checks every sign of
 a list of stations against the real colliders and the analytic roof. Real Tube proportions: blades/indicators ~1-2.6 m wide on short stems,
-roundels and names flat on the tile wall. On platform walls the station name is **always** the TfL roundel (name in the blue bar across the red ring, every ~13 m on the
-track-side wall and behind the platform); there is no plain-text or tile-lettering name (the white fascia carries only way-out boards).
+roundels and names flat on the tile wall. On platform walls the station name is the TfL roundel (name in the blue bar across the red ring, every ~13 m on the
+track-side wall and behind the platform); deep-tube platform walls also carry the white name fascia (see Station character) and, at the stations that have it, the tile lettering.
 
 ## Station dressing
 What fills a station (ticket-hall furniture, shops, posters, benches, clocks) is placed by `StationDressing.gd` after the architecture and signs are built.
@@ -81,6 +81,20 @@ in wall bays, platforms carry an ad run across the track between roundel plates,
 * **Live displays:** analogue clocks are driven by `StationClocks` (hands from `Clock.now`), platform indicators show two trains + a seconds clock. Do not place a prop
   whose texture has a time baked in (CID totem, departure_board_dm) without making the time live.
 * Tests after any change: `route_audit_test --all`, `sign_audit_test`, `wall_audit_test` (ghost counts vs baseline), `tools/hub_walks.sh`; `station_test` prints draw calls.
+
+## Station character
+Each deep-tube platform module gets its finishes from `StationCharacter.platform(station, line, kind)` (data: `data/station_character.json`; textures: `tools/gen_char_textures.py` +
+`tools/char_motifs.py` -> `assets/textures/char/`). Authored from reference photos (private, `build/refs_dress/platforms`): Covent Garden, Caledonian Road, Tufnell Park, Chalk Farm,
+Goodge Street, Archway, Warren Street (Northern), Edgware Road (Bakerloo), Baker Street (Bakerloo). Every other deep platform takes its line default (Bakerloo cream + brown, Piccadilly,
+Northern grey dado, Central black/blue, Victoria 150 mm grey tile, Jubilee Line Extension panels). Sub-surface and surface stations keep the older seeded schemes.
+* Tile scheme: `wall` material + `stripes` ([y0, y1, colour, tile?] on both platform walls), optional `ribs` (tile bands ringed over the vault), `pilasters` (vertical tile bands on the
+  platform wall), `frame` (tiled surround of the cross-passages), `giant` (tile lettering of the name, RGBA with the tile joints cut through it; benches stand under it).
+* Name fascia (`StationDressing._frieze`): 0.30 m white enamel strip at 1.99-2.30 m on the platform wall, the name on 3 m panels, a line-colour keyline, a black "Way out" patch after every
+  second panel; it stops at the cross-passages. Roundels, info frames and clocks sit below it.
+* Victoria line seat recesses (`PlatformModule._recess`): 2 x 1.75 m niches in the platform wall every 10 m beyond the spine, with the station's tile motif on the back, stainless trim and a
+  timber slab carrying two `seat` markers (E to sit). Motifs are simplified redrawings of the original subjects (Brixton bricks, Stockwell swan ...), keyed by station in the data file.
+* Materials for these quads come from `StationCharacter.material("char:<path>|<w>|<h>|<alpha>")`; `PosterKit.finish` and `PlatformModule.build` resolve `char:` and `flat:` keys.
+* `tools/char_sheet.sh out.png <view> "Station" ...` renders a contact sheet; `station_test --view=pwall --x= --dx= --fov=` looks across the platform at its wall.
 
 ## Tests worth knowing
 `walkbot_test` (real capsule along routes; `--reverse`, `--rot=180`, `--trace`), `walk_test` (floor audit), `spine_wall_test`, `sign_audit_test`,

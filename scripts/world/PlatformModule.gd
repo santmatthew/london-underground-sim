@@ -27,9 +27,15 @@ const TUNNEL_MIN := 30.0     # a shortened tunnel must still hold the player's c
 const BOX_H := 4.7          # ceiling height of "box" halls (sub-surface / surface stations)
 const HEAD := 2.15          # lowest underside allowed for anything hanging over a walkway
 const PW_RUN := 3.2          # platform width AND running-tunnel clearance: constant so every tunnel joins invisibly
+const RECESS_W := 2.0        # Victoria line seat recess (alcove in the platform wall): width, height, depth, pitch along the platform
+const RECESS_H := 1.75
+const RECESS_D := 0.20
+const RECESS_PITCH := 10.0
 
 var spec: Dictionary = {}
 var meta: Dictionary = {}
+var character: Dictionary = {}     # StationCharacter.platform(): ribs, pilasters, frame, recess ...
+var recesses: Array = []           # x centres (module frame) of the seat recesses on the platform wall
 var box := false
 var kit := MeshKit.new()
 var _cols: Array = []        # [center, size]  (collision boxes in local space)
@@ -53,8 +59,15 @@ func build(p_spec: Dictionary) -> void:
 	var spine_x0: float = spec.get("spine_x0", -L * 0.5 - 6.0)
 	var spine_x1: float = spec.get("spine_x1", -L * 0.5 + 27.0)
 	kit.seed_rng(int(spec.get("seed", 1)))
+	character = spec.get("character", {})
+	recesses = []
+	if character.has("recess") and not box:
+		var rx: float = spine_x1 + 6.0       # beyond the spine (its far wall would show through a niche) and its end
+		while rx < L * 0.5 - 5.0:
+			recesses.append(rx)
+			rx += RECESS_PITCH
 	meta = {"faces": [], "openings": openings, "spine_x0": spine_x0, "spine_x1": spine_x1, "length": L, "pw": pw, "style": spec.get("style", "arch"),
-		"tun_w": float(spec.get("tun_w", TUNNEL_EXT)), "tun_e": float(spec.get("tun_e", TUNNEL_EXT))}
+		"tun_w": float(spec.get("tun_w", TUNNEL_EXT)), "tun_e": float(spec.get("tun_e", TUNNEL_EXT)), "recesses": recesses}
 
 	var zwall := GAP * 0.5                      # platform-side wall (abs z)
 	var zedge := zwall + pw                     # platform edge
@@ -80,19 +93,22 @@ func build(p_spec: Dictionary) -> void:
 		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 
 	var mats := {}
-	for n in ["tile_white", "tile_cream", "panel_white", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof"]:
+	for n in ["tile_white", "tile_cream", "tile_sq_grey", "panel_white", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab"]:
 		mats[n] = Mats.get_mat(n)
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
 			mats[k] = Mats.flat(Color.html(k.substr(5)), 0.4)
 		elif k.begins_with("dado:"):
 			mats[k] = Mats.dado(Color.html(k.substr(5)))
+		elif k.begins_with("char:"):
+			mats[k] = StationCharacter.material(k)
 	var mi := MeshInstance3D.new()
 	mi.mesh = kit.build(mats)
 	mi.name = "Shell"
 	add_child(mi)
 	_add_collision()
 	_add_lights()
+	_add_recess_seats()
 	meta["tri_count"] = kit.triangle_count()
 
 
@@ -117,8 +133,13 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	var holes := []
 	for ox in openings:
 		holes.append([ox - OPEN_W * 0.5, ox + OPEN_W * 0.5, OPEN_H])
+	for rx in recesses:
+		holes.append([rx - RECESS_W * 0.5, rx + RECESS_W * 0.5, RECESS_H])
+	holes.sort_custom(func(a, b): return a[0] < b[0])
 	if not box:
 		_wall_z(wall_mat, s * zwall, x0, x1, 0.0, SPRING_Y, holes, s < 0.0, true)
+		for rx in recesses:
+			_recess(s, rx, zwall, String(character.get("recess", "plain")))
 
 	# --- platform deck (y = 0) and edge ---
 	var zlo := minf(s * zwall, s * zedge)
@@ -171,6 +192,11 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 		_band(key, s * zfar, xa + 20.0, xb - 20.0, y0, st["y1"], s < 0.0, true)
 		if not box:
 			_band(key, s * zwall, x0, x1, y0, st["y1"], s < 0.0, false, holes)
+	if not box:
+		if character.has("pilasters"):
+			_pilasters(s, x0, x1, zwall, holes, openings, character["pilasters"])
+		if character.has("ribs"):
+			_ribs(s, x0, x1, zwall, zfar, character["ribs"])
 	# cable tray on the track-side wall
 	# (one low tray: real platforms carry the poster run down to platform level, see StationDressing._far_wall)
 	kit.box("metal", Vector3((x0 + x1) * 0.5, 0.10, s * (zfar - 0.15)), Vector3(x1 - x0, 0.08, 0.3), 0.0)
@@ -304,8 +330,9 @@ func _end_strip(x: float, west: bool, mat: String, z0: float, z1: float, y0: flo
 		kit.wall(mat, Vector3(x, 0, z0), Vector3(x, 0, z1), y0, y1, 0.0)      # normal -x
 
 
-func _arch_profile(s: float, zwall: float, zfar: float) -> PackedVector2Array:
+func _arch_profile(s: float, zwall: float, zfar: float, inset := 0.0, arc_only := false) -> PackedVector2Array:
 	# from the top of the platform-side wall, over the arch, down the track-side wall to the trackbed (ordered for +z traversal when s>0)
+	# `inset` pulls the arc that far into the tunnel (ribs / bands laid on the vault); `arc_only` stops at the two springs
 	var za := zwall
 	var zb := zfar
 	var pts := PackedVector2Array()
@@ -315,14 +342,22 @@ func _arch_profile(s: float, zwall: float, zfar: float) -> PackedVector2Array:
 	var yc := SPRING_Y + RISE - r
 	var a0 := atan2(SPRING_Y - yc, za - zc)   # angle at left spring
 	var a1 := atan2(SPRING_Y - yc, zb - zc)
+	var ri := r - inset
 	# ensure we traverse over the top (a from a0 ~ (pi - x) down to a1 ~ x)
 	var steps := 16
-	pts.append(Vector2(za, SPRING_Y))
+	if inset == 0.0:
+		pts.append(Vector2(za, SPRING_Y))
+	else:
+		pts.append(Vector2(zc + ri * cos(a0), yc + ri * sin(a0)))
 	for i in range(1, steps):
 		var a := lerpf(a0, a1, float(i) / steps)
-		pts.append(Vector2(zc + r * cos(a), yc + r * sin(a)))
-	pts.append(Vector2(zb, SPRING_Y))
-	pts.append(Vector2(zb, BED_Y))
+		pts.append(Vector2(zc + ri * cos(a), yc + ri * sin(a)))
+	if inset == 0.0:
+		pts.append(Vector2(zb, SPRING_Y))
+	else:
+		pts.append(Vector2(zc + ri * cos(a1), yc + ri * sin(a1)))
+	if not arc_only:
+		pts.append(Vector2(zb, BED_Y))
 	if s < 0.0:
 		# mirrored tunnel: build with mirrored z, still ordered +z, so reverse and negate
 		var m := PackedVector2Array()
@@ -338,7 +373,7 @@ func _wall_z(mat: String, zc: float, xa: float, xb: float, y0: float, y1: float,
 	var normal_pos := not face_neg
 	var cuts := [[xa, xb]]
 	# build segments between holes
-	var segs: Array = _segments(xa, xb, holes.map(func(h): return (h[0] + h[1]) * 0.5), holes[0][1] - holes[0][0] if holes.size() > 0 else 0.0)
+	var segs: Array = _free_segments(xa, xb, holes)
 	for sg in segs:
 		_wall_quad(mat, zc, sg[0], sg[1], y0, y1, normal_pos)
 	for h in holes:
@@ -355,6 +390,21 @@ func _wall_quad(mat: String, zc: float, xa: float, xb: float, y0: float, y1: flo
 		kit.wall(mat, Vector3(xa, 0, zc), Vector3(xb, 0, zc), y0, y1, 0.0)
 	else:
 		kit.wall(mat, Vector3(xb, 0, zc), Vector3(xa, 0, zc), y0, y1, 0.0)
+
+
+## x-intervals of [xa, xb] not covered by holes [[x0, x1, top], ...] (any widths)
+func _free_segments(xa: float, xb: float, holes: Array) -> Array:
+	var hs := holes.duplicate()
+	hs.sort_custom(func(a, b): return a[0] < b[0])
+	var out := []
+	var cur := xa
+	for h in hs:
+		if h[0] > cur:
+			out.append([cur, minf(h[0], xb)])
+		cur = maxf(cur, h[1])
+	if cur < xb:
+		out.append([cur, xb])
+	return out
 
 
 ## x-intervals of [xa, xb] not covered by openings centred at `centres` with width w
@@ -382,7 +432,7 @@ func _band(mat: String, zc: float, xa: float, xb: float, y0: float, y1: float, n
 	var z := zc + toward_tunnel * off
 	var segs := [[xa, xb]]
 	if holes.size() > 0:
-		segs = _segments(xa, xb, holes.map(func(h): return (h[0] + h[1]) * 0.5), holes[0][1] - holes[0][0])
+		segs = _free_segments(xa, xb, holes)
 	for sg in segs:
 		if toward_tunnel > 0.0:
 			kit.wall(mat, Vector3(sg[0], 0, z), Vector3(sg[1], 0, z), y0, y1, 0.0)
@@ -406,9 +456,88 @@ func _end_cap(s: float, x: float, zwall: float, zfar: float, west: bool) -> void
 
 func _frame(zc: float, ox: float, w: float, h: float) -> void:
 	var t := 0.14
+	var mat := "metal"
+	if character.has("frame"):
+		# station-specific portal surround in glazed tile (Archway: dark green)
+		t = float(character["frame"].get("w", 0.3))
+		mat = "dado:" + (character["frame"]["col"] as Color).to_html(false)
 	for sgn in [-1.0, 1.0]:
-		kit.box("metal", Vector3(ox + sgn * (w * 0.5 + t * 0.5), h * 0.5, zc), Vector3(t, h, 0.42), 0.0)
-	kit.box("metal", Vector3(ox, h + t * 0.5, zc), Vector3(w + 2 * t, t, 0.42), 0.0)
+		kit.box(mat, Vector3(ox + sgn * (w * 0.5 + t * 0.5), h * 0.5, zc), Vector3(t, h, 0.42), 0.0)
+	kit.box(mat, Vector3(ox, h + t * 0.5, zc), Vector3(w + 2 * t, t, 0.42), 0.0)
+
+
+## ribs: bands of glazed tile ringed over the vault at a fixed pitch (Edgware Road navy, Baker Street brown, Chalk Farm red ...)
+func _ribs(s: float, x0: float, x1: float, zwall: float, zfar: float, rb: Dictionary) -> void:
+	var key := "dado:" + (rb["col"] as Color).to_html(false)
+	var every := float(rb.get("every", 3.0))
+	var w := float(rb.get("w", 0.45))
+	var prof := _arch_profile(s, zwall, zfar, 0.004, true)
+	var x := x0 + every * 0.5
+	while x + w < x1:
+		kit.sweep_x(key, prof, x, x + w, 0.0, false, 4.0)
+		x += every
+
+
+## pilasters: full-height vertical bands of coloured tile on the platform wall (beside the cross-passages, or at a fixed pitch), optionally with a
+## thin edge strip each side (Goodge Street green + black, Chalk Farm red, Warren Street dark red)
+func _pilasters(s: float, x0: float, x1: float, zwall: float, holes: Array, openings: Array, pl: Dictionary) -> void:
+	var key := "dado:" + (pl["col"] as Color).to_html(false)
+	var w := float(pl.get("w", 0.6))
+	var xs: Array = []
+	if pl.get("at_openings", false):
+		for o in openings:
+			xs.append(o - OPEN_W * 0.5 - 0.16 - w * 0.5)
+			xs.append(o + OPEN_W * 0.5 + 0.16 + w * 0.5)
+	var every := float(pl.get("every", 0.0))
+	if every > 0.0:
+		var x := x0 + every * 0.5
+		while x < x1:
+			var clear := true
+			for o in openings:
+				if absf(x - o) < OPEN_W * 0.5 + w + 0.5:
+					clear = false
+			for rx in recesses:
+				if absf(x - rx) < RECESS_W * 0.5 + w:
+					clear = false
+			if clear:
+				xs.append(x)
+			x += every
+	var edge: String = ("dado:" + (pl["edge_col"] as Color).to_html(false)) if pl.has("edge_col") else ""
+	for xc in xs:
+		_band(key, s * zwall, xc - w * 0.5, xc + w * 0.5, 0.0, SPRING_Y, s < 0.0, false, holes)
+		if edge != "":
+			_band(edge, s * zwall, xc + w * 0.5, xc + w * 0.5 + 0.075, 0.0, SPRING_Y, s < 0.0, false, holes)
+
+
+## a seat recess in the platform wall (Victoria line): a shallow niche in the 150 mm tile with a motif panel at the back, stainless trim and a timber slab
+func _recess(s: float, xc: float, zwall: float, motif: String) -> void:
+	var hw := RECESS_W * 0.5
+	var zw := s * zwall                        # the wall plane
+	var zb := s * (zwall - RECESS_D)           # the niche's back, toward the spine
+	var back_mat := "tile_sq_grey"
+	if motif != "plain" and ResourceLoader.exists(StationCharacter.DIR + "motif/%s.png" % motif):
+		back_mat = "char:motif/%s.png|%.3f|%.3f|0" % [motif, RECESS_W, RECESS_H]
+	var xl := xc - hw
+	var xr := xc + hw
+	if s > 0.0:
+		kit.wall(back_mat, Vector3(xl, 0, zb), Vector3(xr, 0, zb), 0.0, RECESS_H, 0.0)
+	else:
+		kit.wall(back_mat, Vector3(xr, 0, zb), Vector3(xl, 0, zb), 0.0, RECESS_H, 0.0)
+	var za := maxf(zw, zb)
+	var zi := minf(zw, zb)
+	kit.wall("tile_sq_grey", Vector3(xl, 0, za), Vector3(xl, 0, zi), 0.0, RECESS_H, 0.0)       # left side, normal +x
+	kit.wall("tile_sq_grey", Vector3(xr, 0, zi), Vector3(xr, 0, za), 0.0, RECESS_H, 0.0)       # right side, normal -x
+	kit.horiz("tile_sq_grey", xl, xr, zi, za, RECESS_H, false, 0.0)                              # soffit
+	kit.horiz("floor_platform", xl, xr, zi, za, 0.0, true, 0.0)
+	# stainless trim round the opening
+	for sx in [xl - 0.02, xr + 0.02]:
+		kit.box("steel", Vector3(sx, RECESS_H * 0.5, zw + s * 0.008), Vector3(0.04, RECESS_H, 0.016), 0.0)
+	kit.box("steel", Vector3(xc, RECESS_H + 0.02, zw + s * 0.008), Vector3(RECESS_W + 0.08, 0.04, 0.016), 0.0)
+	# the timber slab: seat height 0.45 m, about 0.34 m deep, standing 0.14 m proud of the wall
+	var slab_z0 := zb
+	var slab_z1 := zw + s * 0.14
+	kit.box("timber_slab", Vector3(xc, 0.425, (slab_z0 + slab_z1) * 0.5), Vector3(RECESS_W - 0.02, 0.05, absf(slab_z1 - slab_z0)), 0.0)
+	kit.box("black", Vector3(xc, 0.2, zb + s * 0.1), Vector3(RECESS_W - 0.06, 0.4, 0.2), 0.0)
 
 
 func _build_spine(x0: float, x1: float, sx0: float, sx1: float, zwall: float, wall_mat: String, openings: Array) -> void:
@@ -457,6 +586,20 @@ func _build_spine(x0: float, x1: float, sx0: float, sx1: float, zwall: float, wa
 	_cols.append([Vector3(sx1 + 0.15, 1.3, 0.0), Vector3(0.3, 2.6, GAP)])
 	_cols.append([Vector3((sx0 + sx1) * 0.5, 3.0, 0.0), Vector3(sx1 - sx0, 0.4, GAP)])
 	# reveal-fill: openings are 3.0 wide and the wall is thin; reveal frames handled by _frame
+
+
+## two seat markers (group "seat", pelvis point, -Z = facing) on the slab of every seat recess
+func _add_recess_seats() -> void:
+	for f in meta["faces"]:
+		var s: float = f["side"]
+		for rx in recesses:
+			for dx in [-0.5, 0.5]:
+				var m := Node3D.new()
+				m.name = "seat_%d_%d" % [int(rx * 10.0), int(dx * 2.0)]
+				m.position = Vector3(rx + dx, 0.45, s * (GAP * 0.5 - 0.03))
+				m.rotation.y = atan2(0.0, -s)
+				m.add_to_group("seat")
+				add_child(m)
 
 
 func _add_collision() -> void:

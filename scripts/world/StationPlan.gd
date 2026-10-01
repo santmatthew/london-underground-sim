@@ -238,8 +238,12 @@ func generate(station_idx: int) -> void:
 			var openings_x := [-L * 0.5 + 8.0, -L * 0.5 + 8.0 + 14.0]
 			var wall_style := "tile_cream" if (seed_value + mi) % 3 == 0 else "tile_white"
 			var stripes := _stripes_for(seed_value + mi, faces_spec[0]["color"])
+			var character := StationCharacter.platform(name, faces_spec[0]["line"], kind)
+			if not character.is_empty():
+				wall_style = character["wall"]
+				stripes = character["stripes"]
 			var tun_w := corr_len - spine_x0 - L * 0.5 - 1.0     # distance from the platform's west end to the landing wall, minus a metre of rock
-			var mspec := {"tun_w": tun_w, "style": "box" if is_box else "arch", "roof": "glass" if kind == "surface" else "flat", "length": L, "pw": pw, "wall": wall_style, "stripes": stripes, "seed": seed_value + li * 7 + mi, "faces": faces_spec,
+			var mspec := {"tun_w": tun_w, "style": "box" if is_box else "arch", "roof": "glass" if kind == "surface" else "flat", "length": L, "pw": pw, "wall": wall_style, "stripes": stripes, "seed": seed_value + li * 7 + mi, "faces": faces_spec, "character": character,
 				"openings_x": openings_x, "spine_x0": spine_x0, "spine_x1": -L * 0.5 + 8.0 + 14.0 + 6.0, "name": name, "group": group}
 			var midx := modules.size()
 			modules.append({"pos": mpos, "spec": mspec, "faces": md["faces"], "level": li, "group": group, "lane_z": lane_z, "corr": [rect[1], mpos.x + spine_x0]})

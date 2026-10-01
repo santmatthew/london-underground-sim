@@ -9,6 +9,8 @@ echo "== network data (TfL open API)"
 python3 tools/fetch_tfl.py && python3 tools/build_network.py
 echo "== textures (ambientCG CC0 + procedural)"
 python3 tools/fetch_textures.py && build/venv/bin/python tools/gen_textures.py
+echo "== station character textures (name friezes, tile lettering, Victoria line motifs)"
+build/venv/bin/python tools/gen_char_textures.py && python3 tools/fix_texture_imports.py
 echo "== MakeHuman/MPFB asset packs + Blender extension, people, trains, props: see docs/ASSETS.md (long-running steps)"
 echo "   tools/fetch_mpfb_assets.sh ; blender -b --factory-startup -P tools/blender/people/make_people.py ; ..."
 echo "== audio: build/venv/bin/python tools/audio/make_audio.py"

@@ -52,6 +52,9 @@ static func get_mat(name: String) -> Material:
 			m = _surface("gen/metro_white", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.5, "ceiling_soot": 0.45, "floor_dirt_height": 0.5})
 		"tile_cream":
 			m = _surface("gen/metro_cream", "png", 1.0 / 1.2, Color(1.0, 1.0, 1.0), {"dirt": 0.5, "ceiling_soot": 0.5, "floor_dirt_height": 0.5})
+		"tile_sq_grey":
+			# Victoria line: 150 mm square pale-grey glazed tile, stack bond
+			m = _surface("gen/metro_sq_grey", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.5, "ceiling_soot": 0.45, "floor_dirt_height": 0.5})
 		"panel_white":
 			m = _surface("gen/panel_white", "png", 1.0 / 2.0, Color(1, 1, 1), {"dirt": 0.35, "ceiling_soot": 0.3})
 		"tactile":
@@ -81,6 +84,11 @@ static func get_mat(name: String) -> Material:
 			st.metallic = 0.55
 			st.roughness = 0.55
 			m = st
+		"timber_slab":
+			var tm := StandardMaterial3D.new()
+			tm.albedo_color = Color(0.40, 0.26, 0.15)
+			tm.roughness = 0.62
+			m = tm
 		"rail":
 			m = _surface("Metal063", "jpg", 1.0 / 1.0, Color(0.55, 0.42, 0.35), {"metallic_amount": 0.8, "dirt": 0.6, "rough_add": 0.25})
 		"yellow_paint":

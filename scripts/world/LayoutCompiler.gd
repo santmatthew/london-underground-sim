@@ -189,9 +189,13 @@ static func compile(p: StationPlan, spec: Dictionary) -> bool:
 			facelist.append({"pid": pid, "face": int(fdef[1])})
 		var wall_style := "tile_cream" if (p.seed_value + mod_i) % 3 == 0 else "tile_white"
 		var stripes := p._stripes_for(p.seed_value + mod_i, faces_spec[0]["color"])
+		var character := StationCharacter.platform(p.name, faces_spec[0]["line"], p.kind)
+		if not character.is_empty():
+			wall_style = character["wall"]
+			stripes = character["stripes"]
 		var openings_x := [-L * 0.5 + 8.0, -L * 0.5 + 8.0 + 14.0]
 		var tun_w := corr_len - spine_x0 - L * 0.5 - 1.0
-		var mspec := {"tun_w": tun_w, "style": "box" if is_box else "arch", "roof": "glass" if p.kind == "surface" else "flat", "length": L, "pw": pw, "wall": wall_style, "stripes": stripes,
+		var mspec := {"tun_w": tun_w, "style": "box" if is_box else "arch", "roof": "glass" if p.kind == "surface" else "flat", "length": L, "pw": pw, "wall": wall_style, "stripes": stripes, "character": character,
 			"seed": p.seed_value + mod_i * 7, "faces": faces_spec, "openings_x": openings_x, "spine_x0": spine_x0, "spine_x1": -L * 0.5 + 8.0 + 14.0 + 6.0, "name": p.name, "group": group}
 		var level := int(room["name"].substr(7)) if str(room["name"]).begins_with("landing") else 0
 		p.modules.append({"pos": mpos, "spec": mspec, "faces": facelist, "level": level, "group": group, "lane_z": lane_z, "corr": [rect[1], mpos.x + spine_x0], "room": room["name"]})

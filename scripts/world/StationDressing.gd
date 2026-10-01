@@ -544,13 +544,16 @@ func _far_wall(kit: MeshKit, s: float, zfar: float, L: float) -> void:
 			x += ov.x + 0.04
 
 
-## the wall behind the waiting passengers: TfL information beside each cross-passage (Tube map + Double Royal frames, top edge at 2.0 m)
-## and a few adverts between openings; roundel spots are kept free
+## the wall behind the waiting passengers: the name fascia along the top, TfL information beside each cross-passage (Tube map + Double Royal frames,
+## top edge at 1.95 m), the station's tile lettering where it has one, and a few adverts between openings; roundel spots and seat recesses are kept free
 func _platform_wall(kit: MeshKit, pm: PlatformModule, s: float, zwall: float, L: float, ox: Array) -> void:
 	var normal := Vector3(0, 0, s)
+	var ch: Dictionary = pm.character
 	var cuts: Array = []
 	for o in ox:
 		cuts.append([o - PlatformModule.OPEN_W * 0.5 - 0.5, o + PlatformModule.OPEN_W * 0.5 + 0.5])
+	for rx in pm.recesses:
+		cuts.append([rx - PlatformModule.RECESS_W * 0.5 - 0.3, rx + PlatformModule.RECESS_W * 0.5 + 0.3])
 	var seps: Array = StationSigns.far_wall_separators(L)
 	if not pm.box:
 		for k in seps.size():
@@ -559,6 +562,9 @@ func _platform_wall(kit: MeshKit, pm: PlatformModule, s: float, zwall: float, L:
 				var near_open := false
 				for o in ox:
 					if absf(xr - o) < 4.0:
+						near_open = true
+				for rx in pm.recesses:
+					if absf(xr - rx) < 3.2:
 						near_open = true
 				if not near_open:
 					cuts.append([xr - 1.0, xr + 1.0])
@@ -571,10 +577,15 @@ func _platform_wall(kit: MeshKit, pm: PlatformModule, s: float, zwall: float, L:
 		cur = maxf(cur, c[1])
 	if cur < L * 0.5 - 1.0:
 		free.append([cur, L * 0.5 - 1.0])
+	if ch.get("frieze", false) and not pm.box:
+		_frieze(kit, pm, s, zwall, L, ox, ch)
+	var gnt: Dictionary = ch.get("giant", {})
+	var bench_x: Array = []
 	var ad_p := 0.25 if plan.imp >= 2.0 else 0.08
 	for iv in free:
 		var x: float = iv[0]
 		var end: float = iv[1]
+		var taken: Array = []
 		# an information group at the start of each stretch that follows an opening
 		if end - x >= 3.0 and not pm.box:
 			var g := [["qr", "@tubemap"], ["dr", picker.pick("info")]]
@@ -582,15 +593,93 @@ func _platform_wall(kit: MeshKit, pm: PlatformModule, s: float, zwall: float, L:
 				var ov: Vector2 = PosterKit.FORMATS[it[0]]["o"]
 				if x + ov.x > end:
 					break
-				PosterKit.add(kit, it[0], Vector3(x + ov.x * 0.5, 2.0 - ov.y, s * zwall), normal, it[1], "silver")
+				PosterKit.add(kit, it[0], Vector3(x + ov.x * 0.5, 1.95 - ov.y, s * zwall), normal, it[1], "silver")
 				x += ov.x + 0.06
 				stats["placed"] += 1
+		# the tile lettering of the station name, centred in what is left of a long stretch, with the bench beneath it
+		if not gnt.is_empty() and end - x >= float(gnt["w"]) + 1.0:
+			var gx := (x + end) * 0.5
+			var gw: float = gnt["w"]
+			var gh: float = gnt["h"]
+			var key := "char:giant/%s.png|%.3f|%.3f|1" % [pm.character["station_slug"], gw, gh]
+			var zg := s * (zwall + 0.006)
+			var y_mid := 1.70
+			if s > 0.0:
+				kit.wall(key, Vector3(gx - gw * 0.5, 0, zg), Vector3(gx + gw * 0.5, 0, zg), y_mid - gh * 0.5, y_mid + gh * 0.5, 0.0)
+			else:
+				kit.wall(key, Vector3(gx + gw * 0.5, 0, zg), Vector3(gx - gw * 0.5, 0, zg), y_mid - gh * 0.5, y_mid + gh * 0.5, 0.0)
+			if OS.has_environment("UG_CHAR_DEBUG"):
+				print("GIANT ", pm.character["station_slug"], " side ", s, " x ", gx, " w ", gw)
+			taken.append([gx - gw * 0.5 - 0.2, gx + gw * 0.5 + 0.2])
+			bench_x.append(gx)
+			stats["placed"] += 1
 		while end - x >= 1.1:
 			var ov4: Vector2 = PosterKit.FORMATS["4"]["o"]
+			var blocked := false
+			for t in taken:
+				if x + ov4.x > t[0] and x < t[1]:
+					blocked = true
+					x = t[1]
+			if blocked:
+				continue
 			if rng.randf() < ad_p:
 				PosterKit.add(kit, "4", Vector3(x + ov4.x * 0.5, 0.45, s * zwall), normal, picker.pick("portrait"), "silver")
 				stats["placed"] += 1
 			x += ov4.x + 1.2 + rng.randf() * 2.5
+	pm.set_meta("bench_x_" + ("p" if s > 0.0 else "n"), bench_x)
+
+
+## the white enamel fascia along the platform wall at the top of the tile (Idiom p.121/130): 0.30 m tall, the station name in TfL blue on 3 m panels,
+## a line-colour keyline on top and a black "Way out" patch after every second panel; it stops short of each cross-passage
+func _frieze(kit: MeshKit, pm: PlatformModule, s: float, zwall: float, L: float, ox: Array, ch: Dictionary) -> void:
+	var y0 := 1.99
+	var y1 := 2.30
+	var face: Dictionary = pm.spec["faces"][0 if s > 0.0 else 1]
+	var line_col: Color = face.get("color", Color(0.1, 0.1, 0.6))
+	var z_face := s * (zwall + 0.05)
+	var runs: Array = []
+	var cur := -L * 0.5
+	var spans: Array = []
+	for o in ox:
+		spans.append([o - PlatformModule.OPEN_W * 0.5 - 0.35, o + PlatformModule.OPEN_W * 0.5 + 0.35])
+	spans.sort_custom(func(a, b): return a[0] < b[0])
+	for sp in spans:
+		if sp[0] > cur:
+			runs.append([cur, sp[0]])
+		cur = maxf(cur, sp[1])
+	if cur < L * 0.5:
+		runs.append([cur, L * 0.5])
+	var name_key := "char:frieze/%s.png|3.000|0.300|0" % ch["station_slug"]
+	var ox_min := 1e9
+	for o in ox:
+		ox_min = minf(ox_min, o)
+	for run in runs:
+		var xa: float = run[0]
+		var xb: float = run[1]
+		if xb - xa < 0.8:
+			continue
+		var back := Transform3D(Basis.IDENTITY, Vector3((xa + xb) * 0.5, (y0 + y1) * 0.5, s * (zwall + 0.025)))
+		kit.box_xf("frame_enamel", back, Vector3(xb - xa, y1 - y0, 0.05), 0.0)
+		kit.box_xf("flat:" + line_col.to_html(false), Transform3D(Basis.IDENTITY, Vector3((xa + xb) * 0.5, y1 - 0.02, z_face)), Vector3(xb - xa, 0.04, 0.006), 0.0)
+		var x := xa
+		var k := 0
+		while x + 3.0 <= xb + 0.01:
+			var zf := z_face + s * 0.004
+			if s > 0.0:
+				kit.wall(name_key, Vector3(x, 0, zf), Vector3(x + 3.0, 0, zf), y0, y1 - 0.04, 0.0)
+			else:
+				kit.wall(name_key, Vector3(x + 3.0, 0, zf), Vector3(x, 0, zf), y0, y1 - 0.04, 0.0)
+			x += 3.0
+			k += 1
+			if k % 2 == 0 and x + 0.6 <= xb + 0.01:
+				var side_key := "char:frieze/wayout_%s.png|0.500|0.150|0" % ("r" if x < ox_min else "l")
+				var px := x + 0.3
+				if s > 0.0:
+					kit.wall(side_key, Vector3(px - 0.25, 0, zf), Vector3(px + 0.25, 0, zf), y0 + 0.07, y0 + 0.22, 0.0)
+				else:
+					kit.wall(side_key, Vector3(px + 0.25, 0, zf), Vector3(px - 0.25, 0, zf), y0 + 0.07, y0 + 0.22, 0.0)
+				x += 0.6
+	stats["placed"] += 1
 
 
 func _platform_furniture(holder: Node3D, pm: PlatformModule, s: float, zwall: float, zedge: float, zfar: float, L: float, ox: Array) -> void:
@@ -609,16 +698,22 @@ func _platform_furniture(holder: Node3D, pm: PlatformModule, s: float, zwall: fl
 	for x in spots:
 		if not StationProps._near(x, ox, 4.5):
 			cand.append(x)
+	# where the station name is laid in tile, the benches stand beneath it
+	var under: Array = pm.get_meta("bench_x_" + ("p" if s > 0.0 else "n"), [])
+	if not under.is_empty():
+		cand = under.duplicate()
+		n_b = mini(n_b, under.size())
 	# top up with evenly spaced spots when there are too few roundels
 	var extra := -L * 0.5 + 8.0
 	while cand.size() < n_b and extra < L * 0.5 - 6.0:
 		if not StationProps._near(extra, ox, 4.5) and not StationProps._near(extra, cand, 5.0):
 			cand.append(extra)
 		extra += 7.0
-	cand.shuffle()
+	if under.is_empty():
+		cand.shuffle()
 	var placed_b := 0
 	for x in cand:
-		if placed_b >= n_b:
+		if placed_b >= n_b or not pm.recesses.is_empty():
 			break
 		var bench := PropKit.bench_toro() if deep else PropKit.bench_timber()
 		if kit_prop(holder, bench, Vector3(x, 0, s * (zwall + 0.36)), Vector3(0, 0, s), 0.45, off):
@@ -649,7 +744,9 @@ func _platform_furniture(holder: Node3D, pm: PlatformModule, s: float, zwall: fl
 		stats["placed"] += 1
 	# clocks on the platform wall
 	for cx2 in [-L * 0.25, L * 0.25]:
-		StationClocks.register(station, StationProps.put(holder, "clock", Vector3(cx2, 2.1, s * (zwall + 0.03)), Vector3(0, 0, s)))
+		if StationProps._near(cx2, pm.recesses, 1.8):
+			continue
+		StationClocks.register(station, StationProps.put(holder, "clock", Vector3(cx2, 1.78, s * (zwall + 0.03)), Vector3(0, 0, s)))
 	if Station.debug_off("labels"):
 		return
 	# "MIND THE GAP" stencilled in yellow on the edge strip, every ~14 m (letters about 0.13 m tall, reading from the platform)

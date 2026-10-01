@@ -71,6 +71,21 @@ func run():
 		rider.queue_free()
 	st.queue_free()
 	await get_tree().process_frame
+	# --- a Victoria line seat recess (slab in the platform wall)
+	var vplan := StationPlan.for_station(Net.name_to_idx["Brixton"])
+	var vst := Station.new()
+	add_child(vst)
+	vst.build(vplan)
+	for i in 6: await get_tree().physics_frame
+	var rec_seats: Array = []
+	for n in get_tree().get_nodes_in_group("seat"):
+		if vst.is_ancestor_of(n) and n.get_parent() is PlatformModule:
+			rec_seats.append(n)
+	check(rec_seats.size() >= 8, "Brixton has seat-recess markers (%d)" % rec_seats.size())
+	if rec_seats.size() > 0:
+		await try_seat(player, rec_seats[0] as Node3D, "recess")
+	vst.queue_free()
+	await get_tree().process_frame
 	# --- a train seat
 	var tr := Train.new()
 	add_child(tr)

@@ -7,7 +7,7 @@ import re
 import sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-DIRS = ["assets/textures/props/posters2", "assets/textures/props/gen2", "assets/textures/props/shops", "assets/textures/props/esc", "assets/textures/linemaps"]
+DIRS = ["assets/textures/props/posters2", "assets/textures/props/gen2", "assets/textures/props/shops", "assets/textures/props/esc", "assets/textures/linemaps", "assets/textures/char/frieze", "assets/textures/char/giant", "assets/textures/char/motif", "assets/textures/gen/metro_sq_grey"]
 changed = 0
 for d in DIRS:
     base = os.path.join(ROOT, d)
@@ -20,6 +20,8 @@ for d in DIRS:
         s = open(p).read()
         t = re.sub(r"compress/mode=\d+", "compress/mode=2", s)
         t = re.sub(r"mipmaps/generate=\w+", "mipmaps/generate=true", t)
+        if f.startswith("NormalGL"):
+            t = re.sub(r"compress/normal_map=\d+", "compress/normal_map=1", t)
         if t != s:
             open(p, "w").write(t)
             changed += 1

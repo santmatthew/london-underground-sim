@@ -14,6 +14,7 @@ Godot 4.7, internet access. Create the Python env once: `python3 -m venv build/v
 | People (36 characters + 25 mocap clips) | `tools/blender/people/rebuild_all.sh` | CMU BVH clips are fetched from `una-dinosauria/cmu-mocap` into `build/mocap` |
 | Trains | `blender -b --factory-startup -P tools/blender/train/make_train.py -- deep_mid deep_cab ss_mid ss_cab` | textures: `tools/blender/train/make_textures.py` |
 | Station props + fictional posters | `blender -b --factory-startup -P tools/blender/props/make_props.py` | see `tools/blender/props/make_docs.py` |
+| Station character textures | `python3 tools/gen_textures.py metro_sq_grey && python3 tools/gen_char_textures.py` then `python3 tools/fix_texture_imports.py` | name friezes for every station, "Way out" patches, tile lettering, Victoria recess motifs (`assets/textures/char`, data in `data/station_character.json`); needs the URW C059 font (`fonts-urw-base35`) |
 | Audio (speech, ambience, SFX) | `build/venv/bin/python tools/audio/make_audio.py` | ~20 min for the 1300+ Piper speech clips |
 | Godot import | `godot --headless --path . --import` | run again after adding assets (twice if it complains) |
 

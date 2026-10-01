@@ -222,11 +222,21 @@ def grime_mask(name, size=1024, seed=4):
     print("wrote", name)
 
 
-if __name__ == "__main__":
+def _all():
     metro_tile("metro_white", (0.93, 0.93, 0.91), seed=1, dirt=0.05)
     metro_tile("metro_cream", (0.90, 0.86, 0.74), seed=5, dirt=0.06)
+    # Victoria line (1968-71): 150 mm square pale-grey glazed tile in stack bond (Idiom p.217)
+    metro_tile("metro_sq_grey", (0.80, 0.81, 0.82), tile_w=256, tile_h=256, grout=4, seed=7, dirt=0.05, bond=False)
     panel_cladding("panel_white", (0.88, 0.89, 0.88))
     tactile_paving("tactile_yellow")
     trackbed_sleepers("trackbed_sleepers")
     decals()
     grime_mask("grime")
+
+
+if __name__ == "__main__":
+    only = sys.argv[1:]
+    if not only:
+        _all()
+    elif "metro_sq_grey" in only:
+        metro_tile("metro_sq_grey", (0.80, 0.81, 0.82), tile_w=256, tile_h=256, grout=4, seed=7, dirt=0.05, bond=False)
