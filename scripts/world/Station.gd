@@ -287,13 +287,7 @@ func _build_street_doors() -> void:
 		var qm := QuadMesh.new()
 		qm.size = Vector2(3.0, 2.9)
 		glass.mesh = qm
-		var gm := StandardMaterial3D.new()
-		gm.albedo_color = Color(0.85, 0.92, 1.0)
-		gm.emission_enabled = true
-		gm.emission = Color(0.75, 0.85, 1.0)
-		gm.emission_energy_multiplier = 3.0
-		gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		glass.material_override = gm
+		glass.material_override = _street_material()
 		glass.position = Vector3(pos.x, 1.5, pos.z - 0.35)
 		glass.rotation.y = 0.0
 		fitting_root.add_child(glass)
@@ -318,6 +312,28 @@ func _build_street_doors() -> void:
 		area.position = Vector3(pos.x, 1.25, pos.z + 0.2)
 		area.body_entered.connect(func(b): if b is Player: street_exit_reached.emit(sd["id"]))
 		fitting_root.add_child(area)
+
+
+## what is seen through the glass doors: a London street, by the time of day (tools/gen_street.py), a little over-exposed as it is from indoors
+static func _street_material() -> StandardMaterial3D:
+	var hh := fmod(Clock.now / 3600.0, 24.0)
+	var mode := "night"
+	var gain := 1.0
+	if hh >= 7.5 and hh < 17.5:
+		mode = "day"
+		gain = 1.3
+	elif (hh >= 5.5 and hh < 7.5) or (hh >= 17.5 and hh < 20.0):
+		mode = "dusk"
+		gain = 1.15
+	var gm := StandardMaterial3D.new()
+	var path := "res://assets/textures/char/street_%s.png" % mode
+	if ResourceLoader.exists(path):
+		gm.albedo_texture = load(path)
+	else:
+		gm.albedo_color = Color(0.85, 0.92, 1.0)
+	gm.albedo_color = Color(gain, gain, gain)
+	gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	return gm
 
 
 func attach_crowd(p: Node3D) -> void:

@@ -76,6 +76,9 @@ static func platform(station_name: String, line_id: String, kind: String) -> Dic
 	if src.is_empty():
 		return _generic(station_name, line_id, kind)
 	var out := {"wall": String(src.get("wall", "tile_white")), "stripes": _stripes(src.get("stripes", [])), "frieze": true, "station_slug": slug(station_name)}
+	if src.has("light"):
+		var lc: Array = src["light"]
+		out["light_color"] = Color(lc[0], lc[1], lc[2])
 	for k in ["ribs", "pilasters", "frame"]:
 		if src.has(k):
 			var d: Dictionary = (src[k] as Dictionary).duplicate()
@@ -138,6 +141,9 @@ static func hall(station_name: String) -> Dictionary:
 		var col := color(String(b[2]))
 		bands.append({"key": ("dado:" if int(b[3]) == 1 else "flat:") + col.to_html(false), "y0": float(b[0]), "y1": float(b[1])})
 	out["bands"] = bands
+	if t.has("light"):
+		var lc: Array = t["light"]
+		out["light_color"] = Color(lc[0], lc[1], lc[2])
 	return out
 
 

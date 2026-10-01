@@ -24,22 +24,26 @@
   },
   "stations": {
     "Covent Garden|piccadilly": {
+      "light": [1.0, 0.93, 0.80],
       "wall": "tile_white",
       "stripes": [[0.0, 0.30, "ochre", 1], [1.02, 1.17, "ochre", 1], [1.27, 1.345, "lemon", 1]],
       "giant": {"text": "COVENT GARDEN", "ink": "ink_brown"}
     },
     "Caledonian Road|piccadilly": {
+      "light": [1.0, 0.93, 0.80],
       "wall": "tile_white",
       "stripes": [[0.0, 0.30, "maroon", 1], [0.30, 1.00, "pink", 1], [1.00, 1.15, "maroon", 1], [1.15, 1.30, "pink", 1]],
       "giant": {"text": "CALEDONIAN·ROAD", "ink": "ink_brown"},
       "ribs": {"ink": "maroon", "every": 3.6, "w": 0.45}
     },
     "Tufnell Park|northern": {
+      "light": [1.0, 0.93, 0.80],
       "wall": "tile_cream",
       "stripes": [[0.80, 0.95, "ochre", 1], [1.12, 1.27, "ochre", 1]],
       "giant": {"text": ":TUFNELL:PARK:", "ink": "plum"}
     },
     "Chalk Farm|northern": {
+      "light": [1.0, 0.93, 0.80],
       "wall": "tile_white",
       "stripes": [[0.95, 1.10, "red_glaze", 1], [1.27, 1.42, "red_glaze", 1]],
       "giant": {"text": "CHALK:FARM", "ink": "red_ink"},
@@ -47,27 +51,32 @@
       "ribs": {"ink": "red_glaze", "every": 4.8, "w": 0.45}
     },
     "Goodge Street|northern": {
+      "light": [1.0, 0.93, 0.80],
       "wall": "tile_cream",
       "stripes": [[0.0, 0.22, "black_glaze", 1]],
       "pilasters": {"ink": "green_tile", "edge": "black_glaze", "w": 0.30, "every": 2.4},
       "ribs": {"ink": "green_dk", "every": 6.0, "w": 0.30}
     },
     "Archway|northern": {
+      "light": [1.0, 0.93, 0.80],
       "wall": "tile_cream",
       "stripes": [[0.0, 0.25, "green_dk", 1]],
       "frame": {"ink": "green_dk", "w": 0.38}
     },
     "Warren Street|northern": {
+      "light": [1.0, 0.93, 0.80],
       "wall": "tile_white",
       "stripes": [[0.0, 0.30, "black_glaze", 1], [1.10, 1.25, "black_glaze", 1], [1.60, 1.75, "black_glaze", 1]],
       "pilasters": {"ink": "oxblood", "edge": "black_glaze", "w": 0.60, "every": 9.0}
     },
     "Edgware Road (Bakerloo)|bakerloo": {
+      "light": [1.0, 0.93, 0.80],
       "wall": "tile_cream",
       "stripes": [[0.0, 0.25, "oxblood", 1], [0.78, 0.93, "oxblood", 1], [1.52, 1.67, "oxblood", 1]],
       "ribs": {"ink": "navy_tile", "every": 2.4, "w": 0.55}
     },
     "Baker Street|bakerloo": {
+      "light": [1.0, 0.93, 0.80],
       "wall": "tile_cream",
       "stripes": [[0.0, 0.25, "brown_dk", 1], [1.20, 1.35, "brown_dk", 1]],
       "ribs": {"ink": "brown_dk", "every": 2.8, "w": 0.55}
@@ -78,19 +87,19 @@
     "piccadilly": {"wall": "tile_white", "stripes": [[0.0, 0.28, "grey_dk", 1], [1.10, 1.22, "blue_tile", 1]]},
     "northern": {"wall": "tile_white", "stripes": [[0.0, 1.15, "grey_dado", 1], [1.15, 1.21, "black_glaze", 1]]},
     "central": {"wall": "tile_white", "stripes": [[0.0, 0.30, "black_glaze", 1], [1.10, 1.18, "blue_tile", 1]]},
-    "victoria": {"wall": "tile_sq_grey", "stripes": [[0.0, 0.16, "blue_skirt", 0]]},
+    "victoria": {"light": [0.95, 0.98, 1.0], "wall": "tile_sq_grey", "stripes": [[0.0, 0.16, "blue_skirt", 0]]},
     "jubilee": {"wall": "tile_white", "stripes": [[0.0, 0.30, "grey_mid", 1]]},
-    "jubilee_ext": {"wall": "panel_white", "stripes": [[0.0, 0.14, "grey_dk", 0]]},
+    "jubilee_ext": {"light": [0.93, 0.97, 1.0], "wall": "panel_white", "stripes": [[0.0, 0.14, "grey_dk", 0]]},
     "waterloo-city": {"wall": "tile_white", "stripes": [[0.0, 0.30, "green_dk", 1], [1.10, 1.18, "green_dk", 1]]}
   },
   "jubilee_ext": ["Westminster", "Waterloo", "Southwark", "London Bridge", "Bermondsey", "Canada Water", "Canary Wharf", "North Greenwich", "Canning Town", "West Ham", "Stratford"],
   "hall_types": {
     "default": {"wall": "tile_white", "floor": "floor_hall", "ceil": "ceiling", "bands": [[1.15, 1.40, "blue_navy", 0]]},
-    "holden": {"wall": "brick_buff", "floor": "floor_cream", "ceil": "ceiling", "bands": [[0.0, 1.6, "green_dk", 1], [1.6, 1.7, "black_glaze", 1]]},
-    "leslie": {"wall": "tile_cream", "floor": "floor_terracotta", "ceil": "ceiling", "bands": [[0.0, 0.30, "green_dk", 1], [1.50, 1.65, "green_dk", 1]]},
+    "holden": {"light": [1.0, 0.90, 0.74], "wall": "brick_buff", "floor": "floor_cream", "ceil": "ceiling", "bands": [[0.0, 1.6, "green_dk", 1], [1.6, 1.7, "black_glaze", 1]]},
+    "leslie": {"light": [1.0, 0.92, 0.78], "wall": "tile_cream", "floor": "floor_terracotta", "ceil": "ceiling", "bands": [[0.0, 0.30, "green_dk", 1], [1.50, 1.65, "green_dk", 1]]},
     "refit": {"wall": "tile_white", "floor": "floor_cream", "ceil": "ceiling", "bands": [[1.15, 1.40, "blue_navy", 0]]},
-    "stone": {"wall": "panel_white", "floor": "floor_stone", "ceil": "ceiling_metal", "bands": [[0.0, 0.12, "grey_dk", 0]]},
-    "idiom": {"wall": "panel_white", "floor": "floor_slate", "ceil": "ceiling_metal", "bands": [[0.0, 0.12, "black_glaze", 0]]}
+    "stone": {"light": [0.94, 0.97, 1.0], "wall": "panel_white", "floor": "floor_stone", "ceil": "ceiling_metal", "bands": [[0.0, 0.12, "grey_dk", 0]]},
+    "idiom": {"light": [0.92, 0.96, 1.0], "wall": "panel_white", "floor": "floor_slate", "ceil": "ceiling_metal", "bands": [[0.0, 0.12, "black_glaze", 0]]}
   },
   "halls": {
     "Cockfosters": "holden", "Oakwood": "holden", "Bounds Green": "holden", "Southgate": "holden", "Arnos Grove": "holden", "Hounslow West": "holden",

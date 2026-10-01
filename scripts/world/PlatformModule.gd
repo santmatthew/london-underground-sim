@@ -725,7 +725,7 @@ func _add_lights() -> void:
 		o.light_energy = l[1]
 		o.omni_range = l[2]
 		o.omni_attenuation = 1.3
-		o.light_color = Color(1.0, 0.97, 0.92)
+		o.light_color = character.get("light_color", Color(1.0, 0.97, 0.92))
 		o.shadow_enabled = false
 		o.distance_fade_enabled = true
 		o.distance_fade_begin = 45.0

@@ -7,7 +7,7 @@ import re
 import sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-DIRS = ["assets/textures/props/posters2", "assets/textures/props/gen2", "assets/textures/props/shops", "assets/textures/props/esc", "assets/textures/linemaps", "assets/textures/char/frieze", "assets/textures/char/giant", "assets/textures/char/motif", "assets/textures/gen/metro_sq_grey", "assets/textures/gen/floor_cream", "assets/textures/gen/floor_terracotta", "assets/textures/gen/floor_chequer", "assets/textures/gen/floor_stone", "assets/textures/gen/floor_slate", "assets/textures/gen/brick_buff", "assets/textures/gen/ceiling_metal"]
+DIRS = ["assets/textures/props/posters2", "assets/textures/props/gen2", "assets/textures/props/shops", "assets/textures/props/esc", "assets/textures/linemaps", "assets/textures/char/frieze", "assets/textures/char/giant", "assets/textures/char/motif", "assets/textures/char", "assets/textures/gen/metro_sq_grey", "assets/textures/gen/floor_cream", "assets/textures/gen/floor_terracotta", "assets/textures/gen/floor_chequer", "assets/textures/gen/floor_stone", "assets/textures/gen/floor_slate", "assets/textures/gen/brick_buff", "assets/textures/gen/ceiling_metal"]
 changed = 0
 for d in DIRS:
     base = os.path.join(ROOT, d)
