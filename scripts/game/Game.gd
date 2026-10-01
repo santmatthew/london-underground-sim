@@ -171,8 +171,14 @@ func _apply_settings() -> void:
 	var vp := get_viewport()
 	# FSR 1: spatial, about 1 ms; FSR 2: temporal, sharper on small text and fences (about 3 ms more at the Auto scale on an RTX 3050 Ti at 4K, much more at higher scales)
 	var up_mode := Viewport.SCALING_3D_MODE_FSR2 if String(opts.get("upscaler", "fsr1")) == "fsr2" else Viewport.SCALING_3D_MODE_FSR
+	# FSR 2 does its own temporal anti-aliasing (Godot warns when TAA is on with it): TAA goes off before FSR 2 comes on, and on after it has gone
+	var want_taa := not (up_mode == Viewport.SCALING_3D_MODE_FSR2 and sc < 0.99)
+	if not want_taa:
+		vp.use_taa = false
 	vp.scaling_3d_mode = up_mode if sc < 0.99 else Viewport.SCALING_3D_MODE_BILINEAR
 	vp.scaling_3d_scale = sc
+	if want_taa:
+		vp.use_taa = true
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(opts["volume"]), 0.0001)))
 	if player:
 		player.mouse_sens = opts["sens"]
