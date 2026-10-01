@@ -93,7 +93,7 @@ func build(p_spec: Dictionary) -> void:
 		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 
 	var mats := {}
-	for n in ["tile_white", "tile_cream", "tile_sq_grey", "panel_white", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab"]:
+	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab"]:
 		mats[n] = Mats.get_mat(n)
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
@@ -122,10 +122,12 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	var prof_run := _arch_profile(s, zwall_run, zfar)
 	var xa := x0 - float(meta["tun_w"])       # the running tunnel stops (black cap) before it reaches the rooms on that side
 	var xb := x1 + float(meta["tun_e"])
+	# a patterned wall tile (Oxford Circus) stays on the platform wall; the vault and the track-side wall are plain white
+	var arch_mat := "tile_white" if wall_mat == "tile_oxford" else wall_mat
 	if not box:
-		kit.sweep_x(wall_mat, prof, x0, x1, 0.0)
-	kit.sweep_x(wall_mat, prof_run, xa, x0, 0.0)
-	kit.sweep_x(wall_mat, prof_run, x1, xb, 0.0)
+		kit.sweep_x(arch_mat, prof, x0, x1, 0.0)
+	kit.sweep_x(arch_mat, prof_run, xa, x0, 0.0)
+	kit.sweep_x(arch_mat, prof_run, x1, xb, 0.0)
 	# platform-side wall, tunnel face. Full height under the platform (running tunnel) and above it at the platform.
 	# In the running tunnel (no platform) the wall goes down to the trackbed.
 	_wall_z(wall_mat, s * zwall_run, xa, x0, BED_Y, SPRING_Y, [], s < 0.0, true)

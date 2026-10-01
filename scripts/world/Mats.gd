@@ -55,6 +55,9 @@ static func get_mat(name: String) -> Material:
 		"tile_sq_grey":
 			# Victoria line: 150 mm square pale-grey glazed tile, stack bond
 			m = _surface("gen/metro_sq_grey", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.5, "ceiling_soot": 0.45, "floor_dirt_height": 0.5})
+		"tile_oxford":
+			# Oxford Circus Central line: white tile with a dark-blue braided-ribbon interlace
+			m = _surface("gen/metro_oxford", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.5, "ceiling_soot": 0.45, "floor_dirt_height": 0.5})
 		"panel_white":
 			m = _surface("gen/panel_white", "png", 1.0 / 2.0, Color(1, 1, 1), {"dirt": 0.35, "ceiling_soot": 0.3})
 		"tactile":

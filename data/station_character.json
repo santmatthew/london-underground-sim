@@ -20,7 +20,8 @@
     "blue_tile": [0.10, 0.22, 0.58],
     "blue_skirt": [0.12, 0.28, 0.62],
     "oxblood": [0.45, 0.13, 0.13],
-    "blue_navy": [0.02, 0.18, 0.5]
+    "blue_navy": [0.02, 0.18, 0.5],
+    "cream_tile": [0.88, 0.82, 0.62]
   },
   "stations": {
     "Covent Garden|piccadilly": {
@@ -68,6 +69,10 @@
       "wall": "tile_white",
       "stripes": [[0.0, 0.30, "black_glaze", 1], [1.10, 1.25, "black_glaze", 1], [1.60, 1.75, "black_glaze", 1]],
       "pilasters": {"ink": "oxblood", "edge": "black_glaze", "w": 0.60, "every": 9.0}
+    },
+    "Oxford Circus|central": {
+      "wall": "tile_oxford",
+      "stripes": [[0.0, 0.30, "cream_tile", 1]]
     },
     "Edgware Road (Bakerloo)|bakerloo": {
       "light": [1.0, 0.93, 0.80],

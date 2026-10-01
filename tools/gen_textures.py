@@ -2,6 +2,7 @@
 """Procedural PBR textures for the station: run with build/venv/bin/python tools/gen_textures.py
 Output: assets/textures/gen/<name>/{Color,NormalGL,Roughness,AO}.png (+ info.txt with physical size in metres).
 """
+import math
 import os, sys
 import numpy as np
 from PIL import Image
@@ -297,10 +298,65 @@ def _all():
     grime_mask("grime")
 
 
+def oxford_circus_tile(name="metro_oxford"):
+    """Oxford Circus Central line platforms: white glazed tile with a dark-blue interlace of braided outlined ribbons flowing up the wall.
+    Re-uses the plain white tile's normal / roughness / AO and paints the ribbons into the colour map (period 1.2 m = one texture)."""
+    import shutil
+    from PIL import ImageDraw
+    src = os.path.join(OUT, "metro_white")
+    dst = os.path.join(OUT, name)
+    os.makedirs(dst, exist_ok=True)
+    for f in ("NormalGL.png", "Roughness.png", "AO.png"):
+        shutil.copy(os.path.join(src, f), os.path.join(dst, f))
+    open(os.path.join(dst, "info.txt"), "w").write("size_m=1.2\n")
+    base = Image.open(os.path.join(src, "Color.png")).convert("RGB")
+    size = base.width
+    SS = 2
+    layer = Image.new("RGBA", (size * SS, size * SS), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    ink = (22, 40, 130, 255)
+    white = (255, 255, 255, 0)
+    ncol = 3                                   # braids across the 1.2 m period
+    lam = size * SS / 1.0                      # braid wavelength (px): two full turns per 1.2 m
+    amp = size * SS / ncol * 0.22
+    rw = size * SS / ncol * 0.085              # ribbon half width
+    steps = 160
+    for c in range(ncol):
+        cx = (c + 0.5) * size * SS / ncol
+        for seg in range(6):                   # sixth-wavelength segments: the strand on top rotates (a three-strand braid)
+            y0 = seg * lam / 3.0
+            order = [(seg + k) % 3 for k in range(3)]
+            for strand in order:
+                pts_l, pts_r = [], []
+                for i in range(steps + 1):
+                    t = i / steps
+                    y = y0 + t * lam / 3.0
+                    ph = 2 * math.pi * y / lam + strand * 2.0 * math.pi / 3.0
+                    x = cx + amp * math.sin(ph)
+                    pts_l.append((x - rw, y))
+                    pts_r.append((x + rw, y))
+                poly_pts = pts_l + pts_r[::-1]
+                d.polygon(poly_pts, fill=(255, 255, 255, 255))             # ribbon body masks what lies under it
+                d.line(pts_l, fill=ink, width=int(size * SS * 0.0075))
+                d.line(pts_r, fill=ink, width=int(size * SS * 0.0075))
+    layer = layer.resize((size, size), Image.LANCZOS)
+    # keep the tile joints visible through the ribbons: only the ink is composited, the white body just hides nothing (base is white already)
+    out = base.convert("RGBA")
+    ink_only = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    la = np.array(layer).astype(np.float32)
+    ink_mask = (np.abs(la[..., 0] - 22) + np.abs(la[..., 1] - 40) + np.abs(la[..., 2] - 130)) < 150
+    arr = np.array(out)
+    arr[ink_mask] = (np.array([20, 38, 128, 255]) * 0.9 + arr[ink_mask] * 0.1).astype(np.uint8)
+    Image.fromarray(arr).convert("RGB").save(os.path.join(dst, "Color.png"))
+    print("wrote", name)
+
+
 if __name__ == "__main__":
     only = sys.argv[1:]
     if not only:
         _all()
+    elif "oxford" in only:
+        oxford_circus_tile()
     elif "halls" in only:
         _hall_set()
     elif "metro_sq_grey" in only:
