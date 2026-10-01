@@ -106,7 +106,7 @@ func _ready() -> void:
 			pos = Vector3(f["x0"] + 30, f["y"] + 1.65, f["edge_z"] - f["side"] * 1.2); look = pos + Vector3(30, -0.3, f["side"] * 0.6)
 	if view == "train":
 		# find a train visit at the first face and set the clock to mid-dwell
-		var fk: String = plan.faces.keys()[0]
+		var fk: String = plan.faces.keys()[int(sys_arg("fi", "0"))]
 		var fc: Dictionary = plan.faces[fk]
 		var gp: int = Timetable.plat_index[idx][fc["pid"]]
 		var vs: Array = Timetable.visits_between(gp, 8.0 * 3600.0, 8.0 * 3600.0 + 600.0)
@@ -128,7 +128,7 @@ func _ready() -> void:
 		look = Vector3(float(lp[0]), float(lp[1]), float(lp[2]))
 	cam.position = pos
 	cam.look_at(look)
-	for i in 20: await get_tree().process_frame
+	for i in int(sys_arg("frames", "20")): await get_tree().process_frame
 	var rs := RenderingServer
 	print("render: draw calls %d, primitives %d, objects %d" % [rs.get_rendering_info(rs.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), rs.get_rendering_info(rs.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME), rs.get_rendering_info(rs.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)])
 	get_viewport().get_texture().get_image().save_png("res://build/shot_station_%s.png" % view)
