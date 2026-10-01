@@ -1,13 +1,13 @@
 shader_type spatial;
 render_mode diffuse_burley;
-// Moving escalator treads. UV.x = across (m), UV.y = along the slope (m, growing downhill).
+// Moving escalator treads. UV.x = across (m), UV.y = along the slope (m, growing UPHILL: the tread quad is built bottom -> top).
 uniform float speed = 0.75;      // m/s; +ve moves the pattern downhill, -ve uphill
 uniform float pitch = 0.4;       // tread pitch (m)
 uniform vec3 base_color : source_color = vec3(0.16, 0.16, 0.17);
 uniform vec3 nose_color : source_color = vec3(0.90, 0.72, 0.05);
 
 void fragment() {
-	float s = UV.y - TIME * speed;
+	float s = UV.y + TIME * speed;      // UV.y grows uphill, so a pattern that moves downhill has to scroll toward smaller UV.y
 	float f = fract(s / pitch);
 	// yellow demarcation on the leading edge of each step
 	float nose = smoothstep(0.0, 0.02, f) * (1.0 - smoothstep(0.075, 0.095, f));
