@@ -76,6 +76,16 @@ func build_async(p: StationPlan, use_async := true) -> void:
 		pm.position = m["pos"]
 		pm.name = "Module%d" % mi
 		add_child(pm)
+		# open-air platforms: which sides have another module close by (their backdrop would cut through it)
+		var nb: Array = []
+		for oi in plan.modules.size():
+			if oi == mi:
+				continue
+			var om: Dictionary = plan.modules[oi]
+			var d: Vector3 = (om["pos"] as Vector3) - (m["pos"] as Vector3)
+			if absf(d.z) < 46.0 and absf(d.x) < float(m["spec"]["length"]):
+				nb.append(1.0 if d.z > 0.0 else -1.0)
+		(m["spec"] as Dictionary)["nb"] = nb
 		pm.build(m["spec"])
 		modules.append(pm)
 		stats["tris"] += pm.meta.get("tri_count", 0)

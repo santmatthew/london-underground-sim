@@ -122,6 +122,7 @@
   },
   "halls": {
     "Cockfosters": "holden", "Oakwood": "holden", "Bounds Green": "holden", "Southgate": "holden", "Arnos Grove": "holden", "Hounslow West": "holden",
+    "Wood Green": "holden", "Turnpike Lane": "holden", "Hounslow Central": "holden", "Hounslow East": "holden", "Osterley": "holden", "Boston Manor": "holden", "Northfields": "holden", "South Ealing": "holden", "Acton Town": "holden", "Ealing Common": "holden", "North Ealing": "holden", "Park Royal": "holden", "Alperton": "holden", "Sudbury Town": "holden", "Sudbury Hill": "holden", "Rayners Lane": "holden", "Eastcote": "holden", "Ruislip Manor": "holden", "Ruislip": "holden", "Ickenham": "holden", "Hillingdon": "holden", "Uxbridge": "holden", "Morden": "holden", "Edgware": "holden", "Burnt Oak": "holden", "Colindale": "holden", "Hendon Central": "holden", "East Finchley": "holden", "Stanmore": "holden", "Canons Park": "holden", "Queensbury": "holden",
     "Brent Cross": {"type": "holden", "floor": "floor_chequer"},
     "Holloway Road": "leslie", "Mornington Crescent": "leslie", "Caledonian Road": "leslie", "Belsize Park": "leslie", "Russell Square": "leslie",
     "Green Park": {"type": "refit", "bands": [[1.15, 1.40, "blue_tile", 0]]},
@@ -130,6 +131,21 @@
     "King's Cross St. Pancras": "stone", "North Greenwich": "stone", "Waterloo": "stone", "Canary Wharf": "stone",
     "Bank": "idiom", "Whitechapel": "idiom", "Wood Lane": "idiom", "Paddington (H&C)": "idiom"
   },
+  "open_styles": {
+    "holden": {"canopy": "slab", "col": "square", "col_main": [0.86, 0.86, 0.83], "col_band": [0.10, 0.20, 0.50], "fascia": [0.90, 0.90, 0.88], "wall": "brick_stock", "front": "brick_stock", "floor": "floor_slab"},
+    "post_war": {"canopy": "slab", "col": "round", "col_main": [0.84, 0.83, 0.80], "col_band": [0.20, 0.20, 0.22], "fascia": [0.86, 0.85, 0.82], "wall": "brick_red", "front": "brick_stock", "floor": "floor_slab"},
+    "victorian": {"canopy": "valanced", "col": "iron", "col_main": [0.92, 0.92, 0.90], "col_band": [0.10, 0.18, 0.46], "fascia": [0.93, 0.93, 0.90], "soffit": "timber_slab", "wall": "brick_red", "front": "brick_red", "floor": "floor_slab"},
+    "metropolitan": {"canopy": "timber", "col": "iron", "col_main": [0.93, 0.93, 0.91], "col_band": [0.70, 0.10, 0.13], "fascia": [0.93, 0.93, 0.90], "soffit": "timber_slab", "wall": "brick_stock", "front": "brick_stock", "floor": "floor_slab"}
+  },
+  "surface_lines": {"central": "post_war", "piccadilly": "holden", "northern": "holden", "jubilee": "holden", "bakerloo": "victorian", "district": "victorian",
+                    "metropolitan": "metropolitan", "circle": "victorian", "hammersmith-city": "victorian"},
+  "surface_overrides": {
+    "Acton Town": "holden", "Ealing Common": "holden", "Rayners Lane": "holden", "Eastcote": "holden", "Ruislip Manor": "holden", "Ruislip": "holden", "Ickenham": "holden",
+    "Hillingdon": "holden", "Uxbridge": "holden", "Boston Manor": "victorian", "Northfields": "holden", "Loughton": "post_war", "Debden": "post_war", "Buckhurst Hill": "post_war",
+    "Rickmansworth": "metropolitan", "Chesham": "metropolitan", "Amersham": "metropolitan", "Chorleywood": "metropolitan", "Pinner": "metropolitan"
+  },
+  "open_sub": ["Bayswater", "Westbourne Park", "Ladbroke Grove", "Latimer Road", "Goldhawk Road", "Shepherd's Bush Market", "Royal Oak", "West Kensington", "Ravenscourt Park",
+               "Stamford Brook", "West Brompton", "Parsons Green", "Putney Bridge", "East Putney", "Kensington (Olympia)", "Bromley-by-Bow", "Bow Road", "Stepney Green"],
   "victoria_motifs": {
     "Brixton": "bricks",
     "Stockwell": "swan",

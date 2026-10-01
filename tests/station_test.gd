@@ -7,7 +7,7 @@ func _ready() -> void:
 		if a.begins_with("--station="): sname = a.substr(10)
 		if a.begins_with("--view="): view = a.substr(7)
 	Timetable.build(1)
-	Clock.set_time(8.0 * 3600.0)
+	Clock.set_time(float(sys_arg("hour", "8.0")) * 3600.0)
 	var idx: int = Net.name_to_idx[sname]
 	var t0 := Time.get_ticks_msec()
 	var plan := StationPlan.for_station(idx)

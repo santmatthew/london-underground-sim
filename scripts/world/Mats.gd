@@ -88,6 +88,16 @@ static func get_mat(name: String) -> Material:
 			m = _surface("gen/floor_diamond_bw", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.5, "floor_dirt_height": 0.0, "rough_add": 0.05})
 		"floor_slab":
 			m = _surface("gen/floor_slab", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.5, "floor_dirt_height": 0.0, "rough_add": 0.05})
+		"brick_stock":
+			m = _surface("gen/brick_stock", "png", 1.0 / 1.72, Color(1, 1, 1), {"dirt": 0.6, "ceiling_soot": 0.3, "floor_dirt_height": 0.4})
+		"brick_red":
+			m = _surface("gen/brick_red", "png", 1.0 / 1.72, Color(1, 1, 1), {"dirt": 0.6, "ceiling_soot": 0.3, "floor_dirt_height": 0.4})
+		"brick_blue":
+			m = _surface("gen/brick_blue", "png", 1.0 / 1.72, Color(1, 1, 1), {"dirt": 0.5, "ceiling_soot": 0.3, "floor_dirt_height": 0.4})
+		"ballast":
+			m = _surface("gen/ballast", "png", 1.0 / 2.0, Color(1, 1, 1), {"dirt": 0.3, "floor_dirt_height": 0.0})
+		"tactile_buff":
+			m = _surface("gen/tactile_yellow", "png", 1.0 / 0.6, Color(0.88, 0.80, 0.54), {"dirt": 0.4, "floor_dirt_height": 0.0})
 		"floor_dark":
 			m = _surface("Tiles140", "jpg", 1.0 / 1.0, Color(0.8, 0.8, 0.8), {"dirt": 0.5, "floor_dirt_height": 0.0})
 		"ceiling":

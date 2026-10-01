@@ -397,6 +397,19 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 		# the far wall: white separator plates carrying the roundel (and, on every other one, a way-out board), with the poster run between them
 		# (StationDressing._far_wall); real platforms show a roundel every 4-9 m across the track
 		var seps := far_wall_separators(L)
+		if pm.open:
+			seps = []
+			# open-air platforms: the name on a roundel plate flagged out from every other column, readable along the platform
+			var cz := PlatformModule.GAP * 0.5 + 0.85
+			for ci in pm.column_xs.size():
+				if ci % 2 != fi:
+					continue
+				var cxx: float = pm.column_xs[ci]
+				for dxs in [-1.0, 1.0]:
+					var rdc := Signs.roundel(short_name, 0.62, false)
+					rdc.position = Vector3(cxx + dxs * 0.235, 1.85, s * cz)
+					rdc.rotation.y = -PI * 0.5 * dxs
+					pm.add_child(rdc)
 		for k in seps.size():
 			var x: float = seps[k]
 			var rd := Signs.roundel(short_name, 0.62, false)

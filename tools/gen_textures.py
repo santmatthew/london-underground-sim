@@ -258,8 +258,8 @@ def brick_wall(name, base_rgb, size=2048, brick_w=256, brick_h=89, mortar=8, see
     dist = np.minimum.reduce([u, brick_w - 1 - u, v, brick_h - 1 - v])
     inside = smoothstep(mortar * 0.5 - 0.5, mortar * 0.5 + 1.0, dist)
     nr, nc = size // brick_h + 2, size // brick_w + 2
-    tv = rng.normal(0, 0.06, (nr, nc)).astype(np.float32)
-    tt = rng.normal(0, 0.02, (nr, nc, 3)).astype(np.float32)
+    tv = rng.normal(0, 0.045, (nr, nc)).astype(np.float32)
+    tt = rng.normal(0, 0.012, (nr, nc, 3)).astype(np.float32)
     r_i, c_i = row % nr, col % nc
     base = np.array(base_rgb, np.float32)[None, None, :]
     mott = tileable_noise((size, size), 40, rng, 4)

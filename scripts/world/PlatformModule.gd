@@ -36,6 +36,9 @@ var spec: Dictionary = {}
 var meta: Dictionary = {}
 var character: Dictionary = {}     # StationCharacter.platform(): ribs, pilasters, frame, recess ...
 var recesses: Array = []           # x centres (module frame) of the seat recesses on the platform wall
+var open := false                  # an open-air (surface) platform: canopy, retaining wall, sky (PlatformOpen)
+var open_style: Dictionary = {}
+var column_xs: Array = []          # x of the canopy columns (open platforms)
 var ped_doors: Dictionary = {}     # face sign -> [{x, l, r, open}]: the platform edge door leaves (PlatformDoors)
 var ped_xs: Array = []             # door x positions when this module has platform edge doors
 var box := false
@@ -68,6 +71,8 @@ func build(p_spec: Dictionary) -> void:
 		while rx < L * 0.5 - 5.0:
 			recesses.append(rx)
 			rx += RECESS_PITCH
+	open = bool(character.get("open", false)) and box
+	open_style = character.get("open_style", {})
 	ped_xs = []
 	if character.get("peds", false) and not box and faces.size() > 0 and faces[0] != null:
 		ped_xs = PlatformDoors.door_xs(String(faces[0].get("line", "jubilee")))
@@ -98,7 +103,7 @@ func build(p_spec: Dictionary) -> void:
 		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 
 	var mats := {}
-	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "ped_glass", "stainless", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab"]:
+	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "ped_glass", "stainless", "brick_stock", "brick_red", "brick_blue", "ballast", "tactile_buff", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab"]:
 		mats[n] = Mats.get_mat(n)
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
@@ -113,6 +118,9 @@ func build(p_spec: Dictionary) -> void:
 	add_child(mi)
 	_add_collision()
 	_add_lights()
+	if open:
+		var ztr := GAP * 0.5 + float(spec.get("pw", 3.0)) + TRACK_TO_EDGE + TRACK_TO_WALL
+		PlatformOpen.scenery(self, open_style, x0, x1, ztr)
 	_add_recess_seats()
 	meta["tri_count"] = kit.triangle_count()
 
@@ -155,26 +163,33 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	# edge stack, from the track: white coping line, a dark ribbed strip with the yellow line on its inner half (real deep-tube platforms)
 	var tz0 := minf(s * (zedge - 0.50), s * (zedge - 0.06))
 	var tz1 := maxf(s * (zedge - 0.50), s * (zedge - 0.06))
-	kit.horiz("tactile", x0, x1, tz0, tz1, 0.004, true, 0.0)
+	kit.horiz("tactile_buff" if open else "tactile", x0, x1, tz0, tz1, 0.004, true, 0.0)
 	var wz0 := minf(s * (zedge - 0.06), s * zedge)
 	var wz1 := maxf(s * (zedge - 0.06), s * zedge)
 	kit.horiz("white_paint", x0, x1, wz0, wz1, 0.005, true, 0.0)
-	var lz0 := minf(s * (zedge - 0.42), s * (zedge - 0.32))
-	var lz1 := maxf(s * (zedge - 0.42), s * (zedge - 0.32))
+	# (open-air platforms: the yellow line runs along the inboard edge of the buff strip)
+	var yl0 := 0.42 if not open else 0.58
+	var lz0 := minf(s * (zedge - yl0), s * (zedge - yl0 + 0.10))
+	var lz1 := maxf(s * (zedge - yl0), s * (zedge - yl0 + 0.10))
 	if ped_xs.is_empty():
 		kit.horiz("yellow_paint", x0, x1, lz0, lz1, 0.006, true, 0.0)      # (the doors are the boundary where there are PEDs)
 	else:
 		PlatformDoors.build(self, kit, s, zedge, ped_xs, x0, x1)
 	# platform front face toward the track (from y=0 down to bed)
+	var front_mat := "brick_stock" if open else "concrete"
+	if open:
+		front_mat = String(open_style.get("front", "brick_stock"))
 	if s > 0.0:
-		kit.wall("concrete", Vector3(x1, 0, s * zedge), Vector3(x0, 0, s * zedge), BED_Y, 0.0, BED_Y, false)
+		kit.wall(front_mat, Vector3(x1, 0, s * zedge), Vector3(x0, 0, s * zedge), BED_Y, 0.0, BED_Y, false)
 	else:
-		kit.wall("concrete", Vector3(x0, 0, s * zedge), Vector3(x1, 0, s * zedge), BED_Y, 0.0, BED_Y, false)
+		kit.wall(front_mat, Vector3(x0, 0, s * zedge), Vector3(x1, 0, s * zedge), BED_Y, 0.0, BED_Y, false)
 	# platform underside cap at the ends
 	# --- track bed ---
 	var bz0 := minf(s * zedge, s * zfar)
 	var bz1 := maxf(s * zedge, s * zfar)
 	kit.horiz("trackbed", xa, xb, bz0, bz1, BED_Y, true, BED_Y)
+	if open:
+		kit.horiz("ballast", x0 - 0.5, x1 + 0.5, bz0, bz1, BED_Y + 0.002, true, BED_Y)
 	# in the running tunnel the bed spans the whole tunnel width (there's no platform)
 	var rz0 := minf(s * zwall_run, s * zedge)
 	var rz1 := maxf(s * zwall_run, s * zedge)
@@ -191,7 +206,9 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	kit.box("rail", Vector3((xa + xb) * 0.5, RAIL_Y - 0.07, s * ztrack - s * 1.05), Vector3(xb - xa, 0.10, 0.06), BED_Y)         # outer (positive) rail
 	# sleepers: a textured strip under the rails (2.6 m wide)
 	kit.horiz("track_sleepers", xa, xb, s * ztrack - 1.3, s * ztrack + 1.3, BED_Y + 0.004, true, BED_Y)
-	if box:
+	if open:
+		PlatformOpen.track_wall(self, open_style, s, x0, x1, zfar, wall_mat)
+	elif box:
 		_box_track_wall(s, x0, x1, zfar, wall_mat)
 	# --- wall stripes / dado (station style) on the track-side wall and the platform wall ---
 	var stripes: Array = spec.get("stripes", [{"y0": 1.15, "y1": 1.42, "color": band}])
@@ -220,7 +237,10 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 		_cols.append([Vector3(ex, 0.9, s * (zedge + 0.15)), Vector3(1.0, 1.8, 0.3), "edge", s])
 		ex += 1.0
 	# track-side wall & tunnel floor (only matter near platform)
-	_cols.append([Vector3((x0 + x1) * 0.5, 2.5, s * (zfar + 0.5)), Vector3(x1 - x0 + 4.0, 6.0, 1.0)])
+	if open:
+		_cols.append([Vector3((x0 + x1) * 0.5, 2.5, s * (zfar + 0.5)), Vector3(x1 - x0 + 4.0, 6.0, 1.0), "open"])       # (open to the sky: the wall's own box does not occlude)
+	else:
+		_cols.append([Vector3((x0 + x1) * 0.5, 2.5, s * (zfar + 0.5)), Vector3(x1 - x0 + 4.0, 6.0, 1.0)])
 	# platform-side wall segments between openings (full-height box) — keeps player inside the spine/platform
 	if not box:
 		var segs := _segments(x0, x1, openings, OPEN_W)
@@ -258,8 +278,11 @@ func _box_track_wall(s: float, x0: float, x1: float, zfar: float, wall_mat: Stri
 func _build_box_hall(x0: float, x1: float, zwall: float, zedge: float, ztrack: float, zfar: float, wall_mat: String, openings: Array) -> void:
 	var surface: bool = spec.get("roof", "flat") == "glass"
 	# island median floor between the two platforms
-	kit.horiz("floor_platform", x0, x1, -zwall, zwall, 0.0, true, 0.0)
+	kit.horiz(String(character.get("floor", "floor_platform")), x0, x1, -zwall, zwall, 0.0, true, 0.0)
 	_cols.append([Vector3((x0 + x1) * 0.5, -0.5, 0.0), Vector3(x1 - x0, 1.0, GAP)])
+	if open:
+		_build_open_hall(x0, x1, zwall, ztrack, zfar, wall_mat, openings)
+		return
 	# ceiling
 	if surface:
 		kit.horiz("glass_roof", x0, x1, -zfar, zfar, BOX_H, false, 0.0)
@@ -302,6 +325,22 @@ func _build_box_hall(x0: float, x1: float, zwall: float, zedge: float, ztrack: f
 				_cols.append([Vector3(cx, BOX_H * 0.5, zz), Vector3(0.44, BOX_H, 0.44)])
 		cx += 7.2
 	# end walls: track portals on both sides, plus a doorway at the west end leading to the corridor
+	_box_end_wall(x0, true, zwall, ztrack, zfar, wall_mat, true)
+	_box_end_wall(x1, false, zwall, ztrack, zfar, wall_mat, false)
+
+
+## the open-air variant of the box hall: canopy + columns (PlatformOpen) instead of the closed roof; lights, end walls and collision are the same
+func _build_open_hall(x0: float, x1: float, zwall: float, ztrack: float, zfar: float, wall_mat: String, openings: Array) -> void:
+	PlatformOpen.canopy(self, open_style, x0, x1, openings)
+	var lx2 := x0 + 4.0
+	while lx2 < x1:
+		_lights.append([Vector3(lx2, BOX_H - 0.9, 3.2), 2.2, 13.0])
+		_lights.append([Vector3(lx2, BOX_H - 0.9, -3.2), 2.2, 13.0])
+		lx2 += 8.0
+	var col_z := zwall + 0.85
+	for cx in column_xs:
+		for zz in [-col_z, col_z]:
+			_cols.append([Vector3(cx, BOX_H * 0.5, zz), Vector3(0.44, BOX_H, 0.44)])
 	_box_end_wall(x0, true, zwall, ztrack, zfar, wall_mat, true)
 	_box_end_wall(x1, false, zwall, ztrack, zfar, wall_mat, false)
 

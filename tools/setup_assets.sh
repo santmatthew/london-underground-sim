@@ -11,6 +11,8 @@ echo "== textures (ambientCG CC0 + procedural)"
 python3 tools/fetch_textures.py && build/venv/bin/python tools/gen_textures.py
 echo "== hall / floor / Oxford Circus tile families and the street view"
 build/venv/bin/python tools/gen_textures.py halls && build/venv/bin/python tools/gen_textures.py floors && build/venv/bin/python tools/gen_textures.py oxford && build/venv/bin/python tools/gen_street.py
+echo "== open-air platform textures (trees, house backs, brick, ballast, valance, fence)"
+build/venv/bin/python tools/gen_open_textures.py
 echo "== station character textures (name friezes, tile lettering, Victoria line motifs)"
 build/venv/bin/python tools/gen_char_textures.py && python3 tools/fix_texture_imports.py
 echo "== MakeHuman/MPFB asset packs + Blender extension, people, trains, props: see docs/ASSETS.md (long-running steps)"

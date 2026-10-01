@@ -493,7 +493,8 @@ func _platform(mi: int) -> void:
 	for fi in faces.size():
 		var s := 1.0 if fi == 0 else -1.0
 		if not Station.debug_off("posters"):
-			_far_wall(kit, s, zfar, L)
+			if not pm.open:
+				_far_wall(kit, s, zfar, L)
 			if not pm.box:
 				_platform_wall(kit, pm, s, zwall, L, ox)       # (island box halls have no platform-side wall: nothing to hang on)
 		if not Station.debug_off("furniture"):
@@ -751,7 +752,7 @@ func _platform_furniture(holder: Node3D, pm: PlatformModule, s: float, zwall: fl
 		return
 	# "MIND THE GAP" stencilled in yellow on the edge strip, every ~14 m (letters about 0.13 m tall, reading from the platform)
 	var gx := -L * 0.5 + 9.0
-	while gx < L * 0.5 - 4.0 and pm.ped_xs.is_empty():
+	while gx < L * 0.5 - 4.0 and pm.ped_xs.is_empty() and not pm.open:
 		var lab := Label3D.new()
 		lab.text = "MIND THE GAP"
 		lab.font = load("res://assets/fonts/Barlow-Bold.ttf")

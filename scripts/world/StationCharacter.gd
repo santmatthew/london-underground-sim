@@ -121,8 +121,39 @@ static func stripe_bands(stripes: Array, h: float) -> Array:
 	return out
 
 
-## A platform with no authored scheme (sub-surface and surface lines, and any line without a default): white glazed tile, a dark skirt and one band in the line's colour
+## the open-air style of a surface (or open-cutting sub-surface) platform, "" for a covered one
+static func open_style_name(station_name: String, line_id: String, kind: String) -> String:
+	_load()
+	var n := short_name(station_name)
+	if kind == "deep":
+		return ""
+	var over: Dictionary = _data.get("surface_overrides", {})
+	if over.has(n):
+		return String(over[n])
+	if kind == "sub" and not (n in _data.get("open_sub", [])):
+		return ""
+	return String((_data.get("surface_lines", {}) as Dictionary).get(line_id, "victorian" if kind == "sub" else "holden"))
+
+
+static func _resolve_style(d: Dictionary) -> Dictionary:
+	var out := d.duplicate()
+	for k in ["col_main", "col_band", "fascia"]:
+		if out.has(k):
+			var a: Array = out[k]
+			out[k] = Color(a[0], a[1], a[2])
+	return out
+
+
+## A platform with no authored scheme (sub-surface and surface lines, and any line without a default): an open-air platform (canopy, brick, sky) for surface stations,
+## white glazed tile with a dark skirt and one band in the line's colour for covered sub-surface ones
 static func _generic(station_name: String, line_id: String, kind: String) -> Dictionary:
+	var ost := open_style_name(station_name, line_id, kind)
+	if ost != "":
+		var d: Dictionary = (_data.get("open_styles", {}) as Dictionary).get(ost, {})
+		if not d.is_empty():
+			var style := _resolve_style(d)
+			return {"wall": String(d.get("wall", "brick_stock")), "stripes": [], "frieze": false, "station_slug": slug(station_name), "open": true, "open_style": style,
+				"floor": String(d.get("floor", "floor_slab")), "light_color": Color(1.0, 0.96, 0.88)}
 	var stripes: Array = [{"y0": 0.0, "y1": 0.25, "color": color("grey_dk"), "dado": true}, {"y0": 1.15, "y1": 1.42, "color": Net.line_color(line_id), "dado": false}]
 	return {"wall": "tile_white", "stripes": stripes, "frieze": kind == "deep", "station_slug": slug(station_name)}
 

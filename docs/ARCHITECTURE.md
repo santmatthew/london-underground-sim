@@ -105,6 +105,12 @@ Northern grey dado, Central black/blue, Victoria 150 mm grey tile, Jubilee Line 
   Bridge, Bermondsey, Canada Water, Canary Wharf, North Greenwich) get a stainless head casing, fixed tinted glass with the yellow band, and a sliding leaf pair at each of the train's doors
   (`Train.door_positions_for`). `PlatformModule.set_edge_open` (called per door by `TrainService._edge_guard`) opens the matching pair together with the invisible edge guard, so the
   player can only board where a door is open. No yellow line / MIND THE GAP stencil there (the doors are the boundary). Test: `ped_test`.
+* Open-air platforms (`PlatformOpen.gd`): surface stations (and the open-cutting sub-surface ones listed in `open_sub`) are no longer a closed box: a canopy over the island (slab with deep
+  fascia, white valanced boards, or timber soffit), columns where the box hall's steel columns stood (square Holden, flared round 1950s, slim cast iron; same collision), ballast, buff tactile
+  edge, a brick retaining wall with coping and a palisade fence across each track, a sky dome (`shaders/sky_dome.gdshader`: gradient, noise clouds, stars) and two backdrop strips (trees,
+  house backs) that follow the simulated clock, with daylight omni lights. Styles (`open_styles`, `surface_lines`, `surface_overrides` in the data file) are by line and era; Station.build adds
+  `spec.nb` (sides that have another module close by, whose backdrop would cut through it). Textures: `tools/gen_open_textures.py`. Reference photos of 70-odd surface stations are fetched to
+  the private `build/refs_dress/surface` by `tools/fetch_surface_refs.py`; `tools/ref_sheet.py` makes contact sheets. `UG_OFF=scenery,openwall,valance` isolate parts.
 * `tools/char_sheet.sh out.png <view> "Station" ...` renders a contact sheet; `station_test --view=pwall --x= --dx= --fov=` looks across the platform at its wall.
 
 ## Tests worth knowing

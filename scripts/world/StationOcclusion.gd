@@ -18,7 +18,7 @@ static func build(st: Station) -> void:
 	for pm in st.modules:
 		var m := pm as PlatformModule
 		for c in m._cols:
-			if c.size() > 2 and c[2] == "edge":
+			if c.size() > 2 and (c[2] == "edge" or c[2] == "open"):
 				continue
 			var sz: Vector3 = c[1]
 			if minf(sz.x, minf(sz.y, sz.z)) < MIN_THICKNESS and (sz.x * sz.y * sz.z) < 2.0:
@@ -29,7 +29,11 @@ static func build(st: Station) -> void:
 		var L: float = spec["length"]
 		var zfar := PlatformModule.GAP * 0.5 + float(spec["pw"]) + PlatformModule.TRACK_TO_EDGE + PlatformModule.TRACK_TO_WALL
 		var top := (PlatformModule.BOX_H if m.box else PlatformModule.SPRING_Y + PlatformModule.RISE) + 0.15
-		_box(verts, idx, m.position + Vector3(0, top + 0.5, 0), Vector3(L, 1.0, zfar * 2.0 - 0.6))
+		if m.open:
+			# open to the sky: only the canopy occludes (a slab over the island)
+			_box(verts, idx, m.position + Vector3(0, PlatformModule.BOX_H + 0.2, 0), Vector3(L, 0.3, PlatformOpen.CANOPY_HALF * 2.0 - 0.4))
+		else:
+			_box(verts, idx, m.position + Vector3(0, top + 0.5, 0), Vector3(L, 1.0, zfar * 2.0 - 0.6))
 	if verts.is_empty():
 		return
 	var occ := ArrayOccluder3D.new()
