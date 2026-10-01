@@ -94,6 +94,10 @@ Northern grey dado, Central black/blue, Victoria 150 mm grey tile, Jubilee Line 
 * Victoria line seat recesses (`PlatformModule._recess`): 2 x 1.75 m niches in the platform wall every 10 m beyond the spine, with the station's tile motif on the back, stainless trim and a
   timber slab carrying two `seat` markers (E to sit). Motifs are simplified redrawings of the original subjects (Brixton bricks, Stockwell swan ...), keyed by station in the data file.
 * Materials for these quads come from `StationCharacter.material("char:<path>|<w>|<h>|<alpha>")`; `PosterKit.finish` and `PlatformModule.build` resolve `char:` and `flat:` keys.
+* Ticket halls (`StationCharacter.hall`, data `hall_types` / `halls`): an era type sets the Space wall / floor / ceiling materials and a list of bands (`Space._band_at`): Holden (buff brick,
+  green dado, cream floor tile; Brent Cross chequer), Leslie Green (cream tile, terracotta quarry), 1970s-90s refit (cream tile, line-neutral band; Green Park blue, Kentish Town maroon),
+  large-format stone (King's Cross, North Greenwich, Waterloo, Canary Wharf) and 2020s Idiom (white panels, slate floor, metal ceiling). Unlisted stations keep the default hall.
+  Platforms without an authored scheme (sub-surface and surface lines) get the generic one: white tile, dark skirt, one band in the line's colour.
 * `tools/char_sheet.sh out.png <view> "Station" ...` renders a contact sheet; `station_test --view=pwall --x= --dx= --fov=` looks across the platform at its wall.
 
 ## Tests worth knowing

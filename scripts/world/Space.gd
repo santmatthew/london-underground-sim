@@ -42,7 +42,10 @@ func build(p_spec: Dictionary) -> void:
 	for side in ["N", "S", "W", "E"]:
 		_wall(side, wall_mat)
 	# skirting / colour band
-	if spec.has("band"):
+	if spec.has("bands"):
+		for b in spec["bands"]:
+			_band_at(b["key"], b["y0"], b["y1"])
+	elif spec.has("band"):
 		_band(spec["band"])
 	# lights
 	_lights()
@@ -143,9 +146,13 @@ func _frame(side: String, o: Dictionary) -> void:
 
 
 func _band(col: Color) -> void:
-	var key := "flat:" + col.to_html(false)
-	var yb0 := y + 1.15
-	var yb1 := y + 1.40
+	_band_at("flat:" + col.to_html(false), 1.15, 1.40)
+
+
+## a band of material `key` between heights y0..y1 above the room's floor, on every wall that is not open, interrupted by the openings
+func _band_at(key: String, y0: float, y1: float) -> void:
+	var yb0 := y + y0
+	var yb1 := y + y1
 	for side in ["N", "S", "W", "E"]:
 		if _side_open(side):
 			continue
@@ -219,6 +226,8 @@ func _finish() -> void:
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
 			mats[k] = Mats.flat(Color.html(k.substr(5)), 0.4)
+		elif k.begins_with("dado:"):
+			mats[k] = Mats.dado(Color.html(k.substr(5)))
 		else:
 			mats[k] = Mats.get_mat(k)
 	var mi := MeshInstance3D.new()

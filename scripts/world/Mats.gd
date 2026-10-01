@@ -63,6 +63,20 @@ static func get_mat(name: String) -> Material:
 			m = _surface("Terrazzo004", "jpg", 1.0 / 1.0, Color(0.55, 0.55, 0.56), {"dirt": 0.5, "floor_dirt_height": 0.0, "rough_add": 0.05})
 		"floor_hall":
 			m = _surface("Terrazzo005", "jpg", 1.0 / 1.2, Color(0.72, 0.72, 0.74), {"dirt": 0.45, "floor_dirt_height": 0.0, "rough_add": 0.05})
+		"floor_cream":
+			m = _surface("gen/floor_cream", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.45, "floor_dirt_height": 0.0, "rough_add": 0.05})
+		"floor_terracotta":
+			m = _surface("gen/floor_terracotta", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.5, "floor_dirt_height": 0.0, "rough_add": 0.05})
+		"floor_chequer":
+			m = _surface("gen/floor_chequer", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.45, "floor_dirt_height": 0.0, "rough_add": 0.05})
+		"floor_stone":
+			m = _surface("gen/floor_stone", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.4, "floor_dirt_height": 0.0, "rough_add": 0.05})
+		"floor_slate":
+			m = _surface("gen/floor_slate", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.4, "floor_dirt_height": 0.0, "rough_add": 0.05})
+		"brick_buff":
+			m = _surface("gen/brick_buff", "png", 1.0 / 1.72, Color(1, 1, 1), {"dirt": 0.6, "ceiling_soot": 0.4, "floor_dirt_height": 0.5})
+		"ceiling_metal":
+			m = _surface("gen/ceiling_metal", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.2, "ceiling_soot": 0.2, "normal_scale": 0.6})
 		"floor_dark":
 			m = _surface("Tiles140", "jpg", 1.0 / 1.0, Color(0.8, 0.8, 0.8), {"dirt": 0.5, "floor_dirt_height": 0.0})
 		"ceiling":

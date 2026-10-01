@@ -222,6 +222,68 @@ def grime_mask(name, size=1024, seed=4):
     print("wrote", name)
 
 
+def chequer_tile(name, a_rgb, b_rgb, size=2048, tile=512, grout=4, seed=21, size_m=1.2):
+    """black/white chequer floor (Brent Cross, many 1930s halls): square tiles alternating two colours"""
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:size, 0:size]
+    cx, cy = xx // tile, yy // tile
+    odd = ((cx + cy) % 2).astype(np.float32)
+    u = (xx % tile).astype(np.float32)
+    v = (yy % tile).astype(np.float32)
+    dist = np.minimum.reduce([u, tile - 1 - u, v, tile - 1 - v])
+    inside = smoothstep(grout * 0.5 - 0.5, grout * 0.5 + 1.0, dist)
+    mott = tileable_noise((size, size), 96, rng, 4)
+    a = np.array(a_rgb, np.float32)[None, None, :]
+    b = np.array(b_rgb, np.float32)[None, None, :]
+    glaze = (a * (1 - odd[..., None]) + b * odd[..., None]) * (0.95 + 0.1 * mott[..., None])
+    grout_col = np.array([0.45, 0.44, 0.42], np.float32)[None, None, :]
+    color = glaze * inside[..., None] + grout_col * (1 - inside[..., None])
+    cloud = tileable_noise((size, size), 256, rng, 5)
+    color *= (1.0 - 0.10 * cloud[..., None] ** 2)
+    rough = 0.28 + 0.1 * mott + (1 - inside) * 0.6
+    ao = 0.6 + 0.4 * smoothstep(0, grout * 1.6 + 3, dist)
+    save(name, color, np.clip(rough, 0, 1), ao, ndi.gaussian_filter(inside, 0.8) * 3, size_m, normal_strength=1.0)
+
+
+def brick_wall(name, base_rgb, size=2048, brick_w=256, brick_h=89, mortar=8, seed=31, size_m=1.72):
+    """facing brick in stretcher bond (215 x 65 mm bricks, 10 mm joints): the exposed brick of 1930s Holden halls"""
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:size, 0:size]
+    row = yy // brick_h
+    xs = xx + (row % 2) * (brick_w // 2)
+    col = xs // brick_w
+    u = (xs % brick_w).astype(np.float32)
+    v = (yy % brick_h).astype(np.float32)
+    dist = np.minimum.reduce([u, brick_w - 1 - u, v, brick_h - 1 - v])
+    inside = smoothstep(mortar * 0.5 - 0.5, mortar * 0.5 + 1.0, dist)
+    nr, nc = size // brick_h + 2, size // brick_w + 2
+    tv = rng.normal(0, 0.06, (nr, nc)).astype(np.float32)
+    tt = rng.normal(0, 0.02, (nr, nc, 3)).astype(np.float32)
+    r_i, c_i = row % nr, col % nc
+    base = np.array(base_rgb, np.float32)[None, None, :]
+    mott = tileable_noise((size, size), 40, rng, 4)
+    face = (base + tv[r_i, c_i][..., None] + tt[r_i, c_i]) * (0.9 + 0.2 * mott[..., None])
+    mortar_col = np.array([0.66, 0.64, 0.58], np.float32)[None, None, :]
+    color = face * inside[..., None] + mortar_col * (1 - inside[..., None])
+    cloud = tileable_noise((size, size), 256, rng, 5)
+    color *= (1.0 - 0.12 * cloud[..., None] ** 2)
+    rough = 0.75 + 0.15 * mott
+    ao = 0.5 + 0.5 * smoothstep(0, mortar * 1.6 + 3, dist)
+    height = smoothstep(0, mortar * 1.2, dist) * 0.8 + 0.2 * mott
+    save(name, color, np.clip(rough, 0, 1), ao, ndi.gaussian_filter(height, 0.8) * 8.0, size_m, normal_strength=1.6)
+
+
+def _hall_set():
+    # hall and corridor finishes by era (halls/SPEC.md section 8): cream ceramic 300 mm, terracotta quarry 150 mm, grey stone 600 x 300, dark slate 600 x 300, brick, metal ceiling
+    metro_tile("floor_cream", (0.86, 0.82, 0.68), tile_w=512, tile_h=512, grout=5, seed=41, dirt=0.10, bond=False, gloss=0.30)
+    metro_tile("floor_terracotta", (0.68, 0.40, 0.30), tile_w=256, tile_h=256, grout=5, seed=42, dirt=0.12, bond=False, gloss=0.35)
+    chequer_tile("floor_chequer", (0.10, 0.10, 0.11), (0.88, 0.86, 0.80))
+    metro_tile("floor_stone", (0.66, 0.66, 0.67), tile_w=1024, tile_h=512, grout=4, seed=43, dirt=0.08, bond=True, gloss=0.25)
+    metro_tile("floor_slate", (0.52, 0.53, 0.55), tile_w=1024, tile_h=512, grout=4, seed=44, dirt=0.08, bond=True, gloss=0.30)
+    brick_wall("brick_buff", (0.76, 0.66, 0.48))
+    panel_cladding("ceiling_metal", (0.62, 0.63, 0.65), panel=(512, 512), gap=5, seed=45, size_m=1.2)
+
+
 def _all():
     metro_tile("metro_white", (0.93, 0.93, 0.91), seed=1, dirt=0.05)
     metro_tile("metro_cream", (0.90, 0.86, 0.74), seed=5, dirt=0.06)
@@ -230,6 +292,7 @@ def _all():
     panel_cladding("panel_white", (0.88, 0.89, 0.88))
     tactile_paving("tactile_yellow")
     trackbed_sleepers("trackbed_sleepers")
+    _hall_set()
     decals()
     grime_mask("grime")
 
@@ -238,5 +301,7 @@ if __name__ == "__main__":
     only = sys.argv[1:]
     if not only:
         _all()
+    elif "halls" in only:
+        _hall_set()
     elif "metro_sq_grey" in only:
         metro_tile("metro_sq_grey", (0.80, 0.81, 0.82), tile_w=256, tile_h=256, grout=4, seed=7, dirt=0.05, bond=False)

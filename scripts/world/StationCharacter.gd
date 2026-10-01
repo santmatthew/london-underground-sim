@@ -54,12 +54,13 @@ static func _stripes(arr: Array) -> Array:
 	return out
 
 
-## Finishes for one platform module of a deep-tube station; {} when this station has no authored or default scheme
-## (callers then keep their own). Keys: wall, stripes, frieze, giant, ribs, pilasters, frame, recess.
+## Finishes for one platform module (authored scheme, line default, or the generic one). Keys: wall, stripes, frieze, giant, ribs, pilasters, frame, recess.
 static func platform(station_name: String, line_id: String, kind: String) -> Dictionary:
 	_load()
-	if kind != "deep" or _data.is_empty():
+	if _data.is_empty():
 		return {}
+	if kind != "deep":
+		return _generic(station_name, line_id, kind)
 	var stations: Dictionary = _data.get("stations", {})
 	var lines: Dictionary = _data.get("lines", {})
 	var key := "%s|%s" % [station_name, line_id]
@@ -73,7 +74,7 @@ static func platform(station_name: String, line_id: String, kind: String) -> Dic
 		if lines.has(lk):
 			src = lines[lk]
 	if src.is_empty():
-		return {}
+		return _generic(station_name, line_id, kind)
 	var out := {"wall": String(src.get("wall", "tile_white")), "stripes": _stripes(src.get("stripes", [])), "frieze": true, "station_slug": slug(station_name)}
 	for k in ["ribs", "pilasters", "frame"]:
 		if src.has(k):
@@ -94,6 +95,38 @@ static func platform(station_name: String, line_id: String, kind: String) -> Dic
 			out["recess"] = String(mot[station_name])
 		else:
 			out["recess"] = "plain"
+	return out
+
+
+## A platform with no authored scheme (sub-surface and surface lines, and any line without a default): white glazed tile, a dark skirt and one band in the line's colour
+static func _generic(station_name: String, line_id: String, kind: String) -> Dictionary:
+	var stripes: Array = [{"y0": 0.0, "y1": 0.25, "color": color("grey_dk"), "dado": true}, {"y0": 1.15, "y1": 1.42, "color": Net.line_color(line_id), "dado": false}]
+	return {"wall": "tile_white", "stripes": stripes, "frieze": kind == "deep", "station_slug": slug(station_name)}
+
+
+## Finishes of a ticket hall: {wall, floor, ceil, bands:[{key, y0, y1}]} (Space spec keys). Authored stations get their era's scheme, every other hall the default.
+static func hall(station_name: String) -> Dictionary:
+	_load()
+	var types: Dictionary = _data.get("hall_types", {})
+	if types.is_empty():
+		return {}
+	var ent = (_data.get("halls", {}) as Dictionary).get(station_name, "default")
+	var tname := "default"
+	var over: Dictionary = {}
+	if ent is Dictionary:
+		tname = String(ent.get("type", "default"))
+		over = ent
+	else:
+		tname = String(ent)
+	var t: Dictionary = types.get(tname, types["default"])
+	var out := {"wall": String(t["wall"]), "floor": String(t["floor"]), "ceil": String(t["ceil"])}
+	if over.has("floor"):
+		out["floor"] = String(over["floor"])
+	var bands: Array = []
+	for b in over.get("bands", t.get("bands", [])):
+		var col := color(String(b[2]))
+		bands.append({"key": ("dado:" if int(b[3]) == 1 else "flat:") + col.to_html(false), "y0": float(b[0]), "y1": float(b[1])})
+	out["bands"] = bands
 	return out
 
 

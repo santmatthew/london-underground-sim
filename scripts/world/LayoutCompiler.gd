@@ -217,8 +217,11 @@ static func compile(p: StationPlan, spec: Dictionary) -> bool:
 	# --------------------------------------------------------------------------------------------------- room specs (Space)
 	for rd in order:
 		var band := Color(0.02, 0.18, 0.5)
-		p.rooms.append({"name": rd["name"], "rect": rd["rect"], "y": rd["y"], "h": rd["h"], "openings": rd["openings"], "wall": "tile_white", "floor": "floor_hall",
-			"lights": "grid", "light_dx": 4.5, "light_dz": 5.0, "seed": p.seed_value + 30 + int(order.find(rd)), "band": band, "level": int(str(rd["name"]).substr(7)) if rd["kind"] != "hall" else 0})
+		var rspec := {"name": rd["name"], "rect": rd["rect"], "y": rd["y"], "h": rd["h"], "openings": rd["openings"], "wall": "tile_white", "floor": "floor_hall",
+			"lights": "grid", "light_dx": 4.5, "light_dz": 5.0, "seed": p.seed_value + 30 + int(order.find(rd)), "band": band, "level": int(str(rd["name"]).substr(7)) if rd["kind"] != "hall" else 0}
+		if rd["kind"] == "hall":
+			rspec.merge(StationCharacter.hall(p.name), true)
+		p.rooms.append(rspec)
 	for cr in corr_rooms:
 		p.rooms.append(cr)
 	p.escs = escs_out

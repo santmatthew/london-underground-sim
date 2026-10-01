@@ -297,8 +297,10 @@ func generate(station_idx: int) -> void:
 		gx += ld["w"]
 	gates = {"z": gate_z, "x0": -hx + 0.3, "x1": hx - 0.3, "n": n_gates, "pitch": 0.93, "lanes": lane_defs, "total_w": total_w, "cx": 0.0, "hall": "hall", "rect": hall["rect"]}
 	gatelines = [gates]
-	rooms.append({"name": "hall", "rect": hall["rect"], "y": 0.0, "h": HALL_H, "openings": hall_openings, "wall": "tile_white", "floor": "floor_hall", "lights": "grid",
-		"light_dx": 4.5, "light_dz": 5.0, "seed": seed_value, "band": Color(0.02, 0.18, 0.5)})
+	var hall_room := {"name": "hall", "rect": hall["rect"], "y": 0.0, "h": HALL_H, "openings": hall_openings, "wall": "tile_white", "floor": "floor_hall", "lights": "grid",
+		"light_dx": 4.5, "light_dz": 5.0, "seed": seed_value, "band": Color(0.02, 0.18, 0.5)}
+	hall_room.merge(StationCharacter.hall(name), true)
+	rooms.append(hall_room)
 	for L2 in landings:
 		L2["wall"] = "tile_white"
 		L2["floor"] = "floor_hall"

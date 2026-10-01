@@ -19,7 +19,8 @@
     "grey_mid": [0.55, 0.56, 0.58],
     "blue_tile": [0.10, 0.22, 0.58],
     "blue_skirt": [0.12, 0.28, 0.62],
-    "oxblood": [0.45, 0.13, 0.13]
+    "oxblood": [0.45, 0.13, 0.13],
+    "blue_navy": [0.02, 0.18, 0.5]
   },
   "stations": {
     "Covent Garden|piccadilly": {
@@ -83,6 +84,24 @@
     "waterloo-city": {"wall": "tile_white", "stripes": [[0.0, 0.30, "green_dk", 1], [1.10, 1.18, "green_dk", 1]]}
   },
   "jubilee_ext": ["Westminster", "Waterloo", "Southwark", "London Bridge", "Bermondsey", "Canada Water", "Canary Wharf", "North Greenwich", "Canning Town", "West Ham", "Stratford"],
+  "hall_types": {
+    "default": {"wall": "tile_white", "floor": "floor_hall", "ceil": "ceiling", "bands": [[1.15, 1.40, "blue_navy", 0]]},
+    "holden": {"wall": "brick_buff", "floor": "floor_cream", "ceil": "ceiling", "bands": [[0.0, 1.6, "green_dk", 1], [1.6, 1.7, "black_glaze", 1]]},
+    "leslie": {"wall": "tile_cream", "floor": "floor_terracotta", "ceil": "ceiling", "bands": [[0.0, 0.30, "green_dk", 1], [1.50, 1.65, "green_dk", 1]]},
+    "refit": {"wall": "tile_white", "floor": "floor_cream", "ceil": "ceiling", "bands": [[1.15, 1.40, "blue_navy", 0]]},
+    "stone": {"wall": "panel_white", "floor": "floor_stone", "ceil": "ceiling_metal", "bands": [[0.0, 0.12, "grey_dk", 0]]},
+    "idiom": {"wall": "panel_white", "floor": "floor_slate", "ceil": "ceiling_metal", "bands": [[0.0, 0.12, "black_glaze", 0]]}
+  },
+  "halls": {
+    "Cockfosters": "holden", "Oakwood": "holden", "Bounds Green": "holden", "Southgate": "holden", "Arnos Grove": "holden", "Hounslow West": "holden",
+    "Brent Cross": {"type": "holden", "floor": "floor_chequer"},
+    "Holloway Road": "leslie", "Mornington Crescent": "leslie", "Caledonian Road": "leslie", "Belsize Park": "leslie", "Russell Square": "leslie",
+    "Green Park": {"type": "refit", "bands": [[1.15, 1.40, "blue_tile", 0]]},
+    "Kentish Town": {"type": "refit", "bands": [[1.15, 1.40, "maroon", 1]]},
+    "Golders Green": "refit", "Queensway": "refit", "Warren Street": "refit", "Camden Town": "refit",
+    "King's Cross St. Pancras": "stone", "North Greenwich": "stone", "Waterloo": "stone", "Canary Wharf": "stone",
+    "Bank": "idiom", "Whitechapel": "idiom", "Wood Lane": "idiom", "Paddington (H&C)": "idiom"
+  },
   "victoria_motifs": {
     "Brixton": "bricks",
     "Stockwell": "swan",
