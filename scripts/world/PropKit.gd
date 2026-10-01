@@ -100,6 +100,16 @@ static func _solid(root: Node3D, centre: Vector3, size: Vector3) -> void:
 	body.add_child(cs)
 
 
+## seat markers (pelvis point, top of the cushion; -Z = the way the sitter faces) for Seats / the sit-down action
+static func _seat_markers(root: Node3D, count: int, x0: float, pitch: float, z: float) -> void:
+	for i in count:
+		var m := Node3D.new()
+		m.name = "seat_%d" % i
+		m.position = Vector3(x0 + i * pitch, 0.45, z)
+		m.add_to_group("seat")
+		root.add_child(m)
+
+
 static func _fp(root: Node3D, c: Vector2, h: Vector2) -> void:
 	root.set_meta("fp", {"c": c, "h": h})
 
@@ -136,6 +146,7 @@ static func bench_toro(shell := "perforated") -> Node3D:
 		kit.box("black", Vector3(sx * (L * 0.5 - 0.12), 0.02, 0.0), Vector3(0.05, 0.03, 0.44), 0.0)     # feet
 	kit.box("black", Vector3(0, 0.40, 0.0), Vector3(L - 0.1, 0.05, 0.05), 0.0)                          # beam
 	var n := _node(kit, "BenchToro")
+	_seat_markers(n, seats, -L * 0.5 + 0.05 + pitch * 0.5, pitch, 0.0)
 	_solid(n, Vector3(0, 0.45, 0.06), Vector3(L, 0.9, 0.62))
 	_fp(n, Vector2(0, 0.06), Vector2(L * 0.5, 0.31))
 	return n
@@ -159,6 +170,7 @@ static func bench_timber() -> Node3D:
 		kit.box("yellow", Vector3(sx * (L * 0.5 - 0.04), 0.66, -0.05), Vector3(0.04, 0.04, 0.5), 0.0)
 		kit.box("yellow", Vector3(sx * (L * 0.5 - 0.04), 0.55, -0.27), Vector3(0.04, 0.22, 0.04), 0.0)
 	var n := _node(kit, "BenchTimber")
+	_seat_markers(n, 4, -L * 0.5 + 0.1 + (L - 0.2) / 8.0, (L - 0.2) / 4.0, -0.02)
 	_solid(n, Vector3(0, 0.45, 0.04), Vector3(L, 0.9, 0.64))
 	_fp(n, Vector2(0, 0.04), Vector2(L * 0.5, 0.32))
 	return n

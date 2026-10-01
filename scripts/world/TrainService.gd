@@ -55,6 +55,25 @@ static func x_at(v: Dictionary, now: float) -> float:
 	return v["dir_dep"] * r_dep(now - dep)
 
 
+## A train is longer than the short tunnel stub behind a platform, so while it arrives or leaves its rear cars would stand beyond the black cap, inside the
+## passage or landing behind it (passengers saw trains drive through the rooms). A car is shown only while it lies entirely inside the tunnel.
+func _clip_cars(train: Train, mlen: float, tun_w: float, tun_e: float) -> void:
+	if not train.visible:
+		return
+	var cap_w := -mlen * 0.5 - tun_w + 0.3
+	var cap_e := mlen * 0.5 + tun_e - 0.3
+	var any := false
+	var last := train.cars.size() - 1
+	for i in train.cars.size():
+		var cx := (train.transform * Vector3(float(train.car_x[i]), 0.0, 0.0)).x
+		var key := train.kind + ("_cab" if (i == 0 or i == last) else "_mid")
+		var half_car: float = float(Train.CAR_LEN[key]) * 0.5
+		var vis := cx - half_car > cap_w and cx + half_car < cap_e
+		(train.cars[i] as Node3D).visible = vis
+		any = any or vis
+	train.visible = any
+
+
 func _process(delta: float) -> void:
 	if station == null or paused:
 		return
@@ -78,6 +97,7 @@ func _process(delta: float) -> void:
 		var half: float = train.length * 0.5
 		var mlen: float = mod.meta["length"]
 		train.visible = x + half > -mlen * 0.5 - float(mod.meta["tun_w"]) + 0.5 and x - half < mlen * 0.5 + float(mod.meta["tun_e"]) - 0.5
+		_clip_cars(train, mlen, float(mod.meta["tun_w"]), float(mod.meta["tun_e"]))
 		var dwell: float = info["dep"] - info["arr"]
 		# doors
 		var want_open: bool = now >= info["arr"] + (3.0 if not v["origin"] else 0.0) and now < info["dep"] - 6.0 and dwell >= 15.0 and absf(x) < 0.5

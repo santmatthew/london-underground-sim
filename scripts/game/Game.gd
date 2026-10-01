@@ -50,6 +50,7 @@ func _ready() -> void:
 	player.enabled = false
 	add_child(player)
 	player.fell.connect(_on_player_fell)
+	player.interact_pressed.connect(_on_interact)
 	player.respawn_provider = _respawn_point
 	hud = Hud.new()
 	add_child(hud)
@@ -294,6 +295,8 @@ func _show_menu() -> void:
 	state = State.MENU
 	# nothing from a journey may stay on top of the main menu: the pause panel (Give up), the briefing, the map overlay
 	paused = false
+	player.cancel_sit()
+	hud.set_prompt("")
 	if _pause:
 		_pause.queue_free()
 		_pause = null
@@ -374,6 +377,7 @@ func start_journey() -> void:
 	Clock.time_scale = 1.0
 	await _enter_station(journey["start"])
 	var spot: Dictionary = journey["spot"]
+	player.cancel_sit()
 	player.global_position = spot["pos"] + Vector3(0, 0.05, 0)
 	player.velocity = Vector3.ZERO
 	var yaw: float = spot.get("yaw", 0.0)
@@ -460,9 +464,36 @@ func _begin_play() -> void:
 # ---------------------------------------------------------------------------------------------------
 # Per-frame
 # ---------------------------------------------------------------------------------------------------
+var _seat_candidate: Node3D
+
+
+## "E  Sit down" near an empty seat (train seat or platform bench), "E  Stand up" while seated
+func _update_seat_prompt() -> void:
+	if player.bot_active or paused or map_open or not player.enabled:
+		hud.set_prompt("")
+		_seat_candidate = null
+		return
+	if player.seated:
+		hud.set_prompt("E  Stand up   (or just move)")
+		return
+	_seat_candidate = Seats.nearest_free(get_tree(), player.global_position)
+	hud.set_prompt("E  Sit down" if _seat_candidate != null else "")
+
+
+func _on_interact() -> void:
+	if state != State.PLAYING or paused or map_open or player.bot_active:
+		return
+	if player.seated:
+		player.stand_up()
+	elif _seat_candidate != null and is_instance_valid(_seat_candidate):
+		player.sit_on(_seat_candidate)
+		_seat_candidate = null
+
+
 func _process(delta: float) -> void:
 	if state != State.PLAYING:
 		return
+	_update_seat_prompt()
 	hud.clock_label.text = Clock.fmt(Clock.now, true)
 	hud.elapsed_label.text = "elapsed  " + Clock.fmt_dur(Clock.now - t_play0)
 	hud.stamina.value = player.stamina
@@ -754,6 +785,7 @@ func _on_doors_closing(v: Dictionary) -> void:
 	Sfx.play_at("door_chime_close", train, Vector3(0, 1.8, 0), 0.0, 30.0)
 	if info["final"]:
 		var pos := station.to_global(station.platform_point(v["key"], 0.5, 1.2))
+		player.cancel_sit()
 		player.global_position = pos + Vector3(0, 0.1, 0)
 		hud.toast("This train terminates here — everybody off.", 4.0)
 		return

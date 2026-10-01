@@ -313,6 +313,7 @@ func _place_rider(car: Node3D, marker: Node3D, seated: bool, crng: RandomNumberG
 	p.transform = car.global_transform.affine_inverse() * marker.global_transform
 	p.scale = Vector3.ONE
 	if seated:
+		marker.set_meta("rider", p)           # Seats.occupied() reads this
 		p.position.y -= 0.45
 		p.play([&"sit_idle_1", &"sit_idle_2", &"sit_phone"][crng.randi() % 3], 0.0, crng.randf_range(0.9, 1.1))
 	else:

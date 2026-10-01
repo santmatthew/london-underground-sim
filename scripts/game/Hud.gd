@@ -9,6 +9,7 @@ var dest_label: Label
 var where_label: Label
 var sub_label: Label
 var toast_label: Label
+var prompt_label: Label
 var hint_panel: PanelContainer
 var hint_label: Label
 var stamina: ProgressBar
@@ -67,6 +68,18 @@ func _ready() -> void:
 	toast_label.size = Vector2(1000, 50)
 	toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(toast_label)
+	# interaction prompt (bottom centre, just above the toast): "E  Sit down"
+	prompt_label = Label.new()
+	prompt_label.add_theme_font_override("font", font_b)
+	prompt_label.add_theme_font_size_override("font_size", 22)
+	prompt_label.add_theme_color_override("font_color", Color(0.95, 0.97, 1.0))
+	prompt_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	prompt_label.add_theme_constant_override("outline_size", 6)
+	prompt_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	prompt_label.position = Vector2(-300, -215)
+	prompt_label.size = Vector2(600, 40)
+	prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	root.add_child(prompt_label)
 	# hint panel (right)
 	hint_panel = PanelContainer.new()
 	hint_panel.add_theme_stylebox_override("panel", _box(Color(0.03, 0.05, 0.12, 0.85)))
@@ -150,6 +163,11 @@ func say(text: String, seconds := 6.0) -> void:
 	sub_label.text = text
 	sub_label.modulate.a = 1.0
 	_sub_t = seconds
+
+
+func set_prompt(text: String) -> void:
+	if prompt_label.text != text:
+		prompt_label.text = text
 
 
 func toast(text: String, seconds := 3.5) -> void:

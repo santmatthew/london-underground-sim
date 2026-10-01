@@ -3,12 +3,16 @@ extends CharacterBody3D
 ## First-person commuter. Layers: 1 = world, 2 = people, 3 = platform-edge guard (blocks the player only).
 
 signal interact_pressed
+signal sat_down
+signal stood_up
 signal fell(from_pos: Vector3, safe: Vector3)     # emitted just before the fall-safety respawn (diagnostics)
 
 const WALK_SPEED := 1.55        # m/s, ordinary commuter pace
 const HURRY_SPEED := 2.6        # brisk walk (Shift), drains stamina
 const RUN_SPEED := 3.6          # jog/run while stamina lasts (Shift + Ctrl)
 const EYE_HEIGHT := 1.66
+const SEATED_EYE := 1.12         # eye height above the floor when sitting (seat cushion 0.45 m)
+const SIT_TIME := 0.5
 const GRAVITY := 18.0
 
 var cam: Camera3D
@@ -37,6 +41,10 @@ var bot_move := Vector2.ZERO     # x strafe, y forward(-)/back(+)
 var bot_hurry := false
 var bot_yaw_target := 0.0
 var bot_pitch_target := 0.0
+var seated := false
+var _stand_pos := Vector3.ZERO
+var _sit_tween: Tween
+var _body_shape: CollisionShape3D
 
 
 func _ready() -> void:
@@ -53,6 +61,7 @@ func _ready() -> void:
 	cs.shape = cap
 	cs.position.y = 0.88
 	add_child(cs)
+	_body_shape = cs
 	head = Node3D.new()
 	head.position.y = EYE_HEIGHT
 	add_child(head)
@@ -85,8 +94,68 @@ func face(dir: Vector3) -> void:
 	head.rotation.x = 0.0
 
 
+## Sit on a seat marker (a Node3D at the pelvis point, top of the cushion, -Z = the way the seat faces). The body glides onto the seat, turns to face the
+## way it faces and the eyes drop to seated height; moving (WASD) or E stands up again, in front of the seat.
+func sit_on(seat: Node3D) -> void:
+	if seated:
+		return
+	var xf := seat.global_transform
+	var fwd := -xf.basis.z
+	fwd.y = 0.0
+	fwd = fwd.normalized()
+	var floor_pos := xf.origin - Vector3(0, 0.45, 0)
+	_stand_pos = floor_pos + fwd * 0.6
+	seated = true
+	velocity = Vector3.ZERO
+	_body_shape.set_deferred("disabled", true)          # the seat's own collision would push a standing capsule out
+	if _sit_tween:
+		_sit_tween.kill()
+	var y0 := _yaw
+	var y1 := atan2(-fwd.x, -fwd.z)
+	_sit_tween = create_tween().set_parallel(true)
+	_sit_tween.tween_property(self, "global_position", floor_pos, SIT_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_sit_tween.tween_method(func(t: float): _yaw = lerp_angle(y0, y1, t); rotation.y = _yaw, 0.0, 1.0, SIT_TIME)
+	sat_down.emit()
+
+
+func stand_up() -> void:
+	if not seated:
+		return
+	cancel_sit()
+	global_position = _stand_pos + Vector3(0, 0.05, 0)
+	velocity = Vector3.ZERO
+	stood_up.emit()
+
+
+## leave the seated state without moving (the game is about to place the player somewhere else)
+func cancel_sit() -> void:
+	seated = false
+	if _sit_tween:
+		_sit_tween.kill()
+		_sit_tween = null
+	_body_shape.set_deferred("disabled", false)
+
+
+func _seated_tick(delta: float) -> void:
+	var settling := _sit_tween != null and _sit_tween.is_running()
+	if not bot_active and not settling and _read_keys().length() > 0.1:
+		stand_up()
+		return
+	velocity = Vector3.ZERO
+	head.position.y = lerpf(head.position.y, SEATED_EYE, clampf(delta * 6.0, 0.0, 1.0))
+	head.position.x = lerpf(head.position.x, 0.0, clampf(delta * 6.0, 0.0, 1.0))
+	_sway_t += delta
+	if sway > 0.001:
+		head.rotation.z = sin(_sway_t * 1.7) * 0.0025 * sway + sin(_sway_t * 5.3 + 1.0) * 0.0012 * sway
+	else:
+		head.rotation.z = lerpf(head.rotation.z, 0.0, delta * 4.0)
+
+
 func _physics_process(delta: float) -> void:
 	if not enabled:
+		return
+	if seated:
+		_seated_tick(delta)
 		return
 	var input := Vector2.ZERO
 	if bot_active:

@@ -62,6 +62,8 @@ func build(p_kind: String, p_cars: int, p_line: String, livery: Color) -> void:
 			car.rotation.y = PI
 		add_child(car)
 		CarUtil.set_livery(car, livery)
+		for sm in car.find_children("seat_*", "Node3D", true, false):
+			sm.add_to_group("seat")
 		CarUtil.add_interior_lights(car, 0.9, 5.0, 3)
 		CarUtil.set_lod_ranges(car, 40.0, 100.0)
 		cars.append(car)
