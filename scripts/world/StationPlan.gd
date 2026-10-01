@@ -279,7 +279,7 @@ func generate(station_idx: int) -> void:
 			sdoor["exit_ref"] = str(re.get("ref", ""))
 			sdoor["exit_name"] = RealData.street_of(re)
 		street_doors.append(sdoor)
-		rooms.append({"name": "street_passage%d" % i, "rect": [c - 1.6, c + 1.6, hz0 - street_len, hz0], "y": 0.0, "h": 3.0, "open_ends": ["S"], "wall": "tile_white", "floor": "floor_hall", "lights": "strip_z", "light_dz": 3.5, "seed": seed_value + 90 + i})
+		rooms.append({"name": "street_passage%d" % i, "rect": [c - 1.6, c + 1.6, hz0 - street_len, hz0], "y": 0.0, "h": 3.0, "open_ends": ["S"], "wall": "tile_white", "floor": "floor_hall", "lights": "strip_z", "light_dz": 3.5, "seed": seed_value + 90 + i}.merged(_passage_finish(), true))
 	var gate_z := hz0 + 8.0
 	var n_gates := clampi(int(4 + imp * 1.8), 4, 14)
 	var real_gates := int(fac.get("gates", 0))
@@ -464,6 +464,14 @@ func dest_text(pid: String, max_n := 3) -> String:
 
 
 const DADO_COLORS := [Color(0.62, 0.42, 0.55), Color(0.18, 0.45, 0.30), Color(0.15, 0.30, 0.62), Color(0.55, 0.30, 0.16), Color(0.45, 0.47, 0.50), Color(0.72, 0.62, 0.40)]
+
+
+## the street passages take their hall's wall, floor and bands (brick at a Holden hall, terracotta at a Leslie Green one ...)
+func _passage_finish() -> Dictionary:
+	var h := StationCharacter.hall(name)
+	if h.is_empty():
+		return {}
+	return {"wall": h["wall"], "floor": h["floor"], "bands": h["bands"], "light_color": h.get("light_color", Color(1.0, 0.97, 0.92))}
 
 
 func _stripes_for(sd: int, line_col: Color) -> Array:

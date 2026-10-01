@@ -120,7 +120,7 @@ static func compile(p: StationPlan, spec: Dictionary) -> bool:
 			p.street_doors.append(sdoor)
 			hall_doors.append(sdoor)
 			p.rooms.append({"name": "street_passage%d" % door_i, "rect": [c - 1.6, c + 1.6, r[2] - len, r[2]], "y": 0.0, "h": 3.0, "open_ends": ["S"], "wall": "tile_white",
-				"floor": "floor_hall", "lights": "strip_z", "light_dz": 3.5, "seed": p.seed_value + 90 + door_i})
+				"floor": "floor_hall", "lights": "strip_z", "light_dz": 3.5, "seed": p.seed_value + 90 + door_i}.merged(p._passage_finish(), true))
 			door_i += 1
 		rd["door_list"] = hall_doors
 		# gateline across the hall

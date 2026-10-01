@@ -104,8 +104,84 @@ def scene(mode):
     return Image.blend(out, grey, 0.22)
 
 
+def suburban(mode):
+    """a suburban road: semi-detached houses behind front gardens and hedges, trees, a parked car, a red pillar box; same palette per time of day as scene()"""
+    rnd = random.Random(11)
+    im = Image.new("RGB", (W * S, H * S))
+    d = ImageDraw.Draw(im)
+    if mode == "day":
+        sky_t, sky_b, brick, roof, window, win_lit, road, kerb, grass = (140, 184, 232), (224, 234, 244), [(168, 100, 72), (186, 120, 84), (154, 92, 68), (196, 168, 120)], (92, 70, 66), (58, 66, 84), (210, 222, 232), (92, 94, 98), (170, 170, 166), (92, 140, 70)
+    elif mode == "dusk":
+        sky_t, sky_b, brick, roof, window, win_lit, road, kerb, grass = (70, 84, 140), (236, 156, 108), [(112, 66, 54), (126, 78, 60), (102, 62, 52), (130, 112, 84)], (60, 50, 54), (40, 44, 62), (255, 214, 130), (58, 58, 66), (118, 116, 118), (50, 74, 52)
+    else:
+        sky_t, sky_b, brick, roof, window, win_lit, road, kerb, grass = (8, 12, 30), (28, 34, 60), [(56, 36, 34), (62, 40, 36), (50, 32, 32), (60, 54, 44)], (30, 28, 34), (18, 20, 32), (255, 206, 120), (28, 28, 34), (68, 68, 74), (22, 34, 26)
+    for y in range(H * S):
+        d.line([(0, y), (W * S, y)], fill=lerp(sky_t, sky_b, min(1.0, y / (H * S * 0.55))))
+    horizon = int(H * S * 0.66)
+    # a belt of trees behind the roofs
+    for k in range(34):
+        tx = rnd.uniform(0, W * S)
+        th = rnd.uniform(260, 420) * S
+        c = lerp(grass, (30, 60, 34), rnd.random() * 0.5)
+        d.ellipse([tx - 130 * S, horizon - 200 * S - th * 0.3, tx + 130 * S, horizon - 60 * S + th * 0.2], fill=c)
+    x = -20 * S
+    while x < W * S:
+        hw = rnd.choice([360, 400, 440]) * S           # a semi: two bays under one roof
+        hh = rnd.randint(250, 300) * S
+        col = rnd.choice(brick)
+        top = horizon - hh
+        d.rectangle([x, top, x + hw, horizon - 60 * S], fill=col)
+        d.polygon([(x - 14 * S, top), (x + hw + 14 * S, top), (x + hw * 0.5 + 60 * S, top - 150 * S), (x + hw * 0.5 - 60 * S, top - 150 * S)], fill=roof)
+        # tudor-style gable on the left bay
+        d.polygon([(x + 10 * S, top), (x + hw * 0.5 - 10 * S, top), (x + hw * 0.25, top - 130 * S)], fill=(226, 218, 200) if mode == "day" else lerp(col, (200, 190, 170), 0.35))
+        for bay in range(2):
+            bx = x + bay * hw * 0.5
+            for wx in (bx + hw * 0.08, bx + hw * 0.30):
+                for wy in (top + 40 * S, top + 140 * S):
+                    lit = (mode != "day") and rnd.random() < 0.5
+                    d.rectangle([wx, wy, wx + 62 * S, wy + 70 * S], fill=(230, 226, 214))
+                    d.rectangle([wx + 4 * S, wy + 4 * S, wx + 58 * S, wy + 66 * S], fill=win_lit if lit else window)
+                    d.line([(wx + 31 * S, wy), (wx + 31 * S, wy + 70 * S)], fill=(230, 226, 214), width=3 * S)
+        d.rectangle([x + hw * 0.44, top + 150 * S, x + hw * 0.56, horizon - 60 * S], fill=lerp(col, (30, 40, 90), 0.5))     # door
+        # front garden: hedge and path
+        d.rectangle([x, horizon - 60 * S, x + hw, horizon], fill=lerp(grass, (20, 70, 30), 0.3))
+        d.rounded_rectangle([x + 6 * S, horizon - 92 * S, x + hw - 6 * S, horizon - 44 * S], radius=18 * S, fill=lerp(grass, (24, 70, 30), 0.6))
+        x += hw + rnd.choice([6, 14, 22]) * S
+    # pavement, kerb, road
+    d.rectangle([0, horizon, W * S, int(H * S * 0.72)], fill=lerp(kerb, (200, 198, 192), 0.2))
+    d.rectangle([0, int(H * S * 0.72), W * S, int(H * S * 0.735)], fill=lerp(kerb, (255, 255, 255), 0.25))
+    d.rectangle([0, int(H * S * 0.735), W * S, H * S], fill=road)
+    d.rectangle([0, int(H * S * 0.84), W * S, int(H * S * 0.85)], fill=(214, 214, 206))
+    # a parked car, hatchback silhouette
+    cx0 = 900 * S
+    cy1 = int(H * S * 0.78)
+    body = (60, 90, 140) if mode == "day" else (36, 50, 76)
+    d.rounded_rectangle([cx0, cy1 - 120 * S, cx0 + 420 * S, cy1], radius=26 * S, fill=body)
+    d.polygon([(cx0 + 90 * S, cy1 - 120 * S), (cx0 + 150 * S, cy1 - 210 * S), (cx0 + 300 * S, cy1 - 210 * S), (cx0 + 360 * S, cy1 - 120 * S)], fill=body)
+    d.polygon([(cx0 + 110 * S, cy1 - 124 * S), (cx0 + 160 * S, cy1 - 196 * S), (cx0 + 290 * S, cy1 - 196 * S), (cx0 + 340 * S, cy1 - 124 * S)], fill=(150, 176, 196) if mode == "day" else (30, 38, 54))
+    for wx in (cx0 + 90 * S, cx0 + 330 * S):
+        d.ellipse([wx - 40 * S, cy1 - 40 * S, wx + 40 * S, cy1 + 40 * S], fill=(18, 18, 20))
+    # pillar box and lamp posts
+    d.rounded_rectangle([200 * S, int(H * S * 0.64), 250 * S, int(H * S * 0.73)], radius=10 * S, fill=(180, 24, 30))
+    for lx in (120 * S, 1380 * S):
+        d.rectangle([lx - 5 * S, int(H * S * 0.34), lx + 5 * S, int(H * S * 0.72)], fill=(60, 64, 62))
+        d.ellipse([lx - 22 * S, int(H * S * 0.32), lx + 22 * S, int(H * S * 0.36)], fill=(250, 230, 160) if mode != "day" else (200, 200, 190))
+    im = im.resize((W, H), Image.LANCZOS)
+    hz = Image.new("RGB", (W, H), (236, 240, 244) if mode == "day" else (90, 90, 110))
+    mask = Image.new("L", (W, H))
+    md = ImageDraw.Draw(mask)
+    for y in range(H):
+        t = max(0.0, 1.0 - abs(y - H * 0.55) / (H * 0.35))
+        md.line([(0, y), (W, y)], fill=int(255 * 0.30 * t))
+    out = Image.composite(hz, im, mask).filter(ImageFilter.GaussianBlur(2.2))
+    grey = out.convert("L").convert("RGB")
+    return Image.blend(out, grey, 0.22)
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     for mode in ("day", "dusk", "night"):
         scene(mode).save(os.path.join(OUT, "street_%s.png" % mode), optimize=True)
         print("wrote street_%s" % mode)
+        suburban(mode).save(os.path.join(OUT, "street_sub_%s.png" % mode), optimize=True)
+        print("wrote street_sub_%s" % mode)

@@ -297,7 +297,7 @@ func _build_street_doors() -> void:
 		var qm := QuadMesh.new()
 		qm.size = Vector2(3.0, 2.9)
 		glass.mesh = qm
-		glass.material_override = _street_material()
+		glass.material_override = _street_material(plan.kind != "deep" or int(Net.stations[plan.idx]["zone"]) >= 4)
 		glass.position = Vector3(pos.x, 1.5, pos.z - 0.35)
 		glass.rotation.y = 0.0
 		fitting_root.add_child(glass)
@@ -325,7 +325,7 @@ func _build_street_doors() -> void:
 
 
 ## what is seen through the glass doors: a London street, by the time of day (tools/gen_street.py), a little over-exposed as it is from indoors
-static func _street_material() -> StandardMaterial3D:
+static func _street_material(suburban := false) -> StandardMaterial3D:
 	var hh := fmod(Clock.now / 3600.0, 24.0)
 	var mode := "night"
 	var gain := 1.0
@@ -336,7 +336,7 @@ static func _street_material() -> StandardMaterial3D:
 		mode = "dusk"
 		gain = 1.15
 	var gm := StandardMaterial3D.new()
-	var path := "res://assets/textures/char/street_%s.png" % mode
+	var path := "res://assets/textures/char/street_%s%s.png" % ["sub_" if suburban else "", mode]
 	if ResourceLoader.exists(path):
 		gm.albedo_texture = load(path)
 	else:
