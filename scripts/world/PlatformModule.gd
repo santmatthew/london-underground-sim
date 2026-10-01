@@ -103,7 +103,7 @@ func build(p_spec: Dictionary) -> void:
 		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 
 	var mats := {}
-	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "ped_glass", "stainless", "brick_stock", "brick_red", "brick_blue", "ballast", "tactile_buff", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab"]:
+	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "ped_glass", "stainless", "floor_cream", "brick_stock", "brick_red", "brick_blue", "ballast", "tactile_buff", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab"]:
 		mats[n] = Mats.get_mat(n)
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
@@ -321,8 +321,16 @@ func _build_box_hall(x0: float, x1: float, zwall: float, zedge: float, ztrack: f
 				at_opening = true
 		if not at_opening:
 			for zz in [-col_z, col_z]:
-				kit.box("metal", Vector3(cx, BOX_H * 0.5, zz), Vector3(0.42, BOX_H, 0.42), 0.0)
-				_cols.append([Vector3(cx, BOX_H * 0.5, zz), Vector3(0.44, BOX_H, 0.44)])
+				if character.has("tile_cols"):
+					# a tile-clad column: white glazed tile, a black skirting and a band in the line colour at head height (Euston Square, Mansion House)
+					var lc: Color = character["tile_cols"]
+					kit.box("tile_white", Vector3(cx, BOX_H * 0.5, zz), Vector3(0.52, BOX_H, 0.52), 0.0)
+					kit.box("dado:" + Color(0.06, 0.06, 0.07).to_html(false), Vector3(cx, 0.12, zz), Vector3(0.535, 0.24, 0.535), 0.0)
+					kit.box("flat:" + lc.to_html(false), Vector3(cx, 2.38, zz), Vector3(0.535, 0.12, 0.535), 0.0)
+					_cols.append([Vector3(cx, BOX_H * 0.5, zz), Vector3(0.54, BOX_H, 0.54)])
+				else:
+					kit.box("metal", Vector3(cx, BOX_H * 0.5, zz), Vector3(0.42, BOX_H, 0.42), 0.0)
+					_cols.append([Vector3(cx, BOX_H * 0.5, zz), Vector3(0.44, BOX_H, 0.44)])
 		cx += 7.2
 	# end walls: track portals on both sides, plus a doorway at the west end leading to the corridor
 	_box_end_wall(x0, true, zwall, ztrack, zfar, wall_mat, true)

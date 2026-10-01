@@ -155,7 +155,13 @@ static func _generic(station_name: String, line_id: String, kind: String) -> Dic
 			return {"wall": String(d.get("wall", "brick_stock")), "stripes": [], "frieze": false, "station_slug": slug(station_name), "open": true, "open_style": style,
 				"floor": String(d.get("floor", "floor_slab")), "light_color": Color(1.0, 0.96, 0.88)}
 	var stripes: Array = [{"y0": 0.0, "y1": 0.25, "color": color("grey_dk"), "dado": true}, {"y0": 1.15, "y1": 1.42, "color": Net.line_color(line_id), "dado": false}]
-	return {"wall": "tile_white", "stripes": stripes, "frieze": kind == "deep", "station_slug": slug(station_name)}
+	var out := {"wall": "tile_white", "stripes": stripes, "frieze": kind == "deep", "station_slug": slug(station_name)}
+	if kind == "sub":
+		# covered sub-surface platform (Temple, Mansion House, Euston Square ...): buff ceramic floor, tile-clad columns, a name fascia on the wall across the tracks
+		out["floor"] = "floor_cream"
+		out["frieze_far"] = true
+		out["tile_cols"] = Net.line_color(line_id)
+	return out
 
 
 ## Finishes of a ticket hall: {wall, floor, ceil, bands:[{key, y0, y1}]} (Space spec keys). Authored stations get their era's scheme, every other hall the default.

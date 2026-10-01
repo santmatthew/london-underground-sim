@@ -495,6 +495,8 @@ func _platform(mi: int) -> void:
 		if not Station.debug_off("posters"):
 			if not pm.open:
 				_far_wall(kit, s, zfar, L)
+				if pm.box and pm.character.get("frieze_far", false):
+					_frieze_far(kit, pm, s, zfar, L, pm.character)
 			if not pm.box:
 				_platform_wall(kit, pm, s, zwall, L, ox)       # (island box halls have no platform-side wall: nothing to hang on)
 		if not Station.debug_off("furniture"):
@@ -633,16 +635,24 @@ func _platform_wall(kit: MeshKit, pm: PlatformModule, s: float, zwall: float, L:
 ## the white enamel fascia along the platform wall at the top of the tile (Idiom p.121/130): 0.30 m tall, the station name in TfL blue on 3 m panels,
 ## a line-colour keyline on top and a black "Way out" patch after every second panel; it stops short of each cross-passage
 func _frieze(kit: MeshKit, pm: PlatformModule, s: float, zwall: float, L: float, ox: Array, ch: Dictionary) -> void:
-	var y0 := 1.99
-	var y1 := 2.30
-	var face: Dictionary = pm.spec["faces"][0 if s > 0.0 else 1]
-	var line_col: Color = face.get("color", Color(0.1, 0.1, 0.6))
-	var z_face := s * (zwall + 0.053)
-	var runs: Array = []
-	var cur := -L * 0.5
 	var spans: Array = []
 	for o in ox:
 		spans.append([o - PlatformModule.OPEN_W * 0.5 - 0.35, o + PlatformModule.OPEN_W * 0.5 + 0.35])
+	var face: Dictionary = pm.spec["faces"][0 if s > 0.0 else 1]
+	_frieze_at(kit, s * zwall, s, 1.99, 2.30, L, spans, ox, ch, face.get("color", Color(0.1, 0.1, 0.6)))
+
+
+## the name fascia of a covered sub-surface platform runs along the far (track-side) wall, above the poster run, facing the platform
+func _frieze_far(kit: MeshKit, pm: PlatformModule, s: float, zfar: float, L: float, ch: Dictionary) -> void:
+	var face: Dictionary = pm.spec["faces"][0 if s > 0.0 else 1]
+	_frieze_at(kit, s * zfar, -s, 2.46, 2.77, L, [], [-1e6], ch, face.get("color", Color(0.1, 0.1, 0.6)))
+
+
+## a fascia strip on the wall plane at absolute z `zbase`, facing `nrm` (+1 / -1 along z), between y0 and y1, interrupted by `spans` ([x0, x1] pairs)
+func _frieze_at(kit: MeshKit, zbase: float, nrm: float, y0: float, y1: float, L: float, spans: Array, ox: Array, ch: Dictionary, line_col: Color) -> void:
+	var z_face := zbase + nrm * 0.053
+	var runs: Array = []
+	var cur := -L * 0.5
 	spans.sort_custom(func(a, b): return a[0] < b[0])
 	for sp in spans:
 		if sp[0] > cur:
@@ -659,14 +669,14 @@ func _frieze(kit: MeshKit, pm: PlatformModule, s: float, zwall: float, L: float,
 		var xb: float = run[1]
 		if xb - xa < 0.8:
 			continue
-		var back := Transform3D(Basis.IDENTITY, Vector3((xa + xb) * 0.5, (y0 + y1) * 0.5, s * (zwall + 0.028)))
+		var back := Transform3D(Basis.IDENTITY, Vector3((xa + xb) * 0.5, (y0 + y1) * 0.5, zbase + nrm * 0.028))
 		kit.box_xf("frame_enamel", back, Vector3(xb - xa, y1 - y0, 0.05), 0.0)
 		kit.box_xf("flat:" + line_col.to_html(false), Transform3D(Basis.IDENTITY, Vector3((xa + xb) * 0.5, y1 - 0.02, z_face)), Vector3(xb - xa, 0.04, 0.006), 0.0)
 		var x := xa
 		var k := 0
 		while x + 3.0 <= xb + 0.01:
-			var zf := z_face + s * 0.004
-			if s > 0.0:
+			var zf := z_face + nrm * 0.004
+			if nrm > 0.0:
 				kit.wall(name_key, Vector3(x, 0, zf), Vector3(x + 3.0, 0, zf), y0, y1 - 0.04, 0.0)
 			else:
 				kit.wall(name_key, Vector3(x + 3.0, 0, zf), Vector3(x, 0, zf), y0, y1 - 0.04, 0.0)
@@ -675,7 +685,7 @@ func _frieze(kit: MeshKit, pm: PlatformModule, s: float, zwall: float, L: float,
 			if k % 2 == 0 and x + 0.6 <= xb + 0.01:
 				var side_key := "char:frieze/wayout_%s.png|0.500|0.150|0" % ("r" if x < ox_min else "l")
 				var px := x + 0.3
-				if s > 0.0:
+				if nrm > 0.0:
 					kit.wall(side_key, Vector3(px - 0.25, 0, zf), Vector3(px + 0.25, 0, zf), y0 + 0.07, y0 + 0.22, 0.0)
 				else:
 					kit.wall(side_key, Vector3(px + 0.25, 0, zf), Vector3(px - 0.25, 0, zf), y0 + 0.07, y0 + 0.22, 0.0)
