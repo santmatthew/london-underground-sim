@@ -14,8 +14,9 @@ var ride: Ride
 var journey: Dictionary = {}
 const SETTINGS_PATH := "user://settings.cfg"
 var _cb_fullscreen: CheckButton
+var _ob_upscaler: OptionButton
 
-var opts := {"mode": "single", "stops": 3, "time": "random", "length": "medium", "hints": true, "day": "random", "quality": 1, "scale": 0.0, "crowd": 1.0, "volume": 0.8, "sens": 0.0022}
+var opts := {"mode": "single", "stops": 3, "time": "random", "length": "medium", "hints": true, "day": "random", "quality": 1, "scale": 0.0, "upscaler": "fsr1", "crowd": 1.0, "volume": 0.8, "sens": 0.0022}
 var t_play0 := 0.0
 var riding := false
 var paused := false
@@ -105,6 +106,19 @@ func set_fullscreen(on: bool, save := true) -> void:
 	_apply_settings()
 
 
+## Upscaler for the render scales below 100 % (menu "Upscaler"; remembered in user://settings.cfg; `--upscaler=fsr1|fsr2` overrides)
+func set_upscaler(kind: String, save := true) -> void:
+	opts["upscaler"] = kind
+	if _ob_upscaler != null and _ob_upscaler.selected != (1 if kind == "fsr2" else 0):
+		_ob_upscaler.select(1 if kind == "fsr2" else 0)
+	if save:
+		var cf := ConfigFile.new()
+		cf.load(SETTINGS_PATH)
+		cf.set_value("display", "upscaler", kind)
+		cf.save(SETTINGS_PATH)
+	_apply_settings()
+
+
 func _load_display_settings() -> void:
 	var on := false
 	var cf := ConfigFile.new()
@@ -118,6 +132,10 @@ func _load_display_settings() -> void:
 		set_fullscreen(on, false)
 	elif _cb_fullscreen != null:
 		_cb_fullscreen.set_pressed_no_signal(on)
+	var up := String(cf.get_value("display", "upscaler", "fsr1")) if cf.get_sections().size() > 0 else "fsr1"
+	if cli.has("upscaler"):
+		up = String(cli["upscaler"])
+	set_upscaler("fsr2" if up == "fsr2" else "fsr1", false)
 
 
 func _parse_cli() -> void:
@@ -151,7 +169,9 @@ func _apply_settings() -> void:
 	if sc <= 0.0:
 		sc = auto_scale(DisplayServer.window_get_size())
 	var vp := get_viewport()
-	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if sc < 0.99 else Viewport.SCALING_3D_MODE_BILINEAR      # FSR 1: ~1 ms; FSR 2 cost 15+ ms at 4K here
+	# FSR 1: spatial, about 1 ms; FSR 2: temporal, sharper on small text and fences (about 3 ms more at the Auto scale on an RTX 3050 Ti at 4K, much more at higher scales)
+	var up_mode := Viewport.SCALING_3D_MODE_FSR2 if String(opts.get("upscaler", "fsr1")) == "fsr2" else Viewport.SCALING_3D_MODE_FSR
+	vp.scaling_3d_mode = up_mode if sc < 0.99 else Viewport.SCALING_3D_MODE_BILINEAR
 	vp.scaling_3d_scale = sc
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(opts["volume"]), 0.0001)))
 	if player:
@@ -284,6 +304,14 @@ func _build_menu() -> void:
 	ob_s.select(0)
 	ob_s.item_selected.connect(func(i): opts["scale"] = ob_s.get_item_metadata(i); _apply_settings())
 	grid.add_child(ob_s)
+	grid.add_child(_mk_label("Upscaler", 18, Color.WHITE, false, false))
+	_ob_upscaler = OptionButton.new()
+	for t in [["FSR 1 (fastest)", "fsr1"], ["FSR 2 (sharper text and fences, a few ms slower)", "fsr2"]]:
+		_ob_upscaler.add_item(t[0])
+		_ob_upscaler.set_item_metadata(_ob_upscaler.item_count - 1, t[1])
+	_ob_upscaler.select(1 if String(opts.get("upscaler", "fsr1")) == "fsr2" else 0)
+	_ob_upscaler.item_selected.connect(func(i): set_upscaler(String(_ob_upscaler.get_item_metadata(i))))
+	grid.add_child(_ob_upscaler)
 	grid.add_child(_mk_label("Full screen (F11)", 18, Color.WHITE, false, false))
 	_cb_fullscreen = CheckButton.new()
 	_cb_fullscreen.button_pressed = is_fullscreen()

@@ -35,4 +35,20 @@ func run():
 		check(not g.is_fullscreen(), "F11 leaves full screen")
 		check(not g._cb_fullscreen.button_pressed, "the check box follows again")
 		g.set_fullscreen(was)
+	# upscaler option: FSR 1 by default, FSR 2 when chosen (only matters below 100 % render scale), saved and shown in the menu
+	check(g._ob_upscaler != null, "the menu has an Upscaler option")
+	g.opts["scale"] = 0.67
+	g.set_upscaler("fsr1")
+	check(get_viewport().scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR, "FSR 1 selected: viewport uses FSR 1")
+	g.set_upscaler("fsr2")
+	check(get_viewport().scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR2, "FSR 2 selected: viewport uses FSR 2")
+	check(g._ob_upscaler.selected == 1, "the menu option follows")
+	var cf2 := ConfigFile.new()
+	check(cf2.load(Game.SETTINGS_PATH) == OK and String(cf2.get_value("display", "upscaler", "")) == "fsr2", "the upscaler choice is saved")
+	g.opts["scale"] = 1.0
+	g._apply_settings()
+	check(get_viewport().scaling_3d_mode == Viewport.SCALING_3D_MODE_BILINEAR, "at 100% render scale no upscaler is used")
+	g.set_upscaler("fsr1")
+	g.opts["scale"] = 0.0
+	g._apply_settings()
 	print("OK" if ok else "FAILED")
