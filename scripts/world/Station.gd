@@ -11,7 +11,17 @@ var escalators: Array = []           # Escalator nodes
 var modules: Array = []              # PlatformModule nodes
 var gate_nodes: Array = []
 var light_nodes: Array = []
+const DECALS := false             # floor grime decals: they also land on walls (grey blotches) and were never part of the shipped look
 var fitting_root: Node3D
+
+
+## profiling switch: UG_OFF=decals,dressing,... in the environment turns those build steps off (see tests/perf_test.gd)
+static func debug_on(what: String) -> bool:
+	return what in OS.get_environment("UG_ON").split(",")
+
+
+static func debug_off(what: String) -> bool:
+	return what in OS.get_environment("UG_OFF").split(",")
 var stats := {"tris": 0, "lights": 0}
 var trains: TrainService
 var crowd: CrowdManager
@@ -77,11 +87,15 @@ func build_async(p: StationPlan, use_async := true) -> void:
 	_build_gateline()
 	_build_street_doors()
 	_t0 = _t("gates+doors", _t0)
+	if not Station.debug_off("occlusion"):
+		StationOcclusion.build(self)
 	StationSigns.place(self)
 	_t0 = _t("signs", _t0)
-	StationDressing.place(self)
+	if not Station.debug_off("dressing"):
+		StationDressing.place(self)
 	_t0 = _t("props", _t0)
-	StationDecals.place(self)
+	if DECALS and not Station.debug_off("decals"):
+		StationDecals.place(self)
 	_t0 = _t("decals", _t0)
 	await _yield()
 	trains = TrainService.new()
@@ -97,6 +111,7 @@ func build_async(p: StationPlan, use_async := true) -> void:
 # ---------------------------------------------------------------------------------------------------
 func _build_gateline() -> void:
 	var lines: Array = plan.gatelines if not plan.gatelines.is_empty() else [plan.gates]
+	var instanced: Array = []          # gate units and fence sections whose static body is drawn as an instanced mesh
 	var fence_body := StaticBody3D.new()
 	fence_body.name = "GateFence"
 	fitting_root.add_child(fence_body)
@@ -109,6 +124,7 @@ func _build_gateline() -> void:
 			var lane := _make_gate(ld, z)
 			gate_nodes.append(lane)
 			fitting_root.add_child(lane["node"])
+			instanced.append(lane["node"])
 		# fixed barriers from the ends of the lane block to the hall walls
 		for side: float in [-1.0, 1.0]:
 			var edge: float = cx + side * total_w * 0.5
@@ -119,6 +135,7 @@ func _build_gateline() -> void:
 				var seg: float = minf(2.0, span)
 				var f := StationProps.inst("gate_fence")
 				fitting_root.add_child(f)
+				instanced.append(f)
 				f.position = Vector3(x + side * seg * 0.5, 0, z)
 				if seg < 2.0:
 					f.scale.x = seg / 2.0
@@ -130,6 +147,38 @@ func _build_gateline() -> void:
 			side_l.shape = side_sh
 			side_l.position = Vector3((edge + wall) * 0.5, 0.8, z)
 			fence_body.add_child(side_l)
+	_instance_bodies(instanced)
+
+
+## The bodies of a gateline's gate units (13 surfaces each) and fence sections are identical meshes: one MultiMesh per distinct mesh draws them all
+## (one draw per surface for the whole line instead of one per gate). Flaps, lamps and colliders stay as they are: they move or collide.
+func _instance_bodies(nodes: Array) -> void:
+	var groups: Dictionary = {}
+	var bodies: Array = []
+	for n in nodes:
+		var node := n as Node3D
+		var body := node.get_node_or_null("body") as MeshInstance3D
+		if body == null or body.mesh == null or body.get_child_count() > 0:
+			continue
+		if not groups.has(body.mesh):
+			groups[body.mesh] = []
+		groups[body.mesh].append(node.transform * body.transform)
+		bodies.append(body)
+	for mesh in groups:
+		var xfs: Array = groups[mesh]
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = mesh
+		mm.instance_count = xfs.size()
+		for i in xfs.size():
+			mm.set_instance_transform(i, xfs[i])
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "GateBodies"
+		mmi.multimesh = mm
+		fitting_root.add_child(mmi)
+	for b in bodies:
+		b.get_parent().remove_child(b)
+		b.queue_free()
 
 
 static func span_len(a: float, b: float) -> float:

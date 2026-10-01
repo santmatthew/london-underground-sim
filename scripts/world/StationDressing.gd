@@ -492,10 +492,12 @@ func _platform(mi: int) -> void:
 	kit.seed_rng(plan.seed_value + mi * 31)
 	for fi in faces.size():
 		var s := 1.0 if fi == 0 else -1.0
-		_far_wall(kit, s, zfar, L)
-		if not pm.box:
-			_platform_wall(kit, pm, s, zwall, L, ox)       # (island box halls have no platform-side wall: nothing to hang on)
-		_platform_furniture(holder, pm, s, zwall, zedge, zfar, L, ox)
+		if not Station.debug_off("posters"):
+			_far_wall(kit, s, zfar, L)
+			if not pm.box:
+				_platform_wall(kit, pm, s, zwall, L, ox)       # (island box halls have no platform-side wall: nothing to hang on)
+		if not Station.debug_off("furniture"):
+			_platform_furniture(holder, pm, s, zwall, zedge, zfar, L, ox)
 	var mi_node := PosterKit.finish(kit, holder, "Posters")
 	if mi_node != null:
 		mi_node.visibility_range_end = 60.0
@@ -648,6 +650,8 @@ func _platform_furniture(holder: Node3D, pm: PlatformModule, s: float, zwall: fl
 	# clocks on the platform wall
 	for cx2 in [-L * 0.25, L * 0.25]:
 		StationClocks.register(station, StationProps.put(holder, "clock", Vector3(cx2, 2.1, s * (zwall + 0.03)), Vector3(0, 0, s)))
+	if Station.debug_off("labels"):
+		return
 	# "MIND THE GAP" stencilled in yellow on the edge strip, every ~14 m (letters about 0.13 m tall, reading from the platform)
 	var gx := -L * 0.5 + 9.0
 	while gx < L * 0.5 - 4.0:

@@ -111,8 +111,9 @@ func build(p_rise: float, p_lanes: Array, p_wall_mat := "tile_white", p_stairs :
 	for bi in lanes.size() + 1:
 		var zb := (bi - lanes.size() * 0.5) * PITCH
 		_balustrade(zb)
-	_poster_band(hw)
-	_deck_fittings(hw)
+	if not Station.debug_off("escband"):
+		_poster_band(hw)
+		_deck_fittings(hw)
 	_collision()
 	_finish()
 

@@ -12,7 +12,7 @@ var env: WorldEnvironment
 var station: Station
 var ride: Ride
 var journey: Dictionary = {}
-var opts := {"mode": "single", "stops": 3, "time": "random", "length": "medium", "hints": true, "day": "random", "quality": 2, "crowd": 1.0, "volume": 0.8, "sens": 0.0022}
+var opts := {"mode": "single", "stops": 3, "time": "random", "length": "medium", "hints": true, "day": "random", "quality": 1, "scale": 0.0, "crowd": 1.0, "volume": 0.8, "sens": 0.0022}
 var t_play0 := 0.0
 var riding := false
 var paused := false
@@ -65,6 +65,8 @@ func _ready() -> void:
 	Sfx.subtitle.connect(func(t, secs): if hud: hud.say(t, secs))
 	_build_menu()
 	_show_menu()
+	get_tree().root.size_changed.connect(_apply_settings)        # "Auto" render scale follows the window size
+	_apply_settings()
 	_preload()
 	_parse_cli()
 	if cli.has("autopilot") or cli.has("auto-start"):
@@ -81,6 +83,14 @@ func _parse_cli() -> void:
 		opts["length"] = cli["length"]
 
 
+## Render scale for "Auto": the 3D scene is drawn at about 2.4 million pixels (a bit over 1080p) and upscaled, so a 4K screen costs the same as a 1080p one.
+## (Measured on an RTX 3050 Ti laptop: the cost is almost linear in pixels, about 9 ms per 2 MP at the Balanced tier.)
+static func auto_scale(size: Vector2i) -> float:
+	var px := float(maxi(size.x, 1)) * float(maxi(size.y, 1))
+	var sc := clampf(sqrt(2.4e6 / px), 0.5, 1.0)
+	return 1.0 if sc > 0.93 else snappedf(sc, 0.01)
+
+
 func _apply_settings() -> void:
 	var q: int = opts["quality"]
 	var e := env.environment
@@ -89,6 +99,13 @@ func _apply_settings() -> void:
 	e.ssr_enabled = q >= 2
 	e.sdfgi_enabled = q >= 3
 	e.volumetric_fog_enabled = q >= 3
+	# render scale: below 100 % the 3D scene is drawn smaller and upscaled with FSR 2 (sharp, and it reuses the temporal data TAA already needs)
+	var sc: float = opts.get("scale", 0.0)
+	if sc <= 0.0:
+		sc = auto_scale(DisplayServer.window_get_size())
+	var vp := get_viewport()
+	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if sc < 0.99 else Viewport.SCALING_3D_MODE_BILINEAR      # FSR 1: ~1 ms; FSR 2 cost 15+ ms at 4K here
+	vp.scaling_3d_scale = sc
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(opts["volume"]), 0.0001)))
 	if player:
 		player.mouse_sens = opts["sens"]
@@ -206,12 +223,20 @@ func _build_menu() -> void:
 	grid.add_child(cb)
 	grid.add_child(_mk_label("Graphics", 18, Color.WHITE, false, false))
 	var ob_q := OptionButton.new()
-	for t in [["Fast (no screen-space effects)", 0], ["Balanced", 1], ["High (SSAO, SSIL, reflections)", 2], ["Ultra (+ global illumination, haze)", 3]]:
+	for t in [["Fast (no screen-space effects)", 0], ["Balanced (ambient occlusion)", 1], ["High (+ light bounce, reflections; much slower)", 2], ["Ultra (+ global illumination, haze; slowest)", 3]]:
 		ob_q.add_item(t[0])
 		ob_q.set_item_metadata(ob_q.item_count - 1, t[1])
-	ob_q.select(2)
+	ob_q.select(int(opts["quality"]))
 	ob_q.item_selected.connect(func(i): opts["quality"] = ob_q.get_item_metadata(i); _apply_settings())
 	grid.add_child(ob_q)
+	grid.add_child(_mk_label("Render scale", 18, Color.WHITE, false, false))
+	var ob_s := OptionButton.new()
+	for t in [["Auto (recommended)", 0.0], ["100% (native)", 1.0], ["85% (upscaled)", 0.85], ["70% (upscaled, faster)", 0.7], ["55% (upscaled, fastest)", 0.55]]:
+		ob_s.add_item(t[0])
+		ob_s.set_item_metadata(ob_s.item_count - 1, t[1])
+	ob_s.select(0)
+	ob_s.item_selected.connect(func(i): opts["scale"] = ob_s.get_item_metadata(i); _apply_settings())
+	grid.add_child(ob_s)
 	grid.add_child(_mk_label("Crowds", 18, Color.WHITE, false, false))
 	var ob_c := OptionButton.new()
 	for t in [["Empty", 0.0], ["Light", 0.6], ["Realistic", 1.0], ["Packed", 1.5]]:

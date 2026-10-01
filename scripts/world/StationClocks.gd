@@ -9,6 +9,7 @@ var _clocks: Array = []        # [hour hand, minute hand, second hand (or null)]
 static func register(station: Node, clock: Node3D) -> void:
 	if clock == null:
 		return
+
 	var ticker := station.get_node_or_null("Clocks") as StationClocks
 	if ticker == null:
 		ticker = StationClocks.new()

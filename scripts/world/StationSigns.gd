@@ -8,6 +8,8 @@ static var _rod_mat: StandardMaterial3D
 
 
 static func place(station: Station) -> void:
+	if Station.debug_off("signs"):
+		return
 	var plan := station.plan
 	var root := Node3D.new()
 	root.name = "Signs"
@@ -472,7 +474,8 @@ static func _rods(holder: Node3D, length: float) -> void:
 
 ## distance-cull every renderable under `n` (cheap: keeps far-away signs out of the draw list)
 static func cull(n: Node, dist: float) -> void:
-	if n is GeometryInstance3D:
+	# distance culling only for objects small compared with the distance: a merged 130 m platform mesh must not vanish when you stand 60 m from its middle
+	if n is GeometryInstance3D and (n as GeometryInstance3D).get_aabb().size.length() < dist * 0.6:
 		(n as GeometryInstance3D).visibility_range_end = dist
 		(n as GeometryInstance3D).visibility_range_end_margin = 4.0
 	for c in n.get_children():
