@@ -109,6 +109,21 @@ static func get_mat(name: String) -> Material:
 			st.metallic = 0.55
 			st.roughness = 0.55
 			m = st
+		"stainless":
+			var sl := StandardMaterial3D.new()
+			sl.albedo_color = Color(0.74, 0.76, 0.78)
+			sl.metallic = 0.25
+			sl.roughness = 0.38
+			m = sl
+		"ped_glass":
+			# tinted toughened glass of the platform edge doors
+			var pg := StandardMaterial3D.new()
+			pg.albedo_color = Color(0.46, 0.56, 0.60, 0.24)
+			pg.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			pg.roughness = 0.05
+			pg.metallic = 0.0
+			pg.cull_mode = BaseMaterial3D.CULL_DISABLED
+			m = pg
 		"timber_slab":
 			var tm := StandardMaterial3D.new()
 			tm.albedo_color = Color(0.40, 0.26, 0.15)

@@ -107,6 +107,26 @@ func setup_orientation(p_facing: int, p_platform_side: float) -> void:
 
 
 ## door centres (train-local x) on the platform side, all cars
+## door x positions (train frame, centre of the train = 0) of a train of n cars of `kind`; the same maths as build()/door_positions(), without building the cars
+static func door_positions_for(p_kind: String, p_cars: int) -> Array:
+	var n := maxi(3, p_cars)
+	var pm: Array = PITCH[p_kind]
+	var xs: Array = []
+	var x := 0.0
+	for i in n:
+		if i > 0:
+			x -= pm[1] if (i == 1 or i == n - 1) else pm[0]
+		xs.append(x)
+	var shift: float = -(float(xs[0]) + float(xs[n - 1])) * 0.5
+	var out: Array = []
+	for i in n:
+		var key: String = p_kind + ("_cab" if (i == 0 or i == n - 1) else "_mid")
+		var flip := -1.0 if i == n - 1 else 1.0
+		for dx in DOOR_X[key]:
+			out.append(float(xs[i]) + shift + float(dx) * flip)
+	return out
+
+
 func door_positions() -> Array:
 	var out: Array = []
 	for i in n_cars:

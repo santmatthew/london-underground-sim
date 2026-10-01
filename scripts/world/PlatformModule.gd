@@ -36,6 +36,8 @@ var spec: Dictionary = {}
 var meta: Dictionary = {}
 var character: Dictionary = {}     # StationCharacter.platform(): ribs, pilasters, frame, recess ...
 var recesses: Array = []           # x centres (module frame) of the seat recesses on the platform wall
+var ped_doors: Dictionary = {}     # face sign -> [{x, l, r, open}]: the platform edge door leaves (PlatformDoors)
+var ped_xs: Array = []             # door x positions when this module has platform edge doors
 var box := false
 var kit := MeshKit.new()
 var _cols: Array = []        # [center, size]  (collision boxes in local space)
@@ -66,6 +68,9 @@ func build(p_spec: Dictionary) -> void:
 		while rx < L * 0.5 - 5.0:
 			recesses.append(rx)
 			rx += RECESS_PITCH
+	ped_xs = []
+	if character.get("peds", false) and not box and faces.size() > 0 and faces[0] != null:
+		ped_xs = PlatformDoors.door_xs(String(faces[0].get("line", "jubilee")))
 	meta = {"faces": [], "openings": openings, "spine_x0": spine_x0, "spine_x1": spine_x1, "length": L, "pw": pw, "style": spec.get("style", "arch"),
 		"tun_w": float(spec.get("tun_w", TUNNEL_EXT)), "tun_e": float(spec.get("tun_e", TUNNEL_EXT)), "recesses": recesses}
 
@@ -93,7 +98,7 @@ func build(p_spec: Dictionary) -> void:
 		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 
 	var mats := {}
-	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab"]:
+	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "ped_glass", "stainless", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab"]:
 		mats[n] = Mats.get_mat(n)
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
@@ -156,7 +161,10 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	kit.horiz("white_paint", x0, x1, wz0, wz1, 0.005, true, 0.0)
 	var lz0 := minf(s * (zedge - 0.42), s * (zedge - 0.32))
 	var lz1 := maxf(s * (zedge - 0.42), s * (zedge - 0.32))
-	kit.horiz("yellow_paint", x0, x1, lz0, lz1, 0.006, true, 0.0)
+	if ped_xs.is_empty():
+		kit.horiz("yellow_paint", x0, x1, lz0, lz1, 0.006, true, 0.0)      # (the doors are the boundary where there are PEDs)
+	else:
+		PlatformDoors.build(self, kit, s, zedge, ped_xs, x0, x1)
 	# platform front face toward the track (from y=0 down to bed)
 	if s > 0.0:
 		kit.wall("concrete", Vector3(x1, 0, s * zedge), Vector3(x0, 0, s * zedge), BED_Y, 0.0, BED_Y, false)
@@ -505,7 +513,12 @@ func _pilasters(s: float, x0: float, x1: float, zwall: float, holes: Array, open
 				xs.append(x)
 			x += every
 	var edge: String = ("dado:" + (pl["edge_col"] as Color).to_html(false)) if pl.has("edge_col") else ""
+	var cols: Array = pl.get("cols", [])           # a cycle of colours (Bond Street Jubilee: alternating panels) instead of one
+	var ci := 0
 	for xc in xs:
+		if not cols.is_empty():
+			key = "dado:" + (cols[ci % cols.size()] as Color).to_html(false)
+			ci += 1
 		_band(key, s * zwall, xc - w * 0.5, xc + w * 0.5, 0.0, SPRING_Y, s < 0.0, false, holes)
 		if edge != "":
 			_band(edge, s * zwall, xc + w * 0.5, xc + w * 0.5 + 0.075, 0.0, SPRING_Y, s < 0.0, false, holes)
@@ -710,6 +723,8 @@ func fit_blade(s: float, z_want: float, w: float, h: float, y_top_want: float, m
 
 ## Open/close the invisible platform-edge guard between x_from..x_to (module-local) on the face at `face_sign` (+1 = +z tunnel)
 func set_edge_open(face_sign: float, x_from: float, x_to: float, open: bool) -> void:
+	if not ped_doors.is_empty():
+		PlatformDoors.slide(self, face_sign, (x_from + x_to) * 0.5, open)
 	if not edge_shapes.has(face_sign):
 		return
 	for e in edge_shapes[face_sign]:

@@ -78,6 +78,8 @@ static func platform(station_name: String, line_id: String, kind: String) -> Dic
 	var out := {"wall": String(src.get("wall", "tile_white")), "stripes": _stripes(src.get("stripes", [])), "frieze": true, "station_slug": slug(station_name)}
 	if src.has("floor"):
 		out["floor"] = String(src["floor"])
+	if src.get("peds", false):
+		out["peds"] = true
 	if src.has("light"):
 		var lc: Array = src["light"]
 		out["light_color"] = Color(lc[0], lc[1], lc[2])
@@ -85,6 +87,11 @@ static func platform(station_name: String, line_id: String, kind: String) -> Dic
 		if src.has(k):
 			var d: Dictionary = (src[k] as Dictionary).duplicate()
 			d["col"] = color(String(d.get("ink", "grey_mid")))
+			if d.has("cols"):
+				var cc: Array = []
+				for nme in d["cols"]:
+					cc.append(color(String(nme)))
+				d["cols"] = cc
 			if d.has("edge"):
 				d["edge_col"] = color(String(d["edge"]))
 			out[k] = d
@@ -127,6 +134,8 @@ static func hall(station_name: String) -> Dictionary:
 	if types.is_empty():
 		return {}
 	var ent = (_data.get("halls", {}) as Dictionary).get(station_name, "default")
+	if short_name(station_name) in _data.get("jubilee_ext", []) and not (_data.get("halls", {}) as Dictionary).has(station_name):
+		ent = "stone"          # the Jubilee Line Extension stations share one design (stone floors, stainless and panel walls)
 	var tname := "default"
 	var over: Dictionary = {}
 	if ent is Dictionary:

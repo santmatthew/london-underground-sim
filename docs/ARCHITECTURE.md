@@ -101,6 +101,10 @@ Northern grey dado, Central black/blue, Victoria 150 mm grey tile, Jubilee Line 
 * Platform floors (`floor` key): Edgware Road lozenge, Bank Central grey diamonds, Waterloo Northern black/cream, 600 mm slabs (Victoria line, Stockwell, Lancaster Gate), pale stone (JLE).
   Oxford Circus Central has its braided-ribbon wall tile (`tools/gen_textures.py oxford`); era light colours come from the `light` key. The glass doors at each way-out show a street by the
   time of day (`Station._street_material`, `tools/gen_street.py`).
+* Platform edge doors (`PlatformDoors.gd`, `peds` key of the `jubilee_ext` default): the eight Jubilee Line Extension stations with doors in reality (Westminster, Waterloo, Southwark, London
+  Bridge, Bermondsey, Canada Water, Canary Wharf, North Greenwich) get a stainless head casing, fixed tinted glass with the yellow band, and a sliding leaf pair at each of the train's doors
+  (`Train.door_positions_for`). `PlatformModule.set_edge_open` (called per door by `TrainService._edge_guard`) opens the matching pair together with the invisible edge guard, so the
+  player can only board where a door is open. No yellow line / MIND THE GAP stencil there (the doors are the boundary). Test: `ped_test`.
 * `tools/char_sheet.sh out.png <view> "Station" ...` renders a contact sheet; `station_test --view=pwall --x= --dx= --fov=` looks across the platform at its wall.
 
 ## Tests worth knowing

@@ -751,7 +751,7 @@ func _platform_furniture(holder: Node3D, pm: PlatformModule, s: float, zwall: fl
 		return
 	# "MIND THE GAP" stencilled in yellow on the edge strip, every ~14 m (letters about 0.13 m tall, reading from the platform)
 	var gx := -L * 0.5 + 9.0
-	while gx < L * 0.5 - 4.0:
+	while gx < L * 0.5 - 4.0 and pm.ped_xs.is_empty():
 		var lab := Label3D.new()
 		lab.text = "MIND THE GAP"
 		lab.font = load("res://assets/fonts/Barlow-Bold.ttf")
