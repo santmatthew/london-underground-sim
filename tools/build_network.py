@@ -7,7 +7,8 @@ Output structure (all consumed by scripts/autoload/Net.gd):
   links:    in-complex transfers between separate station nodes
 A "platform id" is  "<group>:<Direction>"  e.g.  "central:Eastbound", "ss:Westbound".
 """
-import json, math, os, re, collections
+import json, math, os, re, collections, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 raw = json.load(open(os.path.join(ROOT, "build", "tfl_raw.json")))
@@ -134,6 +135,9 @@ links = []
 for a, b, secs in (("Bank", "Monument", 240), ("Paddington", "Paddington (H&C)", 300)):
     if a in name2id and b in name2id:
         links.append({"a": name2id[a], "b": name2id[b], "walk_s": secs})
+
+import junctions
+junctions.apply(lines, stations)       # branch junctions (Camden Town, Euston, Kennington): one platform per direction and branch
 
 out = {"lines": lines, "stations": stations, "links": links}
 os.makedirs(os.path.join(ROOT, "data"), exist_ok=True)

@@ -1,0 +1,86 @@
+{
+  "_comment": "Branch junctions where one line direction has separate platforms per branch. tools/junctions.py splits each listed station's platforms of `line` into one per (direction, branch); a service stop belongs to the branch whose `via` station it also calls at. Platform numbers are the real ones (Wikipedia station articles: Camden Town 'all northbound trains heading towards Edgware use platform 1 and those heading towards High Barnet or Mill Hill East use platform 3; southbound platforms 2 if coming from Edgware and 4 if coming from High Barnet or Mill Hill East'; Euston and Kennington platform tables). The pairing of two platforms into one island is not documented there and is this simulator's own choice.",
+  "stations": {
+    "Camden Town": {
+      "line": "northern",
+      "branches": [
+        {
+          "id": "edgware",
+          "label": "Edgware branch",
+          "via": "Chalk Farm",
+          "numbers": {
+            "Northbound": 1,
+            "Southbound": 2
+          }
+        },
+        {
+          "id": "highbarnet",
+          "label": "High Barnet branch",
+          "via": "Kentish Town",
+          "numbers": {
+            "Northbound": 3,
+            "Southbound": 4
+          }
+        }
+      ],
+      "dirs": [
+        "Northbound",
+        "Southbound"
+      ]
+    },
+    "Euston": {
+      "line": "northern",
+      "branches": [
+        {
+          "id": "cx",
+          "label": "via Charing Cross",
+          "via": "Warren Street",
+          "numbers": {
+            "Northbound": 1,
+            "Southbound": 2
+          }
+        },
+        {
+          "id": "bank",
+          "label": "via Bank",
+          "via": "King's Cross St. Pancras",
+          "numbers": {
+            "Northbound": 3,
+            "Southbound": 6
+          }
+        }
+      ],
+      "dirs": [
+        "Northbound",
+        "Southbound"
+      ]
+    },
+    "Kennington": {
+      "line": "northern",
+      "branches": [
+        {
+          "id": "cx",
+          "label": "via Charing Cross",
+          "via": "Waterloo",
+          "numbers": {
+            "Northbound": 1,
+            "Southbound": 4
+          }
+        },
+        {
+          "id": "bank",
+          "label": "via Bank",
+          "via": "Elephant & Castle",
+          "numbers": {
+            "Northbound": 3,
+            "Southbound": 2
+          }
+        }
+      ],
+      "dirs": [
+        "Northbound",
+        "Southbound"
+      ]
+    }
+  }
+}

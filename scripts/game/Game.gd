@@ -12,6 +12,9 @@ var env: WorldEnvironment
 var station: Station
 var ride: Ride
 var journey: Dictionary = {}
+const SETTINGS_PATH := "user://settings.cfg"
+var _cb_fullscreen: CheckButton
+
 var opts := {"mode": "single", "stops": 3, "time": "random", "length": "medium", "hints": true, "day": "random", "quality": 1, "scale": 0.0, "crowd": 1.0, "volume": 0.8, "sens": 0.0022}
 var t_play0 := 0.0
 var riding := false
@@ -70,8 +73,51 @@ func _ready() -> void:
 	_apply_settings()
 	_preload()
 	_parse_cli()
+	_load_display_settings()
 	if cli.has("autopilot") or cli.has("auto-start"):
 		call_deferred("start_journey")
+
+
+## Full screen: borderless full-screen window at the desktop's resolution (F11 or Alt+Enter, or the menu). Remembered between runs; `--fullscreen` / `--windowed` override it.
+func is_fullscreen() -> bool:
+	var m := DisplayServer.window_get_mode()
+	return m == DisplayServer.WINDOW_MODE_FULLSCREEN or m == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
+
+
+func set_fullscreen(on: bool, save := true) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if on else DisplayServer.WINDOW_MODE_WINDOWED)
+	if not on:
+		# leaving full screen: back to a sensible window size, centred on the screen it was on
+		var scr := DisplayServer.window_get_current_screen()
+		var area := DisplayServer.screen_get_usable_rect(scr)
+		var sz := Vector2i(mini(1600, area.size.x - 80), mini(900, area.size.y - 80))
+		DisplayServer.window_set_size(sz)
+		DisplayServer.window_set_position(area.position + (area.size - sz) / 2)
+	if _cb_fullscreen != null and _cb_fullscreen.button_pressed != on:
+		_cb_fullscreen.set_pressed_no_signal(on)
+	if save:
+		var cf := ConfigFile.new()
+		cf.load(SETTINGS_PATH)
+		cf.set_value("display", "fullscreen", on)
+		cf.save(SETTINGS_PATH)
+	_apply_settings()
+
+
+func _load_display_settings() -> void:
+	var on := false
+	var cf := ConfigFile.new()
+	if cf.load(SETTINGS_PATH) == OK:
+		on = bool(cf.get_value("display", "fullscreen", false))
+	if cli.has("fullscreen"):
+		on = true
+	if cli.has("windowed"):
+		on = false
+	if on != is_fullscreen():
+		set_fullscreen(on, false)
+	elif _cb_fullscreen != null:
+		_cb_fullscreen.set_pressed_no_signal(on)
 
 
 func _parse_cli() -> void:
@@ -238,6 +284,11 @@ func _build_menu() -> void:
 	ob_s.select(0)
 	ob_s.item_selected.connect(func(i): opts["scale"] = ob_s.get_item_metadata(i); _apply_settings())
 	grid.add_child(ob_s)
+	grid.add_child(_mk_label("Full screen (F11)", 18, Color.WHITE, false, false))
+	_cb_fullscreen = CheckButton.new()
+	_cb_fullscreen.button_pressed = is_fullscreen()
+	_cb_fullscreen.toggled.connect(func(v): set_fullscreen(v))
+	grid.add_child(_cb_fullscreen)
 	grid.add_child(_mk_label("Crowds", 18, Color.WHITE, false, false))
 	var ob_c := OptionButton.new()
 	for t in [["Empty", 0.0], ["Light", 0.6], ["Realistic", 1.0], ["Packed", 1.5]]:
@@ -590,7 +641,7 @@ func _describe_location() -> String:
 			for fd in mod["faces"]:
 				var f: Dictionary = station.plan.faces["%s#%d" % [fd["pid"], fd["face"]]]
 				if (f["side"] > 0.0 and lp.z > 1.5 and lp.z < 5.2) or (f["side"] < 0.0 and lp.z < -1.5 and lp.z > -5.2):
-					return "platform %d, %s %s" % [station.plan.platform_no[fd["pid"]], station.plan.station_platform(fd["pid"])["dir"], Net.line_name(f["line"])]
+					return "platform %d, %s %s" % [station.plan.platform_no[fd["pid"]], station.plan.dir_text(fd["pid"]), Net.line_name(f["line"])]
 			return "platform passages"
 	var lp2 := station.to_local(p)
 	if lp2.y > -1.0:
@@ -605,8 +656,12 @@ func _describe_location() -> String:
 func _unhandled_input(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and not ev.echo:
 		match ev.keycode:
+			KEY_F11:
+				set_fullscreen(not is_fullscreen())
 			KEY_ENTER, KEY_KP_ENTER:
-				if state == State.BRIEFING:
+				if ev.alt_pressed:
+					set_fullscreen(not is_fullscreen())
+				elif state == State.BRIEFING:
 					_begin_play()
 			KEY_M:
 				if state == State.PLAYING or state == State.BRIEFING:

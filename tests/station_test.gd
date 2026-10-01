@@ -128,10 +128,21 @@ func _ready() -> void:
 		look = Vector3(float(lp[0]), float(lp[1]), float(lp[2]))
 	cam.position = pos
 	cam.look_at(look)
+	# upscaler comparison: --mode=native|fsr1|fsr2 --scale=0.667 (the 3D scene is drawn at that fraction of the window and upscaled)
+	var mode := sys_arg("mode", "")
+	if mode != "":
+		var vp := get_viewport()
+		vp.scaling_3d_scale = float(sys_arg("scale", "1.0"))
+		match mode:
+			"fsr1": vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR
+			"fsr2": vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR2
+			_: vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+		print("upscale: ", mode, " at ", vp.scaling_3d_scale, " (window ", get_window().size, ")")
+	var out_name := sys_arg("out", "")
 	for i in int(sys_arg("frames", "20")): await get_tree().process_frame
 	var rs := RenderingServer
 	print("render: draw calls %d, primitives %d, objects %d" % [rs.get_rendering_info(rs.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), rs.get_rendering_info(rs.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME), rs.get_rendering_info(rs.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)])
-	get_viewport().get_texture().get_image().save_png("res://build/shot_station_%s.png" % view)
+	get_viewport().get_texture().get_image().save_png(out_name if out_name != "" else "res://build/shot_station_%s.png" % view)
 	get_tree().quit()
 
 func gz_hall(plan: StationPlan) -> float:

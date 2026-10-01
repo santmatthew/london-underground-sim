@@ -284,7 +284,7 @@ static func _authored_signs(root: Node3D, plan: StationPlan) -> void:
 			seen[pid] = true
 			var ln: String = plan.station_platform(pid)["lines"][0]
 			rrows.append({"text": "%s line" % Net.line_name(ln), "color": Net.line_color(ln), "bold": true, "arrow": 0, "arrow_side": "right"})
-			rrows.append({"text": "Platform %d  %s  %s" % [plan.platform_no[pid], plan.station_platform(pid)["dir"], plan.dest_text(pid, 2)], "text_color": Color(0.85, 0.85, 0.85)})
+			rrows.append({"text": "Platform %d  %s  %s" % [plan.platform_no[pid], plan.dir_text(pid), plan.dest_text(pid, 2)], "text_color": Color(0.85, 0.85, 0.85)})
 		hang_room(root, Signs.board(rrows, 3.6, 0.32), Vector3(rr[1] - 0.4, ry + rh - 0.95 - rrows.size() * 0.1, m["lane_z"]), Vector3(-1, 0, 0), ry, ry + rh, 3.4)
 
 
@@ -336,7 +336,7 @@ static func _landing_signs(station: Station, root: Node3D, plan: StationPlan, li
 			seen[pid] = true
 			var ln: String = plan.station_platform(pid)["lines"][0]
 			rows.append({"text": "%s line" % Net.line_name(ln), "color": Net.line_color(ln), "bold": true, "arrow": 0, "arrow_side": "right"})
-			rows.append({"text": "%s  %s" % [plan.station_platform(pid)["dir"], plan.dest_text(pid, 2)], "text_color": Color(0.85, 0.85, 0.85)})
+			rows.append({"text": "%s  %s" % [plan.dir_text(pid), plan.dest_text(pid, 2)], "text_color": Color(0.85, 0.85, 0.85)})
 		hang_room(root, Signs.board(rows, 3.6, 0.32), Vector3(lr[1] - 0.4, y + h - 0.95 - rows.size() * 0.1, m["lane_z"]), Vector3(-1, 0, 0), y, y + h, 3.4)
 	# deeper level: board above the S wall opening
 	if li + 1 < plan.escs.size():

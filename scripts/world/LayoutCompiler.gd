@@ -185,7 +185,7 @@ static func compile(p: StationPlan, spec: Dictionary) -> bool:
 			var pid: String = fdef[0]
 			var pl: Dictionary = st["platforms"][pid]
 			var lid: String = pl["lines"][0]
-			faces_spec.append({"pid": pid, "line": lid, "color": Net.line_color(lid), "label": pl["dir"], "face": int(fdef[1]), "lines": pl["lines"]})
+			faces_spec.append({"pid": pid, "line": lid, "color": Net.line_color(lid), "label": p.dir_text(pid), "face": int(fdef[1]), "lines": pl["lines"]})
 			facelist.append({"pid": pid, "face": int(fdef[1])})
 		var wall_style := "tile_cream" if (p.seed_value + mod_i) % 3 == 0 else "tile_white"
 		var stripes := p._stripes_for(p.seed_value + mod_i, faces_spec[0]["color"])

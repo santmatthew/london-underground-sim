@@ -129,7 +129,7 @@ func generate(station_idx: int) -> void:
 	# ---- 2. depth per module, sorted shallow -> deep, min 7 m apart -----------------------------------------------
 	var nth_of_group := {}
 	for md in mod_defs:
-		var d: float = BASE_DEPTH.get(md["group"], 24.0) + rng.randf_range(-2.0, 2.5)
+		var d: float = BASE_DEPTH.get(String(md["group"]).get_slice(".", 0), 24.0) + rng.randf_range(-2.0, 2.5)
 		if imp < 1.6:
 			d = minf(d, 18.0 + rng.randf() * 4.0)
 		if kind == "surface":
@@ -137,7 +137,7 @@ func generate(station_idx: int) -> void:
 		elif kind == "sub":
 			d = rng.randf_range(8.0, 10.5)
 		# measured depth (TfL layout diagram): metres below street level -> below the ticket hall
-		var g: String = md["group"]
+		var g: String = String(md["group"]).get_slice(".", 0)           # branch platforms ("northern.cx") share their line's measured depths
 		if real_depths.has(g):
 			var lst: Array = real_depths[g]
 			var nth: int = nth_of_group.get(g, 0)
@@ -234,7 +234,7 @@ func generate(station_idx: int) -> void:
 				var pid: String = fdef["pid"]
 				var pl: Dictionary = st["platforms"][pid]
 				var lid: String = pl["lines"][0]
-				faces_spec.append({"pid": pid, "line": lid, "color": Net.line_color(lid), "label": pl["dir"], "face": fdef["face"], "lines": pl["lines"]})
+				faces_spec.append({"pid": pid, "line": lid, "color": Net.line_color(lid), "label": dir_text(pid), "face": fdef["face"], "lines": pl["lines"]})
 			var openings_x := [-L * 0.5 + 8.0, -L * 0.5 + 8.0 + 14.0]
 			var wall_style := "tile_cream" if (seed_value + mi) % 3 == 0 else "tile_white"
 			var stripes := _stripes_for(seed_value + mi, faces_spec[0]["color"])
@@ -394,8 +394,10 @@ func finish_common(rng: RandomNumberGenerator = null) -> void:
 	var used := {}
 	for pid in platform_no:
 		var pl: Dictionary = st["platforms"][pid]
-		var best := 0
+		var best := int(pl.get("number", 0))          # branch junction platforms carry their own real number (data/junctions.json)
 		for lid in pl["lines"]:
+			if best > 0 and pl.has("number"):
+				break
 			var n := RealData.platform_number(naptan, lid, pl["dir"])
 			if n > 0 and (best == 0 or n < best):
 				best = n
@@ -428,6 +430,13 @@ func _reset_plan() -> void:
 
 func station_platform(pid: String) -> Dictionary:
 	return Net.stations[idx]["platforms"][pid]
+
+
+## "Northbound", or at a branch junction "Northbound via Bank" / "Southbound Edgware branch" (data/junctions.json)
+func dir_text(pid: String) -> String:
+	var pl := station_platform(pid)
+	var b: String = pl.get("branch", "")
+	return pl["dir"] if b == "" else "%s %s" % [pl["dir"], b]
 
 
 ## Destination station names served by platform `pid` at this station (final stops of the services that use it).

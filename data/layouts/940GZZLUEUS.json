@@ -1,5 +1,5 @@
 {
- "note": "Euston from TfL diagram N095 (topology; dimensions estimated)",
+ "note": "Euston from TfL diagram N095 (topology; dimensions estimated); Northern line platforms split by branch (data/junctions.json): Charing Cross branch 1/2 on the 16.4 m landing, Bank branch 3/6 beside the Victoria line",
  "rooms": [
   {
    "id": "hall",
@@ -53,7 +53,7 @@
    "kind": "landing",
    "size": [
     36,
-    16
+    30
    ],
    "depth": 25.8
   }
@@ -105,21 +105,21 @@
    "lane_z": 0,
    "lane_rel": true,
    "corr_len": 12,
-   "group": "northern",
+   "group": "northern.cx",
    "faces": [
     [
-     "northern:Northbound",
+     "northern:Northbound~cx",
      0
     ],
     [
-     "northern:Southbound",
+     "northern:Southbound~cx",
      0
     ]
    ]
   },
   {
    "attach": "land_v",
-   "lane_z": 0,
+   "lane_z": -9.0,
    "lane_rel": true,
    "corr_len": 12,
    "group": "victoria",
@@ -130,6 +130,23 @@
     ],
     [
      "victoria:Southbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "land_v",
+   "lane_z": 9.0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "northern.bank",
+   "faces": [
+    [
+     "northern:Northbound~bank",
+     0
+    ],
+    [
+     "northern:Southbound~bank",
      0
     ]
    ]
