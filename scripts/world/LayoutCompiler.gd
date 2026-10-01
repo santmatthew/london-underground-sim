@@ -201,7 +201,8 @@ static func compile(p: StationPlan, spec: Dictionary) -> bool:
 		p.modules.append({"pos": mpos, "spec": mspec, "faces": facelist, "level": level, "group": group, "lane_z": lane_z, "corr": [rect[1], mpos.x + spine_x0], "room": room["name"]})
 		room["openings"].append({"side": "E", "c": lane_z, "w": StationPlan.CORR_W, "h": StationPlan.SPINE_H, "id": "corr%d" % mod_i})
 		corr_rooms.append({"name": "corridor%d_%d" % [level, mod_i], "rect": [rect[1], mpos.x + spine_x0, lane_z - StationPlan.CORR_W * 0.5, lane_z + StationPlan.CORR_W * 0.5], "y": mpos.y, "h": StationPlan.SPINE_H,
-			"open_ends": ["E", "W"], "wall": wall_style, "floor": "floor_platform", "lights": "strip_x", "light_dx": 4.0, "seed": p.seed_value + mod_i})
+			"open_ends": ["E", "W"], "wall": wall_style, "floor": "floor_platform", "lights": "strip_x", "light_dx": 4.0, "seed": p.seed_value + mod_i,
+			"bands": StationCharacter.stripe_bands(stripes, StationPlan.SPINE_H) if not character.is_empty() else []})
 		for fi in faces_spec.size():
 			var f: Dictionary = faces_spec[fi]
 			var side: float = 1.0 if fi == 0 else -1.0

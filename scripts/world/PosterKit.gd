@@ -15,6 +15,7 @@ const FORMATS := {
 	"lep": {"o": Vector2(0.419, 0.572), "v": Vector2(0.387, 0.540), "d": 0.022, "lib": "portrait"},
 }
 const DIR := "res://assets/textures/props/posters2/"
+const BACK_GAP := 0.003            # frames stand this far off the wall (see add)
 
 static var _manifest: Array = []
 static var _loaded := false
@@ -149,9 +150,10 @@ static func add(kit: MeshKit, fmt: String, bottom_centre: Vector3, normal: Vecto
 	var vv: Vector2 = f["v"]
 	var d: float = f["d"]
 	var right := Vector3.UP.cross(normal).normalized()
-	var fc := bottom_centre + Vector3.UP * ov.y * 0.5 + normal * d * 0.5
+	# the whole thing stands BACK_GAP off the wall: a platform wall is seen from the spine behind it, where a back face lying on the wall plane would z-fight with the wall
+	var fc := bottom_centre + Vector3.UP * ov.y * 0.5 + normal * (d * 0.5 + BACK_GAP)
 	kit.box_xf("frame_" + frame, Transform3D(Basis(right, Vector3.UP, normal), fc), Vector3(ov.x, ov.y, d), floor_y)
-	var pc := bottom_centre + Vector3.UP * ov.y * 0.5 + normal * (d + 0.0015)
+	var pc := bottom_centre + Vector3.UP * ov.y * 0.5 + normal * (d + BACK_GAP + 0.0015)
 	var l := pc - right * vv.x * 0.5
 	var r := pc + right * vv.x * 0.5
 	var up := Vector3.UP * vv.y * 0.5
@@ -162,7 +164,7 @@ static func add(kit: MeshKit, fmt: String, bottom_centre: Vector3, normal: Vecto
 ## a plain white enamel plate on a wall (the panel between poster groups that carries a roundel), navy keyline; bottom_centre on the wall surface
 static func add_plate(kit: MeshKit, size: Vector2, bottom_centre: Vector3, normal: Vector3, floor_y := 0.0) -> void:
 	var right := Vector3.UP.cross(normal).normalized()
-	var fc := bottom_centre + Vector3.UP * size.y * 0.5 + normal * 0.012
+	var fc := bottom_centre + Vector3.UP * size.y * 0.5 + normal * (0.012 + BACK_GAP)
 	kit.box_xf("frame_enamel", Transform3D(Basis(right, Vector3.UP, normal), fc), Vector3(size.x, size.y, 0.024), floor_y)
 
 

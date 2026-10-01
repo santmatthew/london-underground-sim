@@ -98,6 +98,17 @@ static func platform(station_name: String, line_id: String, kind: String) -> Dic
 	return out
 
 
+## Space band list ({key, y0, y1}) from a stripes list, clipped to a room `h` metres high (corridors and passages carry the platform's bands)
+static func stripe_bands(stripes: Array, h: float) -> Array:
+	var out: Array = []
+	for st in stripes:
+		var y1: float = minf(st["y1"], h - 0.1)
+		if st["y0"] >= y1:
+			continue
+		out.append({"key": ("dado:" if st.get("dado", false) else "flat:") + (st["color"] as Color).to_html(false), "y0": float(st["y0"]), "y1": y1})
+	return out
+
+
 ## A platform with no authored scheme (sub-surface and surface lines, and any line without a default): white glazed tile, a dark skirt and one band in the line's colour
 static func _generic(station_name: String, line_id: String, kind: String) -> Dictionary:
 	var stripes: Array = [{"y0": 0.0, "y1": 0.25, "color": color("grey_dk"), "dado": true}, {"y0": 1.15, "y1": 1.42, "color": Net.line_color(line_id), "dado": false}]

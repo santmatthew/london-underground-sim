@@ -562,6 +562,17 @@ func _build_spine(x0: float, x1: float, sx0: float, sx1: float, zwall: float, wa
 					kit.wall(wall_mat, Vector3(h[1], 0, s * zwall), Vector3(h[0], 0, s * zwall), h[2], SPINE_H, 0.0)
 				else:
 					kit.wall(wall_mat, Vector3(h[0], 0, s * zwall), Vector3(h[1], 0, s * zwall), h[2], SPINE_H, 0.0)
+	# the station's tile bands carry on along the spine
+	var sholes := []
+	for ox2 in openings:
+		sholes.append([ox2 - OPEN_W * 0.5, ox2 + OPEN_W * 0.5, OPEN_H])
+	for st in spec.get("stripes", []):
+		var sy1: float = minf(st["y1"], SPINE_H - 0.1)
+		if st["y0"] >= sy1:
+			continue
+		var skey: String = ("dado:" if st.get("dado", false) else "flat:") + (st["color"] as Color).to_html(false)
+		for s3 in [1.0, -1.0]:
+			_band(skey, s3 * zwall, sx0, sx1, st["y0"], sy1, s3 < 0.0, true, sholes)
 	# east end cap (tile), west end open (portal)
 	kit.wall(wall_mat, Vector3(sx1, 0, zwall), Vector3(sx1, 0, -zwall), 0.0, SPINE_H, 0.0)
 	# lights: emissive panels in the spine ceiling

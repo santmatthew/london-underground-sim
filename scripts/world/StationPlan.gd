@@ -249,7 +249,8 @@ func generate(station_idx: int) -> void:
 			modules.append({"pos": mpos, "spec": mspec, "faces": md["faces"], "level": li, "group": group, "lane_z": lane_z, "corr": [rect[1], mpos.x + spine_x0]})
 			Ld["openings"].append({"side": "E", "c": lane_z, "w": CORR_W, "h": SPINE_H, "id": "corr%d_%d" % [li, mi]})
 			rooms.append({"name": "corridor%d_%d" % [li, mi], "rect": [rect[1], mpos.x + spine_x0, lane_z - CORR_W * 0.5, lane_z + CORR_W * 0.5], "y": mpos.y, "h": SPINE_H,
-				"open_ends": ["E", "W"], "wall": wall_style, "floor": "floor_platform", "lights": "strip_x", "light_dx": 4.0, "seed": seed_value + midx})
+				"open_ends": ["E", "W"], "wall": wall_style, "floor": "floor_platform", "lights": "strip_x", "light_dx": 4.0, "seed": seed_value + midx,
+				"bands": StationCharacter.stripe_bands(stripes, SPINE_H) if not character.is_empty() else []})
 			for fi in faces_spec.size():
 				var f: Dictionary = faces_spec[fi]
 				var side: float = 1.0 if fi == 0 else -1.0

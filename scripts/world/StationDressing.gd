@@ -636,7 +636,7 @@ func _frieze(kit: MeshKit, pm: PlatformModule, s: float, zwall: float, L: float,
 	var y1 := 2.30
 	var face: Dictionary = pm.spec["faces"][0 if s > 0.0 else 1]
 	var line_col: Color = face.get("color", Color(0.1, 0.1, 0.6))
-	var z_face := s * (zwall + 0.05)
+	var z_face := s * (zwall + 0.053)
 	var runs: Array = []
 	var cur := -L * 0.5
 	var spans: Array = []
@@ -658,7 +658,7 @@ func _frieze(kit: MeshKit, pm: PlatformModule, s: float, zwall: float, L: float,
 		var xb: float = run[1]
 		if xb - xa < 0.8:
 			continue
-		var back := Transform3D(Basis.IDENTITY, Vector3((xa + xb) * 0.5, (y0 + y1) * 0.5, s * (zwall + 0.025)))
+		var back := Transform3D(Basis.IDENTITY, Vector3((xa + xb) * 0.5, (y0 + y1) * 0.5, s * (zwall + 0.028)))
 		kit.box_xf("frame_enamel", back, Vector3(xb - xa, y1 - y0, 0.05), 0.0)
 		kit.box_xf("flat:" + line_col.to_html(false), Transform3D(Basis.IDENTITY, Vector3((xa + xb) * 0.5, y1 - 0.02, z_face)), Vector3(xb - xa, 0.04, 0.006), 0.0)
 		var x := xa
@@ -726,7 +726,7 @@ func _platform_furniture(holder: Node3D, pm: PlatformModule, s: float, zwall: fl
 	for ex in [-L * 0.5 + 3.0, L * 0.5 - 3.0]:
 		var hp := PropKit.help_point_disc()
 		holder.add_child(hp)
-		hp.position = Vector3(ex, 1.3, s * (zwall + 0.0))
+		hp.position = Vector3(ex, 1.3, s * (zwall + 0.004))
 		hp.rotation.y = atan2(0.0, -s)
 		stats["placed"] += 1
 	for ex2 in [-L * 0.5 + 1.0, L * 0.5 - 1.0]:
