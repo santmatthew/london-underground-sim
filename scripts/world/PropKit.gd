@@ -46,7 +46,7 @@ static func mat(key: String) -> Material:
 		"timber":
 			m.albedo_texture = _tex("timber.png"); m.roughness = 0.6; m.uv1_scale = Vector3(2, 2, 1)
 		"perforated":
-			m.albedo_texture = _tex("perforated.png"); m.roughness = 0.5; m.metallic = 0.3; m.uv1_scale = Vector3(6, 6, 1)
+			m.albedo_texture = _tex("perforated.png"); m.albedo_color = Color(1.4, 1.4, 1.4); m.roughness = 0.5; m.metallic = 0.1; m.uv1_scale = Vector3(6, 6, 1)
 		"sign_blue":
 			m.albedo_texture = _tex("tickets_sign.png"); m.emission_enabled = true; m.emission_texture = _tex("tickets_sign.png"); m.emission_energy_multiplier = 1.2
 		"mfm":
@@ -138,7 +138,8 @@ static func bench_toro(shell := "perforated") -> Node3D:
 		kit.box_xf(shell, Transform3D(Basis(Vector3.RIGHT, deg_to_rad(-12.0)), Vector3(x, 0.60, 0.28)), Vector3(pitch - 0.03, 0.30, 0.03), 0.0)   # back, leaning back (+z)
 	for i in seats - 1:
 		var xa := -L * 0.5 + 0.05 + (i + 1) * pitch
-		kit.box("black", Vector3(xa, 0.54, 0.05), Vector3(0.022, 0.16, 0.30), 0.0)                      # dividing arms
+		kit.box("black", Vector3(xa, 0.62, 0.05), Vector3(0.025, 0.035, 0.30), 0.0)                     # dividing arms (slim armrest bars)
+		kit.box("black", Vector3(xa, 0.51, 0.20), Vector3(0.025, 0.2, 0.025), 0.0)                      # ... each on a post at the back
 	for sx in [-1.0, 1.0]:
 		kit.box("yellow", Vector3(sx * (L * 0.5 - 0.02), 0.62, 0.0), Vector3(0.05, 0.05, 0.48), 0.0)   # yellow end arm straps
 		kit.box("yellow", Vector3(sx * (L * 0.5 - 0.02), 0.50, -0.23), Vector3(0.05, 0.25, 0.05), 0.0)

@@ -9,6 +9,8 @@ echo "== network data (TfL open API)"
 python3 tools/fetch_tfl.py && python3 tools/build_network.py
 echo "== textures (ambientCG CC0 + procedural)"
 python3 tools/fetch_textures.py && build/venv/bin/python tools/gen_textures.py
+echo "== hall / floor / Oxford Circus tile families and the street view"
+build/venv/bin/python tools/gen_textures.py halls && build/venv/bin/python tools/gen_textures.py floors && build/venv/bin/python tools/gen_textures.py oxford && build/venv/bin/python tools/gen_street.py
 echo "== station character textures (name friezes, tile lettering, Victoria line motifs)"
 build/venv/bin/python tools/gen_char_textures.py && python3 tools/fix_texture_imports.py
 echo "== MakeHuman/MPFB asset packs + Blender extension, people, trains, props: see docs/ASSETS.md (long-running steps)"

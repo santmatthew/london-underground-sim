@@ -70,12 +70,17 @@
       "stripes": [[0.0, 0.30, "black_glaze", 1], [1.10, 1.25, "black_glaze", 1], [1.60, 1.75, "black_glaze", 1]],
       "pilasters": {"ink": "oxblood", "edge": "black_glaze", "w": 0.60, "every": 9.0}
     },
+    "Bank|central": {"floor": "floor_diamond_grey", "wall": "tile_white", "stripes": [[0.0, 0.30, "black_glaze", 1], [1.10, 1.18, "blue_tile", 1]]},
+    "Waterloo|northern": {"floor": "floor_diamond_bw", "wall": "tile_white", "stripes": [[0.0, 1.15, "grey_dado", 1], [1.15, 1.21, "black_glaze", 1]]},
+    "Stockwell|northern": {"floor": "floor_slab", "wall": "tile_white", "stripes": [[0.0, 1.15, "grey_dado", 1], [1.15, 1.21, "black_glaze", 1]]},
+    "Lancaster Gate|central": {"floor": "floor_slab", "wall": "tile_white", "stripes": [[0.0, 0.30, "black_glaze", 1], [1.10, 1.18, "blue_tile", 1]]},
     "Oxford Circus|central": {
       "wall": "tile_oxford",
       "stripes": [[0.0, 0.30, "cream_tile", 1]]
     },
     "Edgware Road (Bakerloo)|bakerloo": {
       "light": [1.0, 0.93, 0.80],
+      "floor": "floor_lozenge",
       "wall": "tile_cream",
       "stripes": [[0.0, 0.25, "oxblood", 1], [0.78, 0.93, "oxblood", 1], [1.52, 1.67, "oxblood", 1]],
       "ribs": {"ink": "navy_tile", "every": 2.4, "w": 0.55}
@@ -92,9 +97,9 @@
     "piccadilly": {"wall": "tile_white", "stripes": [[0.0, 0.28, "grey_dk", 1], [1.10, 1.22, "blue_tile", 1]]},
     "northern": {"wall": "tile_white", "stripes": [[0.0, 1.15, "grey_dado", 1], [1.15, 1.21, "black_glaze", 1]]},
     "central": {"wall": "tile_white", "stripes": [[0.0, 0.30, "black_glaze", 1], [1.10, 1.18, "blue_tile", 1]]},
-    "victoria": {"light": [0.95, 0.98, 1.0], "wall": "tile_sq_grey", "stripes": [[0.0, 0.16, "blue_skirt", 0]]},
+    "victoria": {"light": [0.95, 0.98, 1.0], "floor": "floor_slab", "wall": "tile_sq_grey", "stripes": [[0.0, 0.16, "blue_skirt", 0]]},
     "jubilee": {"wall": "tile_white", "stripes": [[0.0, 0.30, "grey_mid", 1]]},
-    "jubilee_ext": {"light": [0.93, 0.97, 1.0], "wall": "panel_white", "stripes": [[0.0, 0.14, "grey_dk", 0]]},
+    "jubilee_ext": {"light": [0.93, 0.97, 1.0], "floor": "floor_stone", "wall": "panel_white", "stripes": [[0.0, 0.14, "grey_dk", 0]]},
     "waterloo-city": {"wall": "tile_white", "stripes": [[0.0, 0.30, "green_dk", 1], [1.10, 1.18, "green_dk", 1]]}
   },
   "jubilee_ext": ["Westminster", "Waterloo", "Southwark", "London Bridge", "Bermondsey", "Canada Water", "Canary Wharf", "North Greenwich", "Canning Town", "West Ham", "Stratford"],

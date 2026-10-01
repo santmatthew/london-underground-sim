@@ -98,6 +98,9 @@ Northern grey dado, Central black/blue, Victoria 150 mm grey tile, Jubilee Line 
   green dado, cream floor tile; Brent Cross chequer), Leslie Green (cream tile, terracotta quarry), 1970s-90s refit (cream tile, line-neutral band; Green Park blue, Kentish Town maroon),
   large-format stone (King's Cross, North Greenwich, Waterloo, Canary Wharf) and 2020s Idiom (white panels, slate floor, metal ceiling). Unlisted stations keep the default hall.
   Platforms without an authored scheme (sub-surface and surface lines) get the generic one: white tile, dark skirt, one band in the line's colour.
+* Platform floors (`floor` key): Edgware Road lozenge, Bank Central grey diamonds, Waterloo Northern black/cream, 600 mm slabs (Victoria line, Stockwell, Lancaster Gate), pale stone (JLE).
+  Oxford Circus Central has its braided-ribbon wall tile (`tools/gen_textures.py oxford`); era light colours come from the `light` key. The glass doors at each way-out show a street by the
+  time of day (`Station._street_material`, `tools/gen_street.py`).
 * `tools/char_sheet.sh out.png <view> "Station" ...` renders a contact sheet; `station_test --view=pwall --x= --dx= --fov=` looks across the platform at its wall.
 
 ## Tests worth knowing

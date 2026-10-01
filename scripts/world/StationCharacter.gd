@@ -76,6 +76,8 @@ static func platform(station_name: String, line_id: String, kind: String) -> Dic
 	if src.is_empty():
 		return _generic(station_name, line_id, kind)
 	var out := {"wall": String(src.get("wall", "tile_white")), "stripes": _stripes(src.get("stripes", [])), "frieze": true, "station_slug": slug(station_name)}
+	if src.has("floor"):
+		out["floor"] = String(src["floor"])
 	if src.has("light"):
 		var lc: Array = src["light"]
 		out["light_color"] = Color(lc[0], lc[1], lc[2])

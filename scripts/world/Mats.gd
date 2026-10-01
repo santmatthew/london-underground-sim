@@ -80,6 +80,14 @@ static func get_mat(name: String) -> Material:
 			m = _surface("gen/brick_buff", "png", 1.0 / 1.72, Color(1, 1, 1), {"dirt": 0.6, "ceiling_soot": 0.4, "floor_dirt_height": 0.5})
 		"ceiling_metal":
 			m = _surface("gen/ceiling_metal", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.2, "ceiling_soot": 0.2, "normal_scale": 0.6})
+		"floor_lozenge":
+			m = _surface("gen/floor_lozenge", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.5, "floor_dirt_height": 0.0, "rough_add": 0.05})
+		"floor_diamond_grey":
+			m = _surface("gen/floor_diamond_grey", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.5, "floor_dirt_height": 0.0, "rough_add": 0.05})
+		"floor_diamond_bw":
+			m = _surface("gen/floor_diamond_bw", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.5, "floor_dirt_height": 0.0, "rough_add": 0.05})
+		"floor_slab":
+			m = _surface("gen/floor_slab", "png", 1.0 / 1.2, Color(1, 1, 1), {"dirt": 0.5, "floor_dirt_height": 0.0, "rough_add": 0.05})
 		"floor_dark":
 			m = _surface("Tiles140", "jpg", 1.0 / 1.0, Color(0.8, 0.8, 0.8), {"dirt": 0.5, "floor_dirt_height": 0.0})
 		"ceiling":

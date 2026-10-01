@@ -93,7 +93,7 @@ func build(p_spec: Dictionary) -> void:
 		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 
 	var mats := {}
-	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab"]:
+	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab"]:
 		mats[n] = Mats.get_mat(n)
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
@@ -146,7 +146,7 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	# --- platform deck (y = 0) and edge ---
 	var zlo := minf(s * zwall, s * zedge)
 	var zhi := maxf(s * zwall, s * zedge)
-	kit.horiz("floor_platform", x0, x1, zlo, zhi, 0.0, true, 0.0)
+	kit.horiz(String(character.get("floor", "floor_platform")), x0, x1, zlo, zhi, 0.0, true, 0.0)
 	# edge stack, from the track: white coping line, a dark ribbed strip with the yellow line on its inner half (real deep-tube platforms)
 	var tz0 := minf(s * (zedge - 0.50), s * (zedge - 0.06))
 	var tz1 := maxf(s * (zedge - 0.50), s * (zedge - 0.06))

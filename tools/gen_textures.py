@@ -274,6 +274,39 @@ def brick_wall(name, base_rgb, size=2048, brick_w=256, brick_h=89, mortar=8, see
     save(name, color, np.clip(rough, 0, 1), ao, ndi.gaussian_filter(height, 0.8) * 8.0, size_m, normal_strength=1.6)
 
 
+def diamond_tile(name, a_rgb, b_rgb, T=256, grout=4, seed=51, size=2048, size_m=1.2):
+    """ceramic floor laid on the diagonal (lozenges): two alternating colours; T = cell size in (x + y) space, so one diamond is about 0.3 m across"""
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:size, 0:size]
+    u = (xx + yy).astype(np.float32)
+    v = (xx - yy + size).astype(np.float32)
+    i = (u // T).astype(np.int64)
+    j = (v // T).astype(np.int64)
+    odd = ((i + j) % 2).astype(np.float32)
+    du = (u % T)
+    dv = (v % T)
+    dist = np.minimum.reduce([du, T - 1 - du, dv, T - 1 - dv]) / 1.4142
+    inside = smoothstep(grout * 0.5 - 0.5, grout * 0.5 + 1.0, dist)
+    mott = tileable_noise((size, size), 96, rng, 4)
+    a = np.array(a_rgb, np.float32)[None, None, :]
+    b = np.array(b_rgb, np.float32)[None, None, :]
+    glaze = (a * (1 - odd[..., None]) + b * odd[..., None]) * (0.95 + 0.1 * mott[..., None])
+    grout_col = np.array([0.40, 0.39, 0.37], np.float32)[None, None, :]
+    color = glaze * inside[..., None] + grout_col * (1 - inside[..., None])
+    cloud = tileable_noise((size, size), 256, rng, 5)
+    color *= (1.0 - 0.10 * cloud[..., None] ** 2)
+    rough = 0.30 + 0.1 * mott + (1 - inside) * 0.6
+    ao = 0.6 + 0.4 * smoothstep(0, grout * 1.6 + 3, dist)
+    save(name, color, np.clip(rough, 0, 1), ao, ndi.gaussian_filter(inside, 0.8) * 3, size_m, normal_strength=1.0)
+
+
+def _floor_set():
+    diamond_tile("floor_lozenge", (0.86, 0.80, 0.64), (0.56, 0.38, 0.28))
+    diamond_tile("floor_diamond_grey", (0.60, 0.61, 0.62), (0.44, 0.45, 0.47), seed=52)
+    diamond_tile("floor_diamond_bw", (0.10, 0.10, 0.11), (0.86, 0.84, 0.76), seed=53)
+    metro_tile("floor_slab", (0.58, 0.59, 0.60), tile_w=1024, tile_h=1024, grout=4, seed=54, dirt=0.08, bond=False, gloss=0.28)
+
+
 def _hall_set():
     # hall and corridor finishes by era (halls/SPEC.md section 8): cream ceramic 300 mm, terracotta quarry 150 mm, grey stone 600 x 300, dark slate 600 x 300, brick, metal ceiling
     metro_tile("floor_cream", (0.86, 0.82, 0.68), tile_w=512, tile_h=512, grout=5, seed=41, dirt=0.10, bond=False, gloss=0.30)
@@ -294,6 +327,7 @@ def _all():
     tactile_paving("tactile_yellow")
     trackbed_sleepers("trackbed_sleepers")
     _hall_set()
+    _floor_set()
     decals()
     grime_mask("grime")
 
@@ -355,6 +389,8 @@ if __name__ == "__main__":
     only = sys.argv[1:]
     if not only:
         _all()
+    elif "floors" in only:
+        _floor_set()
     elif "oxford" in only:
         oxford_circus_tile()
     elif "halls" in only:
