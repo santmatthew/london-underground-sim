@@ -23,6 +23,7 @@ const SPINE_H := 2.6
 const OPEN_W := 3.0
 const OPEN_H := 2.15
 const TUNNEL_EXT := 170.0    # default running tunnel beyond each platform end (spec `tun_w` / `tun_e` shorten it where rooms lie in its way)
+const RUN_IN := 4.0          # the platform's tiling runs on this far past each platform end before the dark lining of the running tunnel (TunnelDetail) begins
 const TUNNEL_MIN := 30.0     # a shortened tunnel must still hold the player's car at a ride hand-over (22 m from the platform end)
 const BOX_H := 4.7          # ceiling height of "box" halls (sub-surface / surface stations)
 const HEAD := 2.15          # lowest underside allowed for anything hanging over a walkway
@@ -108,7 +109,7 @@ func build(p_spec: Dictionary) -> void:
 		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 
 	var mats := {}
-	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "ped_glass", "stainless", "floor_cream", "brick_stock", "brick_red", "brick_blue", "ballast", "tactile_buff", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab"]:
+	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "ped_glass", "stainless", "floor_cream", "brick_stock", "brick_red", "brick_blue", "ballast", "tactile_buff", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab", "tunnel_lining", "cable_black", "cable_grey", "cable_red", "cable_blue", "cable_orange"]:
 		mats[n] = Mats.get_mat(n)
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
@@ -146,12 +147,18 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	var arch_mat := "tile_white" if wall_mat == "tile_oxford" else wall_mat
 	if not box:
 		kit.sweep_x(arch_mat, prof, x0, x1, 0.0)
-	kit.sweep_x(arch_mat, prof_run, xa, x0, 0.0)
-	kit.sweep_x(arch_mat, prof_run, x1, xb, 0.0)
+	# beyond the platform the bore is bare dark lining with cabling and a lamp here and there, after a few metres of the platform's own tiling
+	kit.sweep_x("tunnel_lining", prof_run, xa, x0 - RUN_IN, 0.0)
+	kit.sweep_x(arch_mat, prof_run, x0 - RUN_IN, x0, 0.0)
+	kit.sweep_x(arch_mat, prof_run, x1, x1 + RUN_IN, 0.0)
+	kit.sweep_x("tunnel_lining", prof_run, x1 + RUN_IN, xb, 0.0)
 	# platform-side wall, tunnel face. Full height under the platform (running tunnel) and above it at the platform.
 	# In the running tunnel (no platform) the wall goes down to the trackbed.
-	_wall_z(wall_mat, s * zwall_run, xa, x0, BED_Y, SPRING_Y, [], s < 0.0, true)
-	_wall_z(wall_mat, s * zwall_run, x1, xb, BED_Y, SPRING_Y, [], s < 0.0, true)
+	_wall_z("tunnel_lining", s * zwall_run, xa, x0 - RUN_IN, BED_Y, SPRING_Y, [], s < 0.0, true)
+	_wall_z(wall_mat, s * zwall_run, x0 - RUN_IN, x0, BED_Y, SPRING_Y, [], s < 0.0, true)
+	_wall_z(wall_mat, s * zwall_run, x1, x1 + RUN_IN, BED_Y, SPRING_Y, [], s < 0.0, true)
+	_wall_z("tunnel_lining", s * zwall_run, x1 + RUN_IN, xb, BED_Y, SPRING_Y, [], s < 0.0, true)
+	_run_detail(s, xa, x0 - RUN_IN, xb, x1 + RUN_IN, zwall_run, zfar)
 	var holes := []
 	for ox in openings:
 		holes.append([ox - OPEN_W * 0.5, ox + OPEN_W * 0.5, OPEN_H])
@@ -223,7 +230,7 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 		var col: Color = st["color"]
 		var key: String = ("dado:" if st.get("dado", false) else "flat:") + col.to_html(false)
 		var y0: float = st["y0"]
-		_band(key, s * zfar, xa + 20.0, xb - 20.0, y0, st["y1"], s < 0.0, true)
+		_band(key, s * zfar, x0 - RUN_IN, x1 + RUN_IN, y0, st["y1"], s < 0.0, true)
 		if not box:
 			_band(key, s * zwall, x0, x1, y0, st["y1"], s < 0.0, false, holes)
 	if not box:
@@ -272,6 +279,35 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	if not box:
 		for ox in openings:
 			_frame(s * zwall, ox, OPEN_W, OPEN_H)
+
+
+## cabling, brackets and a few lamps on the lining of the running tunnel beyond the platform ends: west stretch xa..xw, east stretch xe..xb (TunnelDetail); the lamps nearest the platform
+## also light the bore for real, the rest only glow
+func _run_detail(s: float, xa: float, xw: float, xb: float, xe: float, zwall_run: float, zfar: float) -> void:
+	var seed := hash(String(spec.get("name", "")) + str(s))
+	for west in [true, false]:
+		var lo: float = xa if west else xe
+		var hi: float = xw if west else xb
+		var from_platform: float = hi if west else lo
+		var dirn := -1.0 if west else 1.0
+		var lamps: Array = []
+		var lx := from_platform + dirn * 7.0
+		var k := 0
+		while lx > lo + 0.5 and lx < hi - 0.5:
+			if _frac(seed, k + (0 if west else 500)) > 0.18:
+				lamps.append(lx + dirn * (_frac(seed + 5, k) - 0.5) * 3.0)       # (some are out)
+			lx += dirn * (17.0 + 6.0 * _frac(seed + 9, k))
+			k += 1
+		var lights: Array = []
+		var near := Vector2(hi - 70.0, hi) if west else Vector2(lo, lo + 70.0)
+		TunnelDetail.add(kit, s, lo, hi, zwall_run, zfar, {"seed": seed, "lamps": lamps, "near": near, "lamp_lights": lights})
+		for lp in lights:
+			if absf((lp as Vector3).x - from_platform) < 45.0:
+				_lights.append([lp, 1.3, 9.0])
+
+
+static func _frac(a: int, b: int) -> float:
+	return float(((a * 73856093) ^ (b * 19349663)) & 0xffff) / 65535.0
 
 
 func _box_track_wall(s: float, x0: float, x1: float, zfar: float, wall_mat: String) -> void:
