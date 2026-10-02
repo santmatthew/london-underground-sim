@@ -40,7 +40,7 @@ See `docs/ARCHITECTURE.md` and `docs/ASSETS.md`. Code: `scripts/autoload` (Net, 
 - Surface (outer-zone) stations are glass-roofed halls; rides between them still show a tunnel rather than open-air scenery.
 - 19 major stations have layouts authored from TfL's station diagrams (Oxford Circus, King's Cross, Bank, Waterloo, Victoria, ... see docs/REAL_LAYOUTS.md); the rest are procedural per station (stable between runs) but use the real exit numbers, platform numbers and depths.
 - The autopilot's multi-stop mode is slower than the planner's par (85-90%) and can wander into the wrong platform strip in crowds; it recovers by re-routing.
-- Escalators use a simple shader for treads; stations that have lifts in reality have them beside the escalators (press E at the door: a fade and the wait and ride take their time, no car interior); no fixed stairs yet; a busker loop exists in the audio set but is not placed.
+- Escalators use a simple shader for treads; stations that have lifts in reality have them beside the escalators (press E at the door: a fade and the wait and ride take their time, no car interior); short drops (under about 6 m, 11 m at surface stations) are fixed stairs; a busker loop exists in the audio set but is not placed.
 - Performance was measured on an RTX 3050 Ti laptop under a virtual display only; use F3 and the Graphics setting to tune on your machine.
 - Real-station specifics (tile patterns, exact layouts) are generic; only names, lines, zones, depth class and line colours are per-station.
 
