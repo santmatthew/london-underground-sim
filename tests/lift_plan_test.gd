@@ -27,9 +27,9 @@ func run():
 			failed.append(p.name)
 			continue
 		n_ok += 1
-		# the normal graph never reaches a lift node; the step-free one reaches every face from every street door
+		# the crowd's graph never reaches a lift node (except at the lift-only stations, where the lifts are the way); the step-free one reaches every face from every street door
 		for n in p.nodes:
-			if String(n["name"]).begins_with("lift"):
+			if String(n["name"]).begins_with("lift") and not p.lift_only:
 				for sd in p.street_doors:
 					if p.walk_time(sd["id"], n["name"], false) < 1e8:
 						leaks.append("%s %s" % [p.name, n["name"]])
@@ -60,6 +60,18 @@ func run():
 	if list:
 		print("  without: ", failed)
 	check(n_ok > Net.stations.size() * 0.8, "at least 80 %% of the stations can have lifts (%d)" % n_ok)
-	check(leaks.is_empty(), "no lift node is reachable in the normal graph %s" % str(leaks.slice(0, 3)))
+	check(leaks.is_empty(), "no lift node is reachable in the crowd's graph, lift-only stations apart %s" % str(leaks.slice(0, 3)))
+	var lo := 0
+	for idx in Net.stations.size():
+		var p2 := StationPlan.for_station(idx)
+		if p2.lift_only:
+			lo += 1
+			for e in p2.escs:
+				if e.get("removed", false):
+					for sd in p2.street_doors:
+						for fk in p2.faces:
+							if p2.walk_time(sd["id"], "face:" + fk, false, false) >= 1e8:
+								leaks.append("%s: %s -> %s unreachable on the crowd's graph" % [p2.name, sd["id"], fk])
+	check(lo == 5 and leaks.is_empty(), "the five lift-only stations: every face reachable from every street door on the crowd's graph, through the lifts (%d)" % lo)
 	check(bad_reach.is_empty(), "every face is reachable step-free from every street door %s" % str(bad_reach.slice(0, 3)))
 	print("OK" if ok else "FAILED")
