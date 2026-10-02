@@ -1,6 +1,6 @@
 {
   "naptan": "940GZZLUKNG",
-  "source": "TfL station layout diagram N143-02s; lifts modelled as escalators; branch platforms (data/junctions.json): Charing Cross branch 1/4, Bank branch 3/2",
+  "source": "TfL station layout diagram N143-02s; lifts modelled as escalators; branch platforms (data/junctions.json): southbound 2 and northbound 3 on the island, northbound 1 and southbound 4 on the outer faces",
   "halls": [
     {
       "id": "hall",
@@ -27,8 +27,8 @@
       "id": "plat",
       "depth": 17.9,
       "groups": [
-        "northern.cx",
-        "northern.bank"
+        "northern.island",
+        "northern.side"
       ]
     }
   ],

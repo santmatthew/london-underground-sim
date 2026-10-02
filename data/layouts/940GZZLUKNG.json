@@ -1,5 +1,5 @@
 {
- "note": "Kennington, from TfL station layout diagram N143-02s; lifts modelled as escalators; branch platforms (data/junctions.json): Charing Cross branch 1/4, Bank branch 3/2 (topology; dimensions estimated)",
+ "note": "Kennington, from TfL station layout diagram N143-02s; lifts modelled as escalators; branch platforms (data/junctions.json): southbound 2 and northbound 3 on the island, northbound 1 and southbound 4 on the outer faces (topology; dimensions estimated)",
  "rooms": [
   {
    "id": "hall",
@@ -82,10 +82,10 @@
    "lane_z": -9.0,
    "lane_rel": true,
    "corr_len": 36.0,
-   "group": "northern.cx",
+   "group": "northern.island",
    "faces": [
     [
-     "northern:Northbound~cx",
+     "northern:Northbound~bank",
      0
     ],
     [
@@ -99,10 +99,10 @@
    "lane_z": 9.0,
    "lane_rel": true,
    "corr_len": 36.0,
-   "group": "northern.bank",
+   "group": "northern.side",
    "faces": [
     [
-     "northern:Northbound~bank",
+     "northern:Northbound~cx",
      0
     ],
     [

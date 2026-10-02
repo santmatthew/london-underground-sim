@@ -114,12 +114,18 @@ Northern grey dado, Central black/blue, Victoria 150 mm grey tile, Jubilee Line 
 * `tools/char_sheet.sh out.png <view> "Station" ...` renders a contact sheet; `station_test --view=pwall --x= --dx= --fov=` looks across the platform at its wall.
 
 ## Branch junctions
-Where a line splits, one platform per direction is not enough: at Camden Town (Edgware / High Barnet branches), Euston and Kennington (Charing Cross / Bank branches) each branch has its own
-platforms with their real numbers. `data/junctions.json` lists them; `tools/junctions.py` (called by `build_network.py`, or run alone on `data/network.json`) renames the Northern line platform ids
-at those stations to `northern:Northbound~edgware` etc., sets `branch`, `number` and a per-branch `group` (`northern.edgware`), and moves every service stop of the matching branch (the service that also
-calls at the `via` station) onto its platform. Everything downstream is keyed by platform id, so timetable, planner, indicators and signs follow; `StationPlan.dir_text(pid)` gives "Northbound via Bank" for
-signs; the generator and layout builder make one platform module per branch group (`BASE_DEPTH` and measured depths use the part before the dot). Euston's layout was edited by hand, Kennington's rebuilt
-from its brief. Test: `junction_test`. The pairing of two platforms into an island is the simulator's choice (the published sources give numbers and branches only).
+Where a line splits, one platform per direction is not enough: at Camden Town, Euston and Kennington (Northern line) and Finchley Central the branches have their own platforms with their real
+numbers. `data/junctions.json` lists them (one entry per station, direction and branch: the `via` station that tells a service's branch, the platform `number`, a `module` = island);
+`tools/junctions.py` (called by `build_network.py`, or run alone on `data/network.json`) renames the platform ids at those stations to `northern:Northbound~edgware` etc., sets `branch`, `number`
+and a per-branch `group` (`northern.a`), and moves every service stop of the matching branch onto its platform. Everything downstream is keyed by platform id, so timetable, planner, indicators
+and signs follow; `StationPlan.dir_text(pid)` gives "Northbound via Bank" for signs; the generator and layout builder make one platform module per branch group (`BASE_DEPTH` and measured
+depths use the part before the dot). Euston's layout was edited by hand, Kennington's rebuilt from its brief. Test: `junction_test` (numbers, and every train on a platform belongs to its branch).
+* Camden Town: northbound 1 = Edgware branch, 3 = High Barnet branch; southbound 2 = via Charing Cross, 4 = via Bank (live TfL data; the Wikipedia article's "by origin branch" wording does not match it).
+  Euston: 1/2 = Charing Cross branch, 3/6 = Bank branch. Kennington: northbound 1 = via Charing Cross, 3 = via Bank; southbound 2 = via Charing Cross, 4 = via Bank.
+  Finchley Central: northbound 1 = Mill Hill East branch, 2 = High Barnet branch, southbound 3 shared.
+* The other junctions (Acton Town, Earl's Court, Turnham Green, Leytonstone, Woodford, North Acton, Harrow-on-the-Hill, Moor Park, Chalfont & Latimer, Rayners Lane) are not split: the live
+  platform data (`tools/fetch_platform_dests.py` -> `data/platform_destinations.json`) show shared or mixed platforms there, so a split would invent structure.
+* Which platforms form an island is the simulator's choice; the sources give numbers and branches only.
 
 ## Display
 F11 / Alt+Enter / the menu toggle borderless full screen (`Game.set_fullscreen`, remembered in `user://settings.cfg`; `--fullscreen` / `--windowed` override). `tools/upscale_shots.sh` renders 4K comparisons of native,
