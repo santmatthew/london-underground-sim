@@ -102,7 +102,7 @@ func _ready() -> void:
 	stamina.max_value = 1.0
 	root.add_child(stamina)
 	help_label = Label.new()
-	help_label.text = "WASD move · Shift hurry · M map · H route hint · Tab skip time (when standing still) · Esc menu"
+	refresh_help()
 	help_label.add_theme_font_size_override("font_size", 13)
 	help_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.55))
 	help_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
@@ -133,6 +133,23 @@ func _ready() -> void:
 	dot.position = Vector2(-2, -2)
 	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(dot)
+	apply_text_scale()
+	Settings.changed.connect(func(sec, key):
+		if (sec == "access" and key == "text_scale") or (sec == "audio" and key == "subtitle_size"):
+			apply_text_scale())
+
+
+## HUD text size (Settings access/text_scale) and the subtitle size (audio/subtitle_size): every label keeps its design size in meta and is scaled from it
+func apply_text_scale() -> void:
+	var k := float(Settings.get_v("access", "text_scale"))
+	for l in root.find_children("*", "Label", true, false):
+		var lab := l as Label
+		if not lab.has_meta("base_size"):
+			lab.set_meta("base_size", lab.get_theme_font_size("font_size"))
+		var sz := float(lab.get_meta("base_size")) * k
+		if lab == sub_label:
+			sz *= float(Settings.get_v("audio", "subtitle_size"))
+		lab.add_theme_font_size_override("font_size", int(round(sz)))
 
 
 func _box(c: Color) -> StyleBoxFlat:
@@ -206,3 +223,11 @@ func _process(delta: float) -> void:
 func fade_to(a: float, secs := 0.5) -> void:
 	var tw := create_tween()
 	tw.tween_property(fade, "color:a", a, secs)
+
+
+## the controls line at the bottom: the keys or the buttons, whichever the player is using (and has set)
+func refresh_help() -> void:
+	if InputBindings.last_was_pad:
+		help_label.text = "Left stick move · %s hurry · %s map · %s route hint · Right stick look · %s use · %s menu" % [InputBindings.pad_text("hurry"), InputBindings.pad_text("map"), InputBindings.pad_text("hint"), InputBindings.pad_text("interact"), InputBindings.pad_text("pause")]
+	else:
+		help_label.text = "%s%s%s%s move · %s hurry · %s map · %s route hint · %s skip time (when standing still) · %s menu" % [InputBindings.key_text("move_forward"), InputBindings.key_text("move_left"), InputBindings.key_text("move_back"), InputBindings.key_text("move_right"), InputBindings.key_text("hurry"), InputBindings.key_text("map"), InputBindings.key_text("hint"), InputBindings.key_text("skip_time"), InputBindings.key_text("pause")]

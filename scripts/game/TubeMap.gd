@@ -416,13 +416,21 @@ func _marker(p0: Vector2, col: Color, label: String) -> void:
 	draw_string(font, p + Vector2(16, -26), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
 
 
-func _process(_d: float) -> void:
+func _process(d: float) -> void:
+	if visible and not poster_mode:
+		# gamepad: the right stick pans the map, the triggers zoom it
+		var pan := Input.get_vector("look_left", "look_right", "look_up", "look_down")
+		if pan.length() > 0.01:
+			center += pan * 700.0 * d / zoom
+		var zk := Input.get_action_strength("zoom_in") - Input.get_action_strength("zoom_out")
+		if absf(zk) > 0.05:
+			_zoom_at(size * 0.5, 1.0 + zk * 1.2 * d)
 	if visible and (not poster_mode or Station.debug_on("tubemap_redraw")):
 		queue_redraw()
 
 
 func _gui_input(ev: InputEvent) -> void:
-	if ev is InputEventKey and (ev as InputEventKey).pressed and not (ev as InputEventKey).echo and (ev as InputEventKey).keycode == KEY_G:
+	if ev.is_action_pressed("map_mode", false, true):
 		toggle_mode()
 		accept_event()
 	elif ev is InputEventMouseButton:

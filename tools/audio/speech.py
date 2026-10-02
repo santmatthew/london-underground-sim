@@ -323,6 +323,9 @@ def numbers():
         w = words[i - 1]
         txt = "The next train is due in one minute." if i == 1 else f"The next train is due in {w} minutes."
         jobs.append((f"next_train_due_in_{i:02d}_min", "female_pa", "platform_pa", txt))
+        # the short form that follows "The next train is a <Line> line train to <Dest>."
+        jobs.append((f"due_in_{i:02d}_min", "female_pa", "platform_pa", "Due in one minute." if i == 1 else f"Due in {w} minutes."))
+    jobs.append(("due_now", "female_pa", "platform_pa", "Due now."))
     return jobs
 
 

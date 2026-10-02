@@ -48,6 +48,9 @@ var _body_shape: CollisionShape3D
 
 
 func _ready() -> void:
+	InputBindings.install()
+	mouse_sens = float(Settings.get_v("controls", "sens"))
+	Settings.changed.connect(func(sec, key): if sec == "controls" and key == "sens": mouse_sens = float(Settings.get_v("controls", "sens")))
 	collision_layer = 1 << 3            # layer 4: player body (NPCs avoid)
 	collision_mask = 1 | (1 << 1) | (1 << 2)
 	floor_snap_length = 0.45
@@ -77,14 +80,32 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not enabled:
 		return
+	InputBindings.note_event(event)
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_yaw -= event.relative.x * mouse_sens
-		_pitch = clampf(_pitch - event.relative.y * mouse_sens, deg_to_rad(-85), deg_to_rad(85))
+		_pitch = clampf(_pitch - event.relative.y * mouse_sens * _invert(), deg_to_rad(-85), deg_to_rad(85))
 		rotation.y = _yaw
 		head.rotation.x = _pitch
-	elif event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_E:
-			interact_pressed.emit()
+	elif event.is_action_pressed("interact", false, true):
+		interact_pressed.emit()
+
+
+func _invert() -> float:
+	return -1.0 if bool(Settings.get_v("controls", "invert_y")) else 1.0
+
+
+## right stick: look around (a dead zone and a speed in the settings)
+func _stick_look(delta: float) -> void:
+	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		return
+	var lv := Input.get_vector("look_left", "look_right", "look_up", "look_down")
+	if lv.length() < 0.01:
+		return
+	var sp := float(Settings.get_v("controls", "stick_sens"))
+	_yaw -= lv.x * sp * delta
+	_pitch = clampf(_pitch - lv.y * sp * delta * _invert(), deg_to_rad(-85), deg_to_rad(85))
+	rotation.y = _yaw
+	head.rotation.x = _pitch
 
 
 func face(dir: Vector3) -> void:
@@ -166,11 +187,12 @@ func _physics_process(delta: float) -> void:
 		head.rotation.x = _pitch
 	elif not frozen:
 		input = _read_keys()
+		_stick_look(delta)
 	var dir := (global_transform.basis * Vector3(input.x, 0, input.y)).normalized() if input.length() > 0.01 else Vector3.ZERO
 	var speed := WALK_SPEED
 	hurrying = false
-	if (Input.is_key_pressed(KEY_SHIFT) or bot_hurry) and stamina > 0.05 and input.length() > 0.1:
-		speed = RUN_SPEED if Input.is_key_pressed(KEY_CTRL) else HURRY_SPEED
+	if (Input.is_action_pressed("hurry") or bot_hurry) and stamina > 0.05 and input.length() > 0.1:
+		speed = RUN_SPEED if Input.is_action_pressed("sprint") else HURRY_SPEED
 		stamina = maxf(0.0, stamina - delta * (0.11 if speed == HURRY_SPEED else 0.22))
 		hurrying = true
 	else:
@@ -222,16 +244,8 @@ func _physics_process(delta: float) -> void:
 
 
 func _read_keys() -> Vector2:
-	var v := Vector2.ZERO
-	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
-		v.y -= 1.0
-	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
-		v.y += 1.0
-	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
-		v.x -= 1.0
-	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
-		v.x += 1.0
-	return v.limit_length(1.0)
+	# keyboard (WASD / arrows, rebindable) and the left stick, as one analogue vector
+	return Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 
 
 func eye_pos() -> Vector3:

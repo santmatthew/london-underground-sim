@@ -434,6 +434,81 @@ def train_idle_platform_loop(seconds=30.0):
     return _finish(y, -28.0), dict(loop=True)
 
 
+# --------------------------------------------------------------------------------------
+# open air (surface platforms): wind in trees, distant road, birdsong by day
+# --------------------------------------------------------------------------------------
+def _bird_phrase(rng):
+    """A short bird phrase: 2-6 tweets, each a fast frequency sweep with a sharp envelope (mono, ~0.4-1.4 s)."""
+    kind = rng.choice(["trill", "tweet", "chirp"])
+    notes = []
+    base = rng.uniform(2400, 5200)
+    count = {"trill": rng.integers(5, 10), "tweet": rng.integers(2, 4), "chirp": rng.integers(3, 6)}[kind]
+    gap = {"trill": 0.055, "tweet": 0.16, "chirp": 0.09}[kind]
+    out = np.zeros(int((count * (gap + 0.12) + 0.2) * SR))
+    t0 = 0.0
+    for k in range(count):
+        dur = {"trill": 0.045, "tweet": 0.13, "chirp": 0.07}[kind] * rng.uniform(0.85, 1.2)
+        m = int(dur * SR)
+        u = np.linspace(0, 1, m)
+        sweep = rng.uniform(-0.35, 0.45) if kind != "trill" else rng.uniform(0.1, 0.3)
+        f = base * (1 + 0.04 * k * (1 if kind == "chirp" else 0)) * (1 + sweep * u) * (1 + 0.04 * np.sin(2 * np.pi * rng.uniform(18, 40) * u))
+        ph = 2 * np.pi * np.cumsum(f) / SR
+        y = np.sin(ph) + 0.18 * np.sin(2 * ph)
+        env = np.sin(np.pi * np.clip(u, 0, 1)) ** 1.5
+        add_at(out, y * env, int(t0 * SR), 1.0)
+        t0 += dur + gap * rng.uniform(0.8, 1.3)
+    return out
+
+
+def _car_pass(rng, dur=6.0):
+    """A car on a road some way off: swelling road noise, a low engine note, a pan sweep; stereo."""
+    n = nsamp(dur)
+    u = np.linspace(0, 1, n)
+    env = np.sin(np.pi * u) ** 2.0
+    road = band_noise(n, rng, 250, 2200, 2, slope=-0.6) * env
+    low = band_noise(n, rng, 60, 320, 2, slope=-0.5) * env ** 1.3
+    y = road * 0.5 + low * 0.9
+    direction = rng.choice([-1, 1])
+    theta = (0.5 + direction * (u - 0.5) * rng.uniform(0.9, 1.5)) * np.pi * 0.5
+    theta = np.clip(theta, 0, np.pi * 0.5)
+    return np.stack([y * np.cos(theta), y * np.sin(theta)], -1)
+
+
+def _outdoor(name, seconds, birds, cars, wind_db, seed_extra=""):
+    n = _even(nsamp(seconds))
+    rng = rng_for(name + seed_extra)
+    # wind: broad low whoosh with gusts, leaf rustle above it
+    wind = np.stack([spec_noise(n, rng, lambda f: f ** -0.7 * bp_mag(f, 90, 1100, 2)) * mod_gain(n, rng, 0.07, 6.0) for _ in range(2)], -1)
+    leaves = np.stack([spec_noise(n, rng, lambda f: bp_mag(f, 2200, 7500, 2)) * mod_gain(n, rng, 0.17, 5.0) for _ in range(2)], -1)
+    # the city beyond: a steady road wash and a low urban hum
+    road = np.stack([spec_noise(n, rng, lambda f: f ** -1.0 * bp_mag(f, 45, 480, 3)) * mod_gain(n, rng, 0.05, 3.0) for _ in range(2)], -1)
+    hum = _hum(n, rng, seconds, 60.0, (0.03, 0.02), drift=0.4)
+    y = wind * db2lin(wind_db) + 0.10 * leaves * db2lin(wind_db) + 0.55 * road + hum[:, None] * 0.4
+    bus = np.zeros((n, 2))
+    for _ in range(cars):
+        ev = lvl(_car_pass(rng, rng.uniform(4.5, 8.0)), rng.uniform(-6, 0))
+        pos = int(rng.uniform(0, n))
+        for c in range(2):
+            add_at(bus[:, c], ev[:, c], pos, 1.0, wrap=True)
+    for _ in range(birds):
+        ev = _bird_phrase(rng)
+        g = db2lin(rng.uniform(-24, -12))
+        l, r = pan_gains(rng.uniform(-0.9, 0.9))
+        pos = int(rng.uniform(0, n))
+        add_at(bus[:, 0], ev, pos, g * l, wrap=True)
+        add_at(bus[:, 1], ev, pos, g * r, wrap=True)
+    y += bus * 0.35
+    return _finish(y, -29.0), dict(loop=True)
+
+
+def outdoor_day_loop(seconds=60.0):
+    return _outdoor("outdoor_day_loop", seconds, birds=34, cars=5, wind_db=0.0)
+
+
+def outdoor_night_loop(seconds=60.0):
+    return _outdoor("outdoor_night_loop", seconds, birds=0, cars=2, wind_db=-3.0)
+
+
 LOOPS = {
     "tunnel_rumble_loop": (tunnel_rumble_loop, dict(category="ambience", volume_db=-3.0, desc="Deep tunnel bass rumble, air and far drips")),
     "platform_ambience_loop": (platform_ambience_loop, dict(category="ambience", volume_db=-3.0, desc="Tiled platform: air, fans, PA hum, faint crowd, far trains and footsteps")),
@@ -445,5 +520,7 @@ LOOPS = {
     "train_interior_run_slow_loop": (lambda: train_interior_run("slow"), dict(category="train_interior", volume_db=-3.0, desc="Inside a car, moderate speed: rumble, ~0.95 s clickety-clack, AC hiss")),
     "train_interior_run_fast_loop": (lambda: train_interior_run("fast"), dict(category="train_interior", volume_db=-3.0, desc="Inside a car, high speed: louder roar, ~0.6 s clack, motor tone")),
     "train_interior_idle_loop": (train_interior_idle_loop, dict(category="train_interior", volume_db=-3.0, desc="Inside a standing train: AC, compressor cycling, hum")),
+    "outdoor_day_loop": (outdoor_day_loop, dict(category="ambience", volume_db=-3.0, desc="Open-air platform by day: wind in trees, distant road, birdsong")),
+    "outdoor_night_loop": (outdoor_night_loop, dict(category="ambience", volume_db=-3.0, desc="Open-air platform at night: wind, distant road, urban hum")),
     "train_idle_platform_loop": (train_idle_platform_loop, dict(category="train_exterior", volume_db=-3.0, desc="Standing train heard from the platform")),
 }

@@ -22,6 +22,17 @@ static func _load() -> void:
 			_data = d
 
 
+## width and height of a PNG file from its header, (0, 0) when the source file is not there or is not a PNG
+static func _png_size(path: String) -> Vector2i:
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null or f.get_length() < 24:
+		return Vector2i.ZERO
+	var b := f.get_buffer(24)
+	if b[1] != 0x50 or b[2] != 0x4E or b[3] != 0x47:
+		return Vector2i.ZERO
+	return Vector2i((b[16] << 24) | (b[17] << 16) | (b[18] << 8) | b[19], (b[20] << 24) | (b[21] << 16) | (b[22] << 8) | b[23])
+
+
 static func short_name(n: String) -> String:
 	var i := n.find(" (")
 	return n.substr(0, i) if i >= 0 else n
@@ -99,8 +110,12 @@ static func platform(station_name: String, line_id: String, kind: String) -> Dic
 		var g: Dictionary = src["giant"]
 		var p := DIR + "giant/%s.png" % slug(station_name)
 		if ResourceLoader.exists(p):
-			var t: Texture2D = load(p)
-			out["giant"] = {"path": p, "w": t.get_width() / GIANT_PPM, "h": t.get_height() / GIANT_PPM}
+			# (the size from the PNG header: plans are built on worker threads, and loading a texture there raced the main thread's texture loads now and then)
+			var sz := _png_size(p)
+			if sz == Vector2i.ZERO:
+				var t: Texture2D = load(p)
+				sz = Vector2i(t.get_width(), t.get_height())
+			out["giant"] = {"path": p, "w": sz.x / GIANT_PPM, "h": sz.y / GIANT_PPM}
 	if line_id == "victoria":
 		var mot: Dictionary = _data.get("victoria_motifs", {})
 		if mot.has(station_name):

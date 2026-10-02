@@ -12,13 +12,12 @@ var env: WorldEnvironment
 var station: Station
 var ride: Ride
 var journey: Dictionary = {}
-const SETTINGS_PATH := "user://settings.cfg"
 var _cb_fullscreen: CheckButton
 var _ob_upscaler: OptionButton
 var _ob_aa: OptionButton
 var _adaptive: AdaptiveScale
 
-var opts := {"mode": "single", "stops": 3, "time": "random", "length": "medium", "hints": true, "day": "random", "quality": 1, "scale": 0.0, "upscaler": "fsr1", "aa": "taa", "crowd": 1.0, "volume": 0.8, "sens": 0.0022}
+var opts := {"mode": "single", "stops": 3, "time": "random", "length": "medium", "hints": true, "day": "random", "quality": 1, "scale": 0.0, "upscaler": "fsr1", "aa": "taa", "crowd": 1.0}
 var t_play0 := 0.0
 var riding := false
 var paused := false
@@ -43,7 +42,9 @@ var _audio_t := 0.0
 var _scores_label: Label
 var _par_task := -1
 var par_result: Dictionary = {}
+var _settings: SettingsPanel
 var autopilot: Autopilot
+var announcer := PlatformAnnouncer.new()          # what the station says and does around the player (platform PA, tunnel wind ...)
 var cli := {}
 
 
@@ -70,7 +71,8 @@ func _ready() -> void:
 	map.visible = false
 	_ui.add_child(map)
 	map.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	Sfx.subtitle.connect(func(t, secs): if hud: hud.say(t, secs))
+	add_child(announcer)
+	Sfx.subtitle.connect(func(t, secs): if hud and bool(Settings.get_v("audio", "subtitles")): hud.say(t, secs))
 	_stage("HUD, map, UI nodes")
 	_build_menu()
 	_stage("_build_menu")
@@ -122,9 +124,9 @@ func set_fullscreen(on: bool, save := true) -> void:
 		_cb_fullscreen.set_pressed_no_signal(on)
 	if save:
 		var cf := ConfigFile.new()
-		cf.load(SETTINGS_PATH)
+		cf.load(Settings.path)
 		cf.set_value("display", "fullscreen", on)
-		cf.save(SETTINGS_PATH)
+		cf.save(Settings.path)
 	_apply_settings()
 
 
@@ -135,9 +137,9 @@ func set_upscaler(kind: String, save := true) -> void:
 		_ob_upscaler.select(1 if kind == "fsr2" else 0)
 	if save:
 		var cf := ConfigFile.new()
-		cf.load(SETTINGS_PATH)
+		cf.load(Settings.path)
 		cf.set_value("display", "upscaler", kind)
-		cf.save(SETTINGS_PATH)
+		cf.save(Settings.path)
 	_apply_settings()
 
 
@@ -167,16 +169,16 @@ func set_aa(kind: String, save := true) -> void:
 			_ob_aa.select(i)
 	if save:
 		var cf := ConfigFile.new()
-		cf.load(SETTINGS_PATH)
+		cf.load(Settings.path)
 		cf.set_value("display", "aa", kind)
-		cf.save(SETTINGS_PATH)
+		cf.save(Settings.path)
 	_apply_settings()
 
 
 func _load_display_settings() -> void:
 	var on := false
 	var cf := ConfigFile.new()
-	if cf.load(SETTINGS_PATH) == OK:
+	if cf.load(Settings.path) == OK:
 		on = bool(cf.get_value("display", "fullscreen", false))
 	if cli.has("fullscreen"):
 		on = true
@@ -242,9 +244,6 @@ static func auto_scale(size: Vector2i) -> float:
 func _apply_settings() -> void:
 	RenderSettings.apply(env.environment, get_viewport(), opts, DisplayServer.window_get_size())
 	_update_adaptive()
-	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(opts["volume"]), 0.0001)))
-	if player:
-		player.mouse_sens = opts["sens"]
 	if station and station.crowd:
 		station.crowd.density = opts["crowd"]
 		station.crowd.enabled = opts["crowd"] > 0.0
@@ -366,7 +365,7 @@ func _build_menu() -> void:
 	ob_len.select(1)
 	ob_len.item_selected.connect(func(i): opts["length"] = ob_len.get_item_metadata(i))
 	grid.add_child(ob_len)
-	grid.add_child(_mk_label("Route hints (H)", 18, Color.WHITE, false, false))
+	grid.add_child(_mk_label("Route hints", 18, Color.WHITE, false, false))
 	var cb := CheckButton.new()
 	cb.button_pressed = true
 	cb.toggled.connect(func(v): opts["hints"] = v)
@@ -416,29 +415,24 @@ func _build_menu() -> void:
 	ob_c.select(2)
 	ob_c.item_selected.connect(func(i): opts["crowd"] = ob_c.get_item_metadata(i))
 	grid.add_child(ob_c)
-	grid.add_child(_mk_label("Volume", 18, Color.WHITE, false, false))
-	var sl := HSlider.new()
-	sl.min_value = 0.0
-	sl.max_value = 1.0
-	sl.step = 0.05
-	sl.value = 0.8
-	sl.custom_minimum_size = Vector2(200, 24)
-	sl.value_changed.connect(func(v): opts["volume"] = v; _apply_settings())
-	grid.add_child(sl)
-	grid.add_child(_mk_label("Mouse sensitivity", 18, Color.WHITE, false, false))
-	var sl2 := HSlider.new()
-	sl2.min_value = 0.0008
-	sl2.max_value = 0.006
-	sl2.step = 0.0001
-	sl2.value = 0.0022
-	sl2.custom_minimum_size = Vector2(200, 24)
-	sl2.value_changed.connect(func(v): opts["sens"] = v; _apply_settings())
-	grid.add_child(sl2)
 	vb.add_child(_mk_button("Start journey", func(): start_journey()))
+	vb.add_child(_mk_button("Settings (sound, accessibility, controls)", func(): _open_settings(_menu)))
 	vb.add_child(_mk_button("Quit", func(): get_tree().quit()))
 	_scores_label = _mk_label("", 15, Color(0.75, 0.8, 0.95))
 	vb.add_child(_scores_label)
 	_menu.visible = false
+
+
+## the settings screen (sound, accessibility, controls) over whatever panel opened it, which comes back when the player leaves it
+func _open_settings(back_to: Control) -> void:
+	if _settings == null:
+		_settings = SettingsPanel.new(font_b, font_r)
+		_ui.add_child(_settings)
+	back_to.visible = false
+	_settings.open()
+	await _settings.closed
+	if is_instance_valid(back_to):
+		back_to.visible = true
 
 
 func _refresh_scores() -> void:
@@ -516,6 +510,7 @@ func _stage(label: String) -> void:
 func start_journey() -> void:
 	_stage("(before start_journey)")
 	_hide_all_panels()
+	announcer.greeted = false
 	state = State.LOADING
 	_loading = _mk_label("Building the timetable...", 30, Color.WHITE, true)
 	_loading.set_anchors_preset(Control.PRESET_CENTER)
@@ -626,6 +621,7 @@ func _hook_station(st: Station) -> void:
 	st.trains.doors_opened.connect(_on_doors_opened)
 	_stage("  trains.setup")
 	st.attach_crowd(player)
+	announcer.setup(st, player)
 	_stage("  attach_crowd")
 	if st.crowd:
 		st.crowd.density = opts["crowd"]
@@ -635,6 +631,7 @@ func _hook_station(st: Station) -> void:
 
 func _show_briefing() -> void:
 	state = State.BRIEFING
+	var go_key := "Enter" if not InputBindings.last_was_pad else InputBindings.pad_text("interact")
 	_brief = _center_panel(720)
 	var vb: VBoxContainer = _brief.get_meta("vb")
 	var spot: Dictionary = journey["spot"]
@@ -647,11 +644,13 @@ func _show_briefing() -> void:
 		for t in journey["targets"]:
 			names.append(Net.station_name(t))
 		vb.add_child(_mk_label("  ·  ".join(names), 28, Color(1, 0.9, 0.4), true))
-		vb.add_child(_mk_label("Reach the street exit ('Way out') at each station. After each one you re-enter (25 s). The clock starts when you press Enter. Press M for the Tube map.", 18, Color(0.8, 0.85, 0.95)))
+		vb.add_child(_mk_label("Reach the street exit ('Way out') at each station. After each one you re-enter (25 s). The clock starts when you press %s. Press %s for the Tube map." % [go_key, InputBindings.prompt("map")], 18, Color(0.8, 0.85, 0.95)))
 	else:
 		vb.add_child(_mk_label("Destination: %s" % Net.station_name(journey["dest"]), 34, Color(0.5, 0.9, 1.0), true))
-		vb.add_child(_mk_label("Reach the street exit ('Way out') at your destination as quickly as you can. The clock starts when you press Enter. Press M for the Tube map.", 18, Color(0.8, 0.85, 0.95)))
-	vb.add_child(_mk_button("Start  (Enter)", func(): _begin_play()))
+		vb.add_child(_mk_label("Reach the street exit ('Way out') at your destination as quickly as you can. The clock starts when you press %s. Press %s for the Tube map." % [go_key, InputBindings.prompt("map")], 18, Color(0.8, 0.85, 0.95)))
+	var start_btn := _mk_button("Start  (%s)" % go_key, func(): _begin_play())
+	vb.add_child(start_btn)
+	start_btn.grab_focus.call_deferred()
 	map.here = journey["start"]
 	map.dest = journey["dest"] if journey["mode"] == "single" else -1
 	map.stops = journey.get("targets", [])
@@ -697,10 +696,10 @@ func _update_seat_prompt() -> void:
 		_seat_candidate = null
 		return
 	if player.seated:
-		hud.set_prompt("E  Stand up   (or just move)")
+		hud.set_prompt("%s  Stand up   (or just move)" % InputBindings.prompt("interact"))
 		return
 	_seat_candidate = Seats.nearest_free(get_tree(), player.global_position)
-	hud.set_prompt("E  Sit down" if _seat_candidate != null else "")
+	hud.set_prompt("%s  Sit down" % InputBindings.prompt("interact") if _seat_candidate != null else "")
 
 
 func _on_interact() -> void:
@@ -752,7 +751,7 @@ func _process(delta: float) -> void:
 	if Clock.now > Timetable.SERVICE_END + 1200.0 and state == State.PLAYING:
 		_fail_journey("The last trains have gone. You didn't make it before the network closed for the night.")
 		return
-	var skip := Input.is_key_pressed(KEY_TAB) and (riding or player.last_speed < 0.3)
+	var skip := Input.is_action_pressed("skip_time") and (riding or player.last_speed < 0.3)
 	Clock.time_scale = 8.0 if (skip or bot_skip) else 1.0
 
 
@@ -770,7 +769,7 @@ func _update_audio_zone() -> void:
 	var dens := Clock.crowd_factor(Clock.now)
 	if riding:
 		var sp: float = ride.speed_now if ride else 0.0
-		player.sway = clampf(sp / 12.0, 0.0, 1.6)
+		player.sway = clampf(sp / 12.0, 0.0, 1.6) * (0.0 if bool(Settings.get_v("access", "reduce_sway")) else 1.0)
 		Sfx.set_zone("train_run" if sp > 1.0 else "train_idle", dens, sp)
 		player.surface = "rubber"
 		return
@@ -781,13 +780,21 @@ func _update_audio_zone() -> void:
 	for v in station.trains.visits.values():
 		if (v["train"] as Train).contains_world_point(player.global_position):
 			Sfx.set_zone("train_idle", dens)
+			announcer.tick("train_idle", dens, 0.5)
 			player.surface = "rubber"
 			return
 	var loc := _describe_location()
 	player.surface = "concrete"
+	var zone := "corridor"
 	if loc.begins_with("platform"):
-		Sfx.set_zone("platform", dens)
+		var open_air := false
+		for m in station.modules:
+			if (m as PlatformModule).open:
+				open_air = true
+		zone = "platform"
+		Sfx.set_zone("platform_open" if open_air else "platform", dens)
 	elif loc.begins_with("ticket hall"):
+		zone = "hall"
 		Sfx.set_zone("hall", dens)
 	else:
 		# on or near an escalator?
@@ -796,7 +803,9 @@ func _update_audio_zone() -> void:
 			var lp: Vector3 = (e as Node3D).to_local(player.global_position)
 			if lp.x > -1.0 and lp.x < e.length + 1.0 and absf(lp.z) < e.width * 0.5 + 0.5 and lp.y > -e.rise - 2.5 and lp.y < 4.0:
 				on_esc = true
-		Sfx.set_zone("escalator" if on_esc else "corridor", dens)
+		zone = "escalator" if on_esc else "corridor"
+		Sfx.set_zone(zone, dens)
+	announcer.tick(zone, dens, 0.5)
 
 
 func _describe_location() -> String:
@@ -827,6 +836,8 @@ func _describe_location() -> String:
 
 
 func _unhandled_input(ev: InputEvent) -> void:
+	InputBindings.note_event(ev)
+	# fixed keys: full screen, the performance overlay and log
 	if ev is InputEventKey and ev.pressed and not ev.echo:
 		match ev.keycode:
 			KEY_F11:
@@ -834,26 +845,27 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_ENTER, KEY_KP_ENTER:
 				if ev.alt_pressed:
 					set_fullscreen(not is_fullscreen())
-				elif state == State.BRIEFING:
-					_begin_play()
-			KEY_M:
-				if state == State.PLAYING or state == State.BRIEFING:
-					_toggle_map()
-			KEY_H:
-				if state == State.PLAYING:
-					_toggle_hint()
-			KEY_G:
-				if map_open:
-					map.toggle_mode()          # tube map: diagram <-> geographic
 			KEY_F3:
 				hud.toggle_perf()
 			KEY_F4:
 				_toggle_fps_log()
-			KEY_ESCAPE:
-				if map_open:
-					_toggle_map()
-				elif state == State.PLAYING:
-					_toggle_pause()
+	# everything else is an action (rebindable, keyboard or gamepad; see InputBindings)
+	if ev.is_action_pressed("ui_accept", false, true) and state == State.BRIEFING and not (_settings != null and _settings.visible):
+		_begin_play()
+	elif ev.is_action_pressed("map", false, true):
+		if state == State.PLAYING or state == State.BRIEFING:
+			_toggle_map()
+	elif ev.is_action_pressed("hint", false, true):
+		if state == State.PLAYING:
+			_toggle_hint()
+	elif ev.is_action_pressed("map_mode", false, true):
+		if map_open:
+			map.toggle_mode()          # tube map: diagram <-> geographic
+	elif ev.is_action_pressed("pause", false, true):
+		if map_open:
+			_toggle_map()
+		elif state == State.PLAYING:
+			_toggle_pause()
 
 
 func _toggle_map() -> void:
@@ -882,6 +894,7 @@ func _toggle_pause() -> void:
 		var vb: VBoxContainer = _pause.get_meta("vb")
 		vb.add_child(_mk_label("PAUSED", 40, Color(1, 0.85, 0.2), true))
 		vb.add_child(_mk_button("Resume", func(): _toggle_pause()))
+		vb.add_child(_mk_button("Settings", func(): _open_settings(_pause)))
 		vb.add_child(_mk_button("Give up (main menu)", func(): paused = false; _end_to_menu()))
 	else:
 		if _pause:
@@ -988,6 +1001,7 @@ func _on_doors_opened(v: Dictionary) -> void:
 	if station and train.contains_world_point(player.global_position):
 		var info: Dictionary = v["info"]
 		Sfx.say_station_this(station.plan.idx, info["line"])
+		Sfx.say(["mind_the_gap"], false, true)
 		Sfx.play_at("door_chime_open", train, Vector3(0, 1.8, 0), 0.0, 30.0)
 		if info["final"]:
 			Sfx.say(["this_train_terminates_here_all_change"])

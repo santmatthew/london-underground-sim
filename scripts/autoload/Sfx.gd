@@ -35,6 +35,8 @@ func _ready() -> void:
 	clips = manifest["clips"]
 	index = manifest.get("index", {})
 	_make_buses()
+	_apply_buses()
+	Settings.changed.connect(func(sec, _k): if sec == "audio": _apply_buses())
 	for name in ["base", "crowd", "tunnel", "train"]:
 		var p := AudioStreamPlayer.new()
 		p.bus = bus_amb
@@ -54,6 +56,15 @@ func _make_buses() -> void:
 			var i := AudioServer.get_bus_count() - 1
 			AudioServer.set_bus_name(i, n)
 			AudioServer.set_bus_send(i, "Master")
+
+
+## the volume sliders of the settings (master, effects, ambience, announcements) onto the buses
+func _apply_buses() -> void:
+	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(Settings.get_v("audio", "master")), 0.0001)))
+	for pair in [[bus_sfx, "effects"], [bus_speech, "announcements"]]:
+		var i := AudioServer.get_bus_index(pair[0])
+		if i >= 0:
+			AudioServer.set_bus_volume_db(i, linear_to_db(maxf(float(Settings.get_v("audio", pair[1])), 0.0001)))
 
 
 func has(key: String) -> bool:
@@ -151,8 +162,17 @@ func footstep(kind: String, vol := 0.0) -> void:
 # ---------------------------------------------------------------------------------------------------
 # Announcements (queued, spoken one after another, with subtitles and ducking of ambience)
 # ---------------------------------------------------------------------------------------------------
-func say(keys: Array, priority := false) -> void:
-	if not enabled:
+## `say(keys)`: the clips are spoken one after another. `chatter` marks the periodic extras (mind the gap ...) that the "PA chatter" setting can switch off;
+## the same message is not repeated within `REPEAT_S` seconds.
+const REPEAT_S := 8.0
+var _said: Dictionary = {}
+var spoken: Array = []           # (the last few groups spoken or queued, for tests and the debug overlay)
+
+
+func say(keys: Array, priority := false, chatter := false) -> void:
+	if not enabled or not bool(Settings.get_v("audio", "announce_on")):
+		return
+	if chatter and not bool(Settings.get_v("audio", "pa_chatter")):
 		return
 	var valid: Array = []
 	for k in keys:
@@ -160,6 +180,13 @@ func say(keys: Array, priority := false) -> void:
 			valid.append(k)
 	if valid.is_empty():
 		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if _said.has(valid[0]) and now - float(_said[valid[0]]) < REPEAT_S:
+		return
+	_said[valid[0]] = now
+	spoken.append(valid.duplicate())
+	if spoken.size() > 12:
+		spoken.pop_front()
 	if priority:
 		_speech_q.clear()
 		_speech_player.stop()
@@ -230,7 +257,7 @@ func _process(delta: float) -> void:
 	_duck = lerpf(_duck, ducking, clampf(delta * 4.0, 0.0, 1.0))
 	var bi := AudioServer.get_bus_index(bus_amb)
 	if bi >= 0:
-		AudioServer.set_bus_volume_db(bi, -5.0 * _duck)
+		AudioServer.set_bus_volume_db(bi, linear_to_db(maxf(float(Settings.get_v("audio", "ambience")), 0.0001)) - 5.0 * _duck)
 
 
 func _play_group(group: Array) -> void:
@@ -299,6 +326,13 @@ func set_zone(zone: String, density: float, speed := 0.0) -> void:
 			_set_layer("base", "platform_ambience_loop", -3.0)
 			_set_layer("crowd", crowd_key, -6.0 - (1.0 - density) * 14.0)
 			_set_layer("tunnel", "tunnel_rumble_loop", -20.0)
+			_set_layer("train", "", -60.0)
+		"platform_open":
+			# an open-air platform: the outdoors (day or night), no tunnel; a little of the crowd
+			var day_bed := "outdoor_day_loop" if PlatformOpen.daylight() > 0.25 else "outdoor_night_loop"
+			_set_layer("base", day_bed, -2.0)
+			_set_layer("crowd", crowd_key, -8.0 - (1.0 - density) * 14.0)
+			_set_layer("tunnel", "", -60.0)
 			_set_layer("train", "", -60.0)
 		"train_idle":
 			_set_layer("base", "", -60.0)

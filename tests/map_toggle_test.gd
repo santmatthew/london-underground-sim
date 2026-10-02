@@ -15,7 +15,7 @@ func run():
 	g._toggle_map()
 	print("open: visible=", g.map.visible, " mode=", g.map.mode)
 	var ev := InputEventKey.new()
-	ev.keycode = KEY_G
+	ev.physical_keycode = KEY_G
 	ev.pressed = true
 	g._unhandled_input(ev)
 	print("after G: mode=", g.map.mode, " (1 = geographic)")

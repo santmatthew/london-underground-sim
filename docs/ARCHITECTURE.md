@@ -169,6 +169,16 @@ colour adjustment and fog about 0, FXAA about 0. Balanced + TAA 13.3 ms, + FXAA 
 floor 0.40, steps of 12 %) from one-second medians of the GPU time: two slow seconds step down, four fast seconds step up if the next step is predicted to fit; a crowd run at the 4K target went from
 13.5 ms / 45 fps fixed to 11.8 ms / 50 fps adaptive. `--no-adaptive` switches it off; a fixed scale in the menu does too.
 
+## Settings, controls, audio and accessibility (2026-10-02)
+* `Settings` (autoload): audio / access / controls sections with defaults, saved in `user://settings.cfg` next to the display ones; `get_v` / `set_v` / `changed`; `UG_SETTINGS=<path>` redirects the file (tools/gtest.sh and shot.sh do, so tests never change the player's settings); `--colour-vision=` overrides one run.
+  `SettingsPanel` (Sound, Accessibility, Controls tabs) opens from the main menu and the pause panel. Volumes drive the buses (`Sfx._apply_buses`); the HUD scales its text (`Hud.apply_text_scale`: HUD text size and subtitle size).
+* Input: every control is an InputMap action defined in `InputBindings` (keyboard + gamepad; movement is analogue, so the left stick and WASD are one `Input.get_vector`; the right stick looks; triggers zoom the map). The player can rebind keys and pad
+  buttons (a key already in use is swapped, saved in `controls/bindings`); prompts and the help line show the key or the button depending on the last device used. Never use `Input.is_key_pressed` in game code; use actions (F-keys and Alt+Enter are fixed).
+* Audio: the clips already existed (generated, `tools/audio`); `PlatformAnnouncer` (ticked from `Game._update_audio_zone`) uses them: on a platform "The next train is a ... line train to ... Due in N minutes" for the first train that has not arrived yet, safety messages now and then (their own
+  setting "Extra PA messages"), the push of air out of the tunnel mouth 9-15 s before a train (tunnel stations only), distant train rumbles; the escalator "stand on the right", a greeting once per journey, "mind the gap" when the player's train opens its doors, at a terminus "ready to depart", in a crowd "move right down", the driver
+  holding a train that waits long. Open-air platforms have their own beds (`outdoor_day_loop` / `outdoor_night_loop`, zone "platform_open", chosen by the simulated daylight). `Sfx.say(keys, priority, chatter)` queues, subtitles, ignores repeats within 8 s and honours the settings. Test: `announcer_test`.
+* Colour vision: `Net.line_color` goes through `Palette` (data/line_palettes.json from `tools/gen_cvd_palettes.py`: dichromacy simulation, every pair of lines at least ~26 CIELAB units apart as that player sees them, brand colours moved as little as that allows). The live map changes at once, signs / trains / wall maps from the next station build. Test: `palette_test`.
+
 ## Display
 F11 / Alt+Enter / the menu toggle borderless full screen (`Game.set_fullscreen`, remembered in `user://settings.cfg`; `--fullscreen` / `--windowed` override). `tools/upscale_shots.sh` renders 4K comparisons of native,
 FSR 1 and FSR 2 for `tools/upscale_sheet.py`; Godot has no DLSS (it needs NVIDIA's proprietary SDK linked into the renderer), so FSR 2 at the DLSS-equivalent scales is only a stand-in.

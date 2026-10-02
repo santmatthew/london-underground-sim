@@ -55,7 +55,7 @@ func station_name(idx: int) -> String:
 
 
 func line_color(lid: String) -> Color:
-	return lines[lid]["color"]
+	return Palette.line_color(lid, lines[lid]["color"])
 
 
 func line_name(lid: String) -> String:
