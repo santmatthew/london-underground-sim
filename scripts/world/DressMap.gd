@@ -18,27 +18,31 @@ static func build(station: Station) -> DressMap:
 	var plan := station.plan
 	var fkeys: Array = plan.faces.keys()
 	var routes: Array = []
-	# (step-free journeys: the lift routes as well as the normal ones, the crowd still walks the normal ones)
-	var modes: Array = [false, true] if StationPlan.step_free_mode else [false]
+	# (the routes the crowd walks, and with lifts in the station the ones through the lifts (step-free journeys: the step-free ones) as well: [step-free graph, lifts allowed])
+	var modes: Array = [[false, false]]
+	if StationPlan.step_free_mode:
+		modes.append([true, false])
+	elif StationPlan.lifts_enabled and plan.lifts_real:
+		modes.append([false, true])
 	for sd in plan.street_doors:
 		for fk in fkeys:
 			for m in modes:
-				routes.append([plan.path(sd["id"], "face:" + fk, m), null, "face:" + fk])
-				routes.append([plan.path("face:" + fk, sd["id"], m), "face:" + fk, null])
+				routes.append([plan.path(sd["id"], "face:" + fk, m[0], m[1]), null, "face:" + fk])
+				routes.append([plan.path("face:" + fk, sd["id"], m[0], m[1]), "face:" + fk, null])
 		await station._slice()
 	for fa in fkeys:
 		for fb in fkeys:
 			if fa != fb:
 				for m in modes:
-					routes.append([plan.path("face:" + fa, "face:" + fb, m), "face:" + fa, "face:" + fb])
+					routes.append([plan.path("face:" + fa, "face:" + fb, m[0], m[1]), "face:" + fa, "face:" + fb])
 		await station._slice()
 	for sp in plan.start_spots:
 		for sd in plan.street_doors:
 			for m in modes:
-				routes.append([plan.path(String(sp["node"]), sd["id"], m), sp["pos"], null])
+				routes.append([plan.path(String(sp["node"]), sd["id"], m[0], m[1]), sp["pos"], null])
 		for fk in fkeys:
 			for m in modes:
-				routes.append([plan.path(String(sp["node"]), "face:" + fk, m), sp["pos"], "face:" + fk])
+				routes.append([plan.path(String(sp["node"]), "face:" + fk, m[0], m[1]), sp["pos"], "face:" + fk])
 		await station._slice()
 	for r in routes:
 		await station._slice()

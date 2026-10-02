@@ -517,6 +517,7 @@ func start_journey() -> void:
 	_stage("(before start_journey)")
 	_hide_all_panels()
 	announcer.greeted = false
+	StationPlan.lifts_enabled = true
 	StationPlan.step_free_mode = bool(Settings.get_v("access", "step_free"))      # (before anything is planned, picked or built)
 	StepFree.ensure_loaded()
 	state = State.LOADING

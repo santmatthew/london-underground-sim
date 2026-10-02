@@ -30,6 +30,7 @@ func run():
 		if a.begins_with("--step="): step = float(a.substr(7))
 		if a == "--verbose": verbose = true
 		if a == "--faces-only": faces_only = true
+		if a == "--lifts": StationPlan.lifts_enabled = true       # normal play: stations that have lifts in reality get them (routes may then ride a lift)
 		if a == "--sf": StationPlan.step_free_mode = true       # step-free journeys: lifts instead of escalators (walk each stretch between lifts)
 	Timetable.build(1)
 	Clock.set_time(11.0 * 3600.0)

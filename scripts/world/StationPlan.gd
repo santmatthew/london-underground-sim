@@ -45,6 +45,8 @@ var adj: Array = []                # per node: [[to, cost, edge idx]]
 var start_spots: Array = []        # candidate player start points: {name, pos, yaw, node}
 var lifts: Array = []              # step-free mode: one lift per escalator / stair bank: {id, esc, rise, time, top:{pos, front, yaw, rot, y}, bot:{...}} (see _add_lifts)
 var adj_sf: Array = []             # the walking graph for step-free journeys: no escalators or stairs, lifts instead (lifts never appear in `adj`)
+var adj_lift: Array = []           # `adj` plus the lifts (stations that have real lifts): what the player and the planner walk; `adj` stays what the crowd walks
+var lifts_real := false            # the station has lifts in reality (TfL facility record)
 var sf_ok := true                  # every vertical link has a lift, so the whole station can be used step-free
 var platform_no: Dictionary = {}   # pid -> 1..N
 var _dests: Dictionary = {}
@@ -53,6 +55,9 @@ var bounds := AABB()
 static var _cache: Dictionary = {}
 ## Step-free journeys (Settings access/step_free; Game sets it before it plans or builds anything): walking queries use the lift graph, gates the wide lanes.
 static var step_free_mode := false
+## Lifts in the walking graph of the player and the planner (Game turns it on): a station with real lifts has one beside every escalator / stair bank, usable like the escalator; the
+## crowd never uses them. Off in tests that walk plans (route audits pass --lifts).
+static var lifts_enabled := false
 const LIFT_WAIT := 20.0            # call, wait for the car, doors (s)
 const LIFT_SPEED := 0.9            # m/s
 const LIFT_DOORS := 12.0           # both door cycles (s)
@@ -439,6 +444,8 @@ func _reset_plan() -> void:
 	platform_no = {}
 	lifts = []
 	adj_sf = []
+	adj_lift = []
+	lifts_real = false
 	sf_ok = true
 
 
@@ -549,8 +556,21 @@ func _add_start_spots(rng: RandomNumberGenerator) -> void:
 # ---------------------------------------------------------------------------------------------------
 # Walking-time queries (seconds) on the graph
 # ---------------------------------------------------------------------------------------------------
-func dijkstra(from_name: String, sf := step_free_mode) -> Dictionary:
-	var A: Array = adj_sf if (sf and not adj_sf.is_empty()) else adj
+## which walking graph a query uses: 2 = step-free (lifts, no escalators), 1 = with lifts (stations that have them), 0 = the crowd's (escalators and stairs only)
+func _graph_kind(sf: bool, lifts: bool) -> int:
+	if sf and not adj_sf.is_empty():
+		return 2
+	if lifts and lifts_real and not adj_lift.is_empty():
+		return 1
+	return 0
+
+
+func _adjacency(kind: int) -> Array:
+	return adj_sf if kind == 2 else (adj_lift if kind == 1 else adj)
+
+
+func dijkstra(from_name: String, sf := step_free_mode, lifts := lifts_enabled) -> Dictionary:
+	var A: Array = _adjacency(_graph_kind(sf, lifts))
 	var dist := {}
 	var n := nodes.size()
 	var d := PackedFloat64Array()
@@ -580,8 +600,8 @@ func dijkstra(from_name: String, sf := step_free_mode) -> Dictionary:
 
 
 ## node-name path from a to b (shortest by cost); empty if unreachable
-func path(a: String, b: String, sf := step_free_mode) -> Array:
-	var A: Array = adj_sf if (sf and not adj_sf.is_empty()) else adj
+func path(a: String, b: String, sf := step_free_mode, lifts := lifts_enabled) -> Array:
+	var A: Array = _adjacency(_graph_kind(sf, lifts))
 	var n := nodes.size()
 	var d := PackedFloat64Array()
 	d.resize(n)
@@ -753,13 +773,16 @@ func _lift_side(ei: int, top: bool, taken: Array) -> Dictionary:
 func _add_lifts() -> void:
 	lifts = []
 	adj_sf = []
+	adj_lift = []
 	sf_ok = true
+	lifts_real = int((RealData.station(Net.station_ids[idx]).get("facility", {}) as Dictionary).get("lifts", 0)) > 0
 	for i in adj.size():
 		var kept: Array = []
 		for e in adj[i]:
 			if not _is_esc_edge(int(e[2])):
 				kept.append(e)
 		adj_sf.append(kept)
+		adj_lift.append(adj[i].duplicate())
 	var taken: Array = []
 	for ei in escs.size():
 		var top := _lift_side(ei, true, taken)
@@ -777,6 +800,7 @@ func _add_lifts() -> void:
 		_node(bn, bot["front"])
 		while adj_sf.size() < adj.size():
 			adj_sf.append([])
+			adj_lift.append([])
 		var top_access := _access_node(ei, true)
 		var bot_access := _access_node(ei, false)
 		if top_access == "" or bot_access == "":
@@ -823,6 +847,8 @@ func _edge_sf(a: String, b: String, cost_override := -1.0) -> void:
 	var c := cost_override if cost_override >= 0.0 else (nodes[ia]["pos"] as Vector3).distance_to(nodes[ib]["pos"]) / 1.5
 	adj_sf[ia].append([ib, c, -1])
 	adj_sf[ib].append([ia, c, -1])
+	adj_lift[ia].append([ib, c, -1])
+	adj_lift[ib].append([ia, c, -1])
 
 
 func lift_of(ei: int) -> Dictionary:
@@ -1001,9 +1027,11 @@ func _landing_rect(level: int) -> Array:
 func warm() -> void:
 	for n in nodes:
 		if not _dcache.has(n["name"]):
-			_dcache[n["name"]] = dijkstra(n["name"], false)
+			_dcache[n["name"]] = dijkstra(n["name"], false, false)
 		if not _dcache_sf.has(n["name"]):
-			_dcache_sf[n["name"]] = dijkstra(n["name"], true)
+			_dcache_sf[n["name"]] = dijkstra(n["name"], true, false)
+		if lifts_real and not _dcache_lift.has(n["name"]):
+			_dcache_lift[n["name"]] = dijkstra(n["name"], false, true)
 
 
 static var _all_warm := false
@@ -1059,12 +1087,14 @@ static func warm_all() -> void:
 
 var _dcache: Dictionary = {}
 var _dcache_sf: Dictionary = {}
+var _dcache_lift: Dictionary = {}
 
 
-func walk_time(a: String, b: String, sf := step_free_mode) -> float:
-	var c: Dictionary = _dcache_sf if sf else _dcache
+func walk_time(a: String, b: String, sf := step_free_mode, lifts := lifts_enabled) -> float:
+	var k := _graph_kind(sf, lifts)
+	var c: Dictionary = _dcache_sf if k == 2 else (_dcache_lift if k == 1 else _dcache)
 	if not c.has(a):
-		c[a] = dijkstra(a, sf)
+		c[a] = dijkstra(a, sf, lifts)
 	return c[a].get(b, 1e9)
 
 

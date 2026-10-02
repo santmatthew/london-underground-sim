@@ -37,6 +37,25 @@ func run():
 			for sd in p.street_doors:
 				if p.walk_time(sd["id"], "face:" + fk, true) >= 1e8:
 					bad_reach.append("%s: %s -> %s" % [p.name, sd["id"], fk])
+	# normal play: stations with real lifts (TfL facility record) get them in the walking graph of the player and the planner, others do not
+	var real := 0
+	var real_reach := 0
+	for idx in Net.stations.size():
+		var p := StationPlan.for_station(idx)
+		if p.lifts_real and p.sf_ok and not p.lifts.is_empty():
+			real += 1
+			var reach := true
+			for fk in p.faces:
+				if p.walk_time(p.street_doors[0]["id"], "face:" + fk, false, true) >= 1e8:
+					reach = false
+			if reach:
+				real_reach += 1
+		elif not p.lifts_real:
+			for n in p.nodes:
+				if String(n["name"]).begins_with("lift") and p.walk_time(p.street_doors[0]["id"], n["name"], false, true) < 1e8:
+					leaks.append("%s %s (no real lifts)" % [p.name, n["name"]])
+	print("  stations with real lifts: %d, every face reachable with them: %d" % [real, real_reach])
+	check(real > 70 and real_reach == real, "every station with real lifts can be walked with lifts (%d of %d)" % [real_reach, real])
 	print("  stations whose every escalator / stair bank has a lift: %d of %d (%d have no vertical link at all)" % [n_ok, Net.stations.size(), no_esc])
 	if list:
 		print("  without: ", failed)

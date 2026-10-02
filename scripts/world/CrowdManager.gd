@@ -158,7 +158,7 @@ func _new_inbound() -> Agent:
 	var fkeys: Array = plan.faces.keys()
 	var fk: String = fkeys[rng.randi() % fkeys.size()]
 	a.face_key = fk
-	var names := plan.path(sd["id"], _open_node(fk), false)
+	var names := plan.path(sd["id"], _open_node(fk), false, false)
 	if names.is_empty():
 		agents.erase(a)
 		return null
@@ -216,7 +216,7 @@ func _new_outbound(fk: String, start_x: float, transfer := false) -> Agent:
 		if fk2 != fk:
 			a.face_key = fk2
 			goal_name = _open_node(fk2)
-			var names := plan.path(_open_node(fk), goal_name, false)
+			var names := plan.path(_open_node(fk), goal_name, false, false)
 			if not names.is_empty():
 				a.pts = plan.walk_points(names, rng.randi() % 4)
 				a.pts.push_front({"pos": start_pos, "kind": "walk"})
@@ -228,7 +228,7 @@ func _new_outbound(fk: String, start_x: float, transfer := false) -> Agent:
 	var best: Array = []
 	var sid := ""
 	for sd in plan.street_doors:
-		var names2 := plan.path(_open_node(fk), sd["id"], false)
+		var names2 := plan.path(_open_node(fk), sd["id"], false, false)
 		if best.is_empty() or (not names2.is_empty() and names2.size() < best.size()):
 			best = names2
 			sid = sd["id"]

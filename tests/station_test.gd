@@ -6,7 +6,8 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--station="): sname = a.substr(10)
 		if a.begins_with("--view="): view = a.substr(7)
-	StationPlan.step_free_mode = sys_arg("sf", "") != ""          # --sf=1: step-free journey fittings (lifts, barriers across the escalators)
+	StationPlan.lifts_enabled = true
+	StationPlan.step_free_mode = sys_arg("sf", "") != ""          # --sf=1: step-free journey fittings (lifts at every station, barriers across the escalators)
 	Timetable.build(1)
 	Clock.set_time(float(sys_arg("hour", "8.0")) * 3600.0)
 	var idx: int = Net.name_to_idx[sname]

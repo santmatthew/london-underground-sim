@@ -32,7 +32,7 @@ func run(st: Station) -> void:
 	plan = st.plan
 	rng.seed = plan.seed_value + 4242
 	map = await DressMap.build(st)
-	if StationPlan.step_free_mode:
+	if station.has_lifts():
 		for lf in plan.lifts:
 			for end in ["top", "bot"]:
 				var ld: Dictionary = lf[end]

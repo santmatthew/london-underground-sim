@@ -144,8 +144,13 @@ func build_async(p: StationPlan, use_async := true) -> void:
 var lift_doors: Array = []         # Node3D anchors in front of each lift door (group "lift_door"): meta lift, end, to (the other door's anchor position), time, out (the direction out of the door)
 
 
+## lifts are built where the station has them in reality (the TfL facility record) and for step-free journeys at every station; the closed escalators only on step-free journeys
+func has_lifts() -> bool:
+	return plan != null and not plan.lifts.is_empty() and (StationPlan.step_free_mode or (StationPlan.lifts_enabled and plan.lifts_real))
+
+
 func _build_lifts() -> void:
-	if not StationPlan.step_free_mode or plan.lifts.is_empty():
+	if not has_lifts():
 		return
 	for lf in plan.lifts:
 		var li: int = lf["esc"]
@@ -169,7 +174,9 @@ func _build_lifts() -> void:
 			door.set_meta("to_out", Basis(Vector3.UP, float(other["yaw"])) * Vector3(0, 0, -1))
 			door.add_to_group("lift_door")
 			lift_doors.append(door)
-	# the escalators and stairs are closed to the player: a barrier across each mouth
+	if not StationPlan.step_free_mode:
+		return
+	# step-free journeys: the escalators and stairs are closed to the player, a barrier across each mouth
 	for ei in plan.escs.size():
 		var e: Dictionary = plan.escs[ei]
 		if plan.lift_of(ei).is_empty():

@@ -180,7 +180,7 @@ func _tab_access() -> Control:
 	_slider(g, "HUD text size", "access", "text_scale", 0.8, 1.6, 0.1)
 	_option(g, "Colour vision", "access", "colour_vision", [["Standard", "standard"], ["Deuteranopia (red-green)", "deuteranopia"], ["Protanopia (red-green)", "protanopia"], ["Tritanopia (blue-yellow)", "tritanopia"]],
 		"Line colours on signs, trains, the Tube map and the HUD are changed so that every line can be told apart. Applies from the next journey; the map at once.")
-	_check(g, "Step-free journeys", "access", "step_free", "Journeys that need no stairs or escalators: they start, change and end only at stations with step-free platforms (about a quarter of them), the escalators and stairs are closed to you and every one has a lift beside it.")
+	_check(g, "Step-free journeys (optional)", "access", "step_free", "Off by default: lifts are in the stations that have them whatever you choose. On: journeys only between stations with step-free platforms (about a quarter of them), the escalators and stairs are closed to you and every bank has a lift.")
 	return pg[0]
 
 

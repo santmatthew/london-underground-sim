@@ -1,6 +1,6 @@
 extends Node
-## A step-free journey in the real game: the station has lifts and bank barriers, the interact prompt appears at a lift door, and riding a lift takes the player to the other end of the bank
-## facing out of the door, with the clock moved on by the ride.
+## Lifts in the real game: the station has lifts (normal play: a station that has lifts in reality, no closed escalators; --mode=stepfree: every station, and a barrier across each escalator), the interact prompt
+## appears at a lift door, and riding a lift takes the player to the other end of the bank facing out of the door, with the clock moved on by the ride.
 var ok := true
 
 
@@ -11,16 +11,17 @@ func check(c: bool, what: String) -> void:
 
 
 func run():
-	Settings.set_v("access", "step_free", true, false)
+	var sf := OS.get_cmdline_user_args().has("--mode=stepfree")
+	Settings.set_v("access", "step_free", sf, false)
 	var g: Game = (load("res://scenes/main.tscn") as PackedScene).instantiate()
-	g.cli = {"seed": "5", "start": "Green_Park", "dest": "Southwark", "spot": "ticket_hall", "hour": "10"}
+	g.cli = {"seed": "5", "start": "Green_Park" if sf else "Kennington", "dest": "Southwark" if sf else "Oxford_Circus", "spot": "ticket_hall", "hour": "10"}
 	add_child(g)
 	await get_tree().process_frame
 	g.start_journey()
 	var t0 := Time.get_ticks_msec()
 	while g.state != Game.State.BRIEFING and Time.get_ticks_msec() - t0 < 60000:
 		await get_tree().process_frame
-	check(g.state == Game.State.BRIEFING and StationPlan.step_free_mode, "a step-free journey from Green Park reaches the briefing")
+	check(g.state == Game.State.BRIEFING and StationPlan.step_free_mode == sf, "the journey reaches the briefing (%s)" % ("step-free from Green Park" if sf else "normal, from Kennington"))
 	g._begin_play()
 	for i in 10:
 		await get_tree().process_frame
@@ -30,7 +31,7 @@ func run():
 	for c in st.fitting_root.get_children():
 		if String(c.name).begins_with("Barrier"):
 			barriers += 1
-	check(barriers == st.plan.lifts.size() * 2, "a barrier across each end of each bank (%d)" % barriers)
+	check(barriers == (st.plan.lifts.size() * 2 if sf else 0), "barriers across the banks: %d (%s)" % [barriers, "step-free journeys close the escalators" if sf else "none in normal play"])
 	var door: Node3D = st.lift_doors[0]
 	g.player.global_position = door.global_position + Vector3(0, 0.05, 0)
 	g.player.velocity = Vector3.ZERO
