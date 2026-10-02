@@ -362,15 +362,19 @@ func _replan() -> void:
 
 
 var _lift_at: Dictionary = {}       # waypoint index -> the lift waypoint (step-free routes): stand at the door, ride, carry on from the other door
+var _spiral_at: Dictionary = {}     # waypoint index -> the door of the spiral stair (spiral_mode routes): open it, carry on on the other side
 
 
 func _waypoints_for(st: Station, names: Array) -> Array:
 	var out: Array = []
 	_lift_at.clear()
+	_spiral_at.clear()
 	for wp in st.plan.walk_points(names, 0):
 		out.append(st.to_global(wp["pos"]))
 		if wp["kind"] == "lift":
 			_lift_at[out.size() - 1] = wp
+		elif wp["kind"] == "spiral":
+			_spiral_at[out.size() - 1] = wp
 	return out
 
 
@@ -389,6 +393,20 @@ func _use_lift(info: Dictionary) -> void:
 	wp_i += 1
 
 
+func _use_spiral(info: Dictionary) -> void:
+	var st := _station()
+	if st == null:
+		return
+	for d in st.stair_doors:
+		if String(d.get_meta("end")) == String(info["end"]):
+			_log("stair door %s" % String(info["end"]))
+			await game._use_stair_door(d)
+			wp_i += 1
+			return
+	_log("no stair door for %s" % str(info))
+	wp_i += 1
+
+
 # ---------------------------------------------------------------------------------------------------
 # Walking
 # ---------------------------------------------------------------------------------------------------
@@ -396,12 +414,15 @@ func _follow(delta: float) -> void:
 	if wp_i >= wps.size():
 		_arrived_at_path_end()
 		return
-	if game._lift_busy:
+	if game._lift_busy or game._portal_busy:
 		player.bot_move = Vector2.ZERO
 		_stuck_t = 0.0
 		return
 	if _lift_at.has(wp_i) and player.global_position.distance_to(wps[wp_i]) < 0.9:
 		_use_lift(_lift_at[wp_i])
+		return
+	if _spiral_at.has(wp_i) and player.global_position.distance_to(wps[wp_i]) < 0.9:
+		_use_spiral(_spiral_at[wp_i])
 		return
 	var target: Vector3 = wps[wp_i]
 	var pos := player.global_position

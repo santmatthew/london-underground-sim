@@ -116,6 +116,8 @@ func build_async(p: StationPlan, use_async := true) -> void:
 	add_child(fitting_root)
 	_t0 = _t("modules", _t0)
 	_build_lifts()
+	_build_spirals()
+	await _slice()
 	_build_gateline()
 	await _slice()
 	_build_street_doors()
@@ -195,6 +197,71 @@ func _build_lifts() -> void:
 			fitting_root.add_child(b)
 			b.position = plan.esc_point(ei, Vector3(-0.8, 0.0, 0.0) if top else Vector3(float(e["length"]) + 0.8, -float(e["rise"]), 0.0))
 			b.rotation.y = float(e["yaw"]) + (-PI * 0.5 if top else PI * 0.5)      # (the board faces the passenger coming from the room)
+
+
+# ---------------------------------------------------------------------------------------------------
+# Spiral emergency stairs (the stations that have one, in normal play with lifts: StationPlan._add_spirals)
+# ---------------------------------------------------------------------------------------------------
+var stair_doors: Array = []        # Node3D anchors in front of each door of the stair (group "stair_door"): meta end ("top", "bot" in the rooms; "top_tower", "bot_tower" in the tower), to (where the
+								   # other side's anchor is), to_dir (the way the player faces coming out), steps, rise
+var towers: Array = []             # the SpiralStair nodes
+
+
+func has_spirals() -> bool:
+	return plan != null and not plan.spirals.is_empty() and StationPlan.lifts_enabled and plan.lifts_real and not StationPlan.step_free_mode
+
+
+func _build_spirals() -> void:
+	if not has_spirals():
+		return
+	for sp in plan.spirals:
+		var tower := SpiralStair.new().configure(int(sp["steps"]), float(sp["rise"]))
+		tower.name = "SpiralStair"
+		add_child(tower)
+		tower.position = sp["tower"]
+		tower.build()
+		towers.append(tower)
+		var ends := [
+			["top", sp["top"], sp["tin"], sp["tin_dir"], 0.0],
+			["bot", sp["bot"], sp["tout"], sp["tout_dir"], 0.0],
+		]
+		for e in ends:
+			var end: String = e[0]
+			var d: Dictionary = e[1]
+			var door := PropKit.stair_door()
+			door.name = "StairDoor_%s" % end
+			fitting_root.add_child(door)
+			door.position = d["pos"]
+			door.rotation.y = d["yaw"]
+			var a := _stair_anchor("StairAnchor_%s" % end, d["front"], end, sp)
+			a.set_meta("to", e[2])
+			a.set_meta("to_dir", e[3])
+			# the tower's side: arrive at the same landing the door leads to
+			var b := _stair_anchor("StairAnchor_%s_tower" % end, e[2], end + "_tower", sp)
+			b.set_meta("to", d["front"])
+			b.set_meta("to_dir", d["out"])
+
+
+## the spiral stair's tower a world point is inside, or null
+func tower_at(world_pos: Vector3) -> SpiralStair:
+	for t in towers:
+		if (t as SpiralStair).contains(world_pos):
+			return t
+	return null
+
+
+func _stair_anchor(nm: String, pos: Vector3, end: String, sp: Dictionary) -> Node3D:
+	var a := Node3D.new()
+	a.name = nm
+	fitting_root.add_child(a)
+	a.position = pos
+	a.set_meta("end", end)
+	a.set_meta("steps", int(sp["steps"]))
+	a.set_meta("known", bool(sp.get("known", false)))
+	a.set_meta("rise", float(sp["rise"]))
+	a.add_to_group("stair_door")
+	stair_doors.append(a)
+	return a
 
 
 # ---------------------------------------------------------------------------------------------------

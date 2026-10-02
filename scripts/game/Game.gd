@@ -518,6 +518,7 @@ func start_journey() -> void:
 	_hide_all_panels()
 	announcer.greeted = false
 	StationPlan.lifts_enabled = true
+	StationPlan.spiral_mode = cli.has("spiral")        # (a bot journey that is meant to take the emergency stairs; players choose the stair for themselves)
 	StationPlan.step_free_mode = bool(Settings.get_v("access", "step_free"))      # (before anything is planned, picked or built)
 	StepFree.ensure_loaded()
 	state = State.LOADING
@@ -700,6 +701,8 @@ func _begin_play() -> void:
 var _seat_candidate: Node3D
 var _lift_candidate: Node3D
 var _lift_busy := false
+var _stair_candidate: Node3D
+var _portal_busy := false         # a spiral stair door is being passed (the fade): the player is frozen, the clock runs at its normal speed
 
 
 ## "E  Sit down" near an empty seat (train seat or platform bench), "E  Stand up" while seated
@@ -713,10 +716,13 @@ func _update_seat_prompt() -> void:
 		return
 	_seat_candidate = Seats.nearest_free(get_tree(), player.global_position)
 	_lift_candidate = null if _seat_candidate != null else _nearest_lift_door()
+	_stair_candidate = null if (_seat_candidate != null or _lift_candidate != null) else _nearest_stair_door()
 	if _seat_candidate != null:
 		hud.set_prompt("%s  Sit down" % InputBindings.prompt("interact"))
 	elif _lift_candidate != null and not _lift_busy:
 		hud.set_prompt("%s  Call the lift (%s)" % [InputBindings.prompt("interact"), "down" if _lift_candidate.get_meta("end") == "top" else "up"])
+	elif _stair_candidate != null and not _portal_busy:
+		hud.set_prompt(_stair_prompt(_stair_candidate))
 	else:
 		hud.set_prompt("")
 
@@ -732,6 +738,48 @@ func _nearest_lift_door() -> Node3D:
 			bd = Vector2(off.x, off.z).length()
 			best = dn
 	return best
+
+
+## the door of a spiral emergency stair in front of the player (in a room or in the tower), within reach on the same floor
+func _nearest_stair_door() -> Node3D:
+	var best: Node3D = null
+	var bd := 1.6
+	for d in get_tree().get_nodes_in_group("stair_door"):
+		var dn := d as Node3D
+		var off := dn.global_position - player.global_position
+		if absf(off.y) < 1.2 and Vector2(off.x, off.z).length() < bd:
+			bd = Vector2(off.x, off.z).length()
+			best = dn
+	return best
+
+
+func _stair_prompt(door: Node3D) -> String:
+	var end: String = door.get_meta("end")
+	var what := "Take the emergency stairs (%s%s)" % ["down" if end == "top" else "up", (", %d steps" % int(door.get_meta("steps"))) if bool(door.get_meta("known", false)) else ""]
+	if end.ends_with("_tower"):
+		what = "Leave by the door to the %s" % ("ticket hall" if end == "top_tower" else "lower level")
+	return "%s  %s" % [InputBindings.prompt("interact"), what]
+
+
+## Through a door of the spiral stair (Station._build_spirals): a short fade, and the player is on the other side (the tower, or the room at the other end) facing out of the door. The stair itself
+## is walked, at the pace of the steps (Player.terrain_mult).
+func _use_stair_door(door: Node3D) -> void:
+	if _portal_busy or _lift_busy or station == null:
+		return
+	_portal_busy = true
+	player.frozen = true
+	player.velocity = Vector3.ZERO
+	Sfx.play("gate_flap_close", -6.0)
+	hud.fade_to(1.0, 0.35)
+	await get_tree().create_timer(0.4).timeout
+	var to: Vector3 = station.to_global(door.get_meta("to") as Vector3)
+	player.global_position = to + Vector3(0, 0.05, 0)
+	player.velocity = Vector3.ZERO
+	player.face(station.global_transform.basis * (door.get_meta("to_dir") as Vector3))
+	hud.fade_to(0.0, 0.35)
+	await get_tree().create_timer(0.35).timeout
+	player.frozen = false
+	_portal_busy = false
 
 
 ## A lift ride on a step-free journey: the doors close, the screen fades, the time of the wait and the ride passes (the world runs fast meanwhile, like skipping time), and the player
@@ -771,6 +819,8 @@ func _on_interact() -> void:
 		_seat_candidate = null
 	elif _lift_candidate != null and is_instance_valid(_lift_candidate) and not _lift_busy:
 		_ride_lift(_lift_candidate)
+	elif _stair_candidate != null and is_instance_valid(_stair_candidate) and not _portal_busy:
+		_use_stair_door(_stair_candidate)
 
 
 func _process(delta: float) -> void:
@@ -805,6 +855,12 @@ func _process(delta: float) -> void:
 		player.speed_mult = lerpf(player.speed_mult, target, clampf(delta * 3.0, 0.0, 1.0))
 	else:
 		player.speed_mult = 1.0
+	# on the spiral stair the pace is that of the steps (about 0.6 s a step up, 0.4 s down at 0.39 m of arc a step: well below a walk on the flat)
+	var tw: SpiralStair = station.tower_at(player.global_position) if station else null
+	var tm := 1.0
+	if tw != null:
+		tm = SpiralStair.PACE_UP if player.get_real_velocity().y > 0.15 else (SpiralStair.PACE_DOWN if player.get_real_velocity().y < -0.15 else lerpf(player.terrain_mult, 0.8, 0.1))
+	player.terrain_mult = lerpf(player.terrain_mult, tm, clampf(delta * 6.0, 0.0, 1.0))
 	_audio_t -= delta
 	if _audio_t <= 0.0:
 		_audio_t = 0.5
@@ -886,6 +942,9 @@ func _describe_location() -> String:
 				if (f["side"] > 0.0 and lp.z > 1.5 and lp.z < 5.2) or (f["side"] < 0.0 and lp.z < -1.5 and lp.z > -5.2):
 					return "platform %d, %s %s" % [station.plan.platform_no[fd["pid"]], station.plan.dir_text(fd["pid"]), Net.line_name(f["line"])]
 			return "platform passages"
+	var tw := station.tower_at(p)
+	if tw != null:
+		return "emergency stairs (%d steps)" % tw.steps if bool(station.plan.spirals[0].get("known", false)) else "emergency stairs"
 	var lp2 := station.to_local(p)
 	if lp2.y > -1.0:
 		for gl in station.plan.gatelines:

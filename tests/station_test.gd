@@ -106,6 +106,18 @@ func _ready() -> void:
 			var out: Vector3 = Basis(Vector3.UP, float(ld["yaw"])) * Vector3(0, 0, -1)
 			pos = (ld["front"] as Vector3) + out * float(sys_arg("back", "1.0")) + Vector3(0, 1.65, 0)
 			look = (ld["pos"] as Vector3) + Vector3(0, 1.4, 0)
+		"stair_top", "stair_bot":
+			# in front of the door of the spiral emergency stair in the hall / the lower landing (--back=metres further away)
+			var sd_: Dictionary = plan.spirals[0]["top" if view == "stair_top" else "bot"]
+			pos = (sd_["front"] as Vector3) + (sd_["out"] as Vector3) * float(sys_arg("back", "1.2")) + Vector3(0, 1.65, 0)
+			look = (sd_["pos"] as Vector3) + Vector3(0, 1.3, 0)
+		"tower_top", "tower_bot":
+			# in the tower, where the player comes out of the door: looking down the stair (top) or up it (bottom)
+			var sp_: Dictionary = plan.spirals[0]
+			if view == "tower_top":
+				pos = (sp_["tin"] as Vector3) + Vector3(0, 1.66, 0); look = pos + (sp_["tin_dir"] as Vector3) * 4.0 + Vector3(0, -1.2, 0)
+			else:
+				pos = (sp_["tout"] as Vector3) + Vector3(0, 1.66, 0); look = pos + (sp_["tout_dir"] as Vector3) * 4.0 + Vector3(0, 1.0, 0)
 		"plat_w":
 			# from near the west end of a platform looking west, along the track into the (shortened) running tunnel and its cap
 			var fw: Dictionary = plan.faces[plan.faces.keys()[int(sys_arg("fi", "0"))]]

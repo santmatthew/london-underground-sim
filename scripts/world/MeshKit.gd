@@ -181,7 +181,7 @@ func lathe(mat: String, profile: PackedVector2Array, cx: float, cz: float, ax: f
 			var n01: Vector3 = nv.call(pn[i], a1)
 			var n10: Vector3 = nv.call(pn[i + 1], a0)
 			var n11: Vector3 = nv.call(pn[i + 1], a1)
-			var uv0 := Vector2(float(k) * 0.9, pa.y)
+			var uv0 := Vector2(float(k) * (TAU / segs) * maxf(pa.x * ax, 0.01), pa.y)          # (metres along the arc, so tiles keep their size)
 			if flip:
 				quad_smooth(mat, p00, p10, p11, p01, -n00, -n10, -n11, -n01, floor_y, uv0)
 			else:

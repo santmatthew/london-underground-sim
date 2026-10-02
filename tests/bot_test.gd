@@ -15,6 +15,7 @@ func run():
 		if a.begins_with("--time="): g.opts["time"] = a.substr(7)
 		if a.begins_with("--length="): g.opts["length"] = a.substr(9)
 		if a.begins_with("--multi="): g.opts["mode"] = "multi"; g.opts["stops"] = int(a.substr(8))
+		if a == "--spiral": g.cli["spiral"] = "1"
 	g.cli["seed"] = str(seed)
 	for a in OS.get_cmdline_user_args():
 		var kv: PackedStringArray = a.lstrip("-").split("=", true, 1)

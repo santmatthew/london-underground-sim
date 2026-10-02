@@ -39,6 +39,11 @@ func run(st: Station) -> void:
 				map.add_placed(ld["pos"], Vector2(StationPlan.LIFT_SIZE.x * 0.5, StationPlan.LIFT_SIZE.z * 0.5), float(ld["yaw"]))
 				for ex in ld.get("extra", []):
 					map.add_placed(ex["pos"], Vector2(StationPlan.LIFT_SIZE.x * 0.5, StationPlan.LIFT_SIZE.z * 0.5), float(ex["yaw"]))
+	if station.has_spirals():
+		for sp in plan.spirals:
+			for end in ["top", "bot"]:
+				var fp: Array = sp[end]["footprint"]
+				map.add_placed(Vector3((fp[0] + fp[1]) * 0.5, float(sp[end]["pos"].y), (fp[2] + fp[3]) * 0.5), Vector2((fp[1] - fp[0]) * 0.5, (fp[3] - fp[2]) * 0.5), 0.0)
 	picker = PosterKit.Picker.new(rng)
 	root = Node3D.new()
 	root.name = "Props"

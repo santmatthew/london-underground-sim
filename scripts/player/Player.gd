@@ -20,6 +20,7 @@ var head: Node3D
 var mouse_sens := 0.0022
 var stamina := 1.0
 var speed_mult := 1.0           # set by crowd drag
+var terrain_mult := 1.0         # set by the ground: the steps of a spiral stair (Game)
 var frozen := false             # e.g. while seated / cutscene
 var enabled := true
 var _bob := 0.0
@@ -197,7 +198,7 @@ func _physics_process(delta: float) -> void:
 		hurrying = true
 	else:
 		stamina = minf(1.0, stamina + delta * 0.09)
-	speed *= speed_mult
+	speed *= speed_mult * terrain_mult
 	if input.y > 0.1:
 		speed *= 0.6     # backpedalling is slow
 	var target := dir * speed

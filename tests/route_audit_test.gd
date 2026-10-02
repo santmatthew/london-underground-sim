@@ -31,6 +31,9 @@ func run():
 		if a == "--verbose": verbose = true
 		if a == "--faces-only": faces_only = true
 		if a == "--lifts": StationPlan.lifts_enabled = true       # normal play: stations that have lifts in reality get them (routes may then ride a lift)
+		if a == "--spiral":
+			StationPlan.lifts_enabled = true               # (the stations with a spiral emergency stair: each street door <-> each face through the stair, doors and helix swept as well)
+			StationPlan.spiral_mode = true
 		if a == "--sf": StationPlan.step_free_mode = true       # step-free journeys: lifts instead of escalators (walk each stretch between lifts)
 	Timetable.build(1)
 	Clock.set_time(11.0 * 3600.0)
@@ -78,6 +81,11 @@ func _audit_station(idx: int, step: float, verbose: bool, faces_only: bool) -> A
 			for fb in fkeys:
 				if fa != fb:
 					routes.append(["%s -> %s" % [fa, fb], plan.path("face:" + fa, "face:" + fb), "face:" + fa, "face:" + fb])
+	if StationPlan.spiral_mode and not plan.spirals.is_empty() and st.has_spirals():
+		var sd0: Dictionary = plan.street_doors[0]
+		for fk in fkeys:
+			routes.append(["%s -> stair down -> %s" % [sd0["id"], fk], plan.path(sd0["id"], "spiral0_top") + ["spiral0_tin", "spiral0_tout"] + plan.path("spiral0_bot", "face:" + fk), null, "face:" + fk])
+			routes.append(["%s -> stair up -> %s" % [fk, sd0["id"]], plan.path("face:" + fk, "spiral0_bot") + ["spiral0_tout", "spiral0_tin"] + plan.path("spiral0_top", sd0["id"]), "face:" + fk, null])
 	# the places a journey can start: the spot itself must be free ground, and from it every street door and every platform must be reachable
 	for sp in plan.start_spots:
 		var spos: Vector3 = sp["pos"]

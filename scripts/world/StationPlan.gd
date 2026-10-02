@@ -47,6 +47,8 @@ var lifts: Array = []              # step-free mode: one lift per escalator / st
 var adj_sf: Array = []             # the walking graph for step-free journeys: no escalators or stairs, lifts instead (lifts never appear in `adj`)
 var adj_lift: Array = []           # `adj` plus the lifts (stations that have real lifts): what the player and the planner walk; `adj` stays what the crowd walks
 var lifts_real := false            # the station has lifts in reality (TfL facility record)
+var adj_spiral: Array = []         # adj_lift plus the spiral stair (portals and the helix): the graph of `spiral_mode`
+var spirals: Array = []            # the spiral emergency stair(s) of the station (see _add_spirals): {id, steps, rise, top:{pos, front, yaw, out, room}, bot:{...}, tower, tin, tout, tin_dir, tout_dir, interior}
 var lift_only := false             # its way up and down is lifts: the escalator-type banks of the plan are replaced by lifts (`removed` banks, lifts in every graph, see _apply_lift_only)
 var sf_ok := true                  # every vertical link has a lift, so the whole station can be used step-free
 var platform_no: Dictionary = {}   # pid -> 1..N
@@ -59,6 +61,8 @@ static var step_free_mode := false
 ## Lifts in the walking graph of the player and the planner (Game turns it on): a station with real lifts has one beside every escalator / stair bank, usable like the escalator; the
 ## crowd never uses them. Off in tests that walk plans (route audits pass --lifts).
 static var lifts_enabled := false
+## The planner may send the player up / down a spiral emergency stair (a bot journey that is meant to use it; off otherwise: the stair is the player's to choose, par times are the lifts')
+static var spiral_mode := false
 
 const VA_PATH := "res://data/vertical_access.json"
 static var _va: Dictionary = {}
@@ -463,6 +467,8 @@ func _reset_plan() -> void:
 	adj_lift = []
 	lifts_real = false
 	lift_only = false
+	spirals = []
+	adj_spiral = []
 	sf_ok = true
 
 
@@ -573,17 +579,17 @@ func _add_start_spots(rng: RandomNumberGenerator) -> void:
 # ---------------------------------------------------------------------------------------------------
 # Walking-time queries (seconds) on the graph
 # ---------------------------------------------------------------------------------------------------
-## which walking graph a query uses: 2 = step-free (lifts, no escalators), 1 = with lifts (stations that have them), 0 = the crowd's (escalators and stairs only)
+## which walking graph a query uses: 2 = step-free (lifts, no escalators), 1 = with lifts (stations that have them), 3 = with lifts and the spiral emergency stair (`spiral_mode`), 0 = the crowd's (escalators and stairs only)
 func _graph_kind(sf: bool, lifts: bool) -> int:
 	if sf and not adj_sf.is_empty():
 		return 2
 	if lifts and lifts_real and not adj_lift.is_empty():
-		return 1
+		return 3 if (spiral_mode and not adj_spiral.is_empty()) else 1
 	return 0
 
 
 func _adjacency(kind: int) -> Array:
-	return adj_sf if kind == 2 else (adj_lift if kind == 1 else adj)
+	return adj_sf if kind == 2 else (adj_spiral if kind == 3 else (adj_lift if kind == 1 else adj))
 
 
 func dijkstra(from_name: String, sf := step_free_mode, lifts := lifts_enabled) -> Dictionary:
@@ -807,6 +813,8 @@ func _add_lifts() -> void:
 	lift_only = bool(vertical_access(Net.station_ids[idx]).get("lift_only", false)) and lifts_real
 	if lift_only:
 		_apply_lift_only()
+	spirals = []
+	adj_spiral = []
 	for i in adj.size():
 		var kept: Array = []
 		for e in adj[i]:
@@ -847,6 +855,7 @@ func _add_lifts() -> void:
 			_edge_plain(bn, bot_access, -1.0)
 			_edge_plain(tn, bn, t)
 		lifts.append({"id": "lift%d" % ei, "esc": ei, "rise": rise, "time": t, "top": top, "bot": bot, "removed": removed})
+	_add_spirals(taken)
 
 
 ## the walking-graph node that the lift's door-front node hangs on: authored plans have a node set back from the mouth (escN_pre / escN_post), otherwise the nearest node on the same
@@ -882,6 +891,258 @@ func _access_node(ei: int, top: bool) -> String:
 				return nodes[v]["name"]          # (a removed bank's lifts stand in the old opening: the node must be in front of them)
 			queue.append(v)
 	return fallback
+
+
+## The spiral emergency stair of a station that has one (data/vertical_access.json): a door in a wall of the ticket hall and one in the deepest landing, joined by the stair itself, a tower
+## (SpiralStair) far from everything else that the doors are portals to. Graph: top door front - tower top entry (portal), tower top - tower bottom (the walk down the helix), tower bottom -
+## bottom door front (portal); only the player's and the planner's graph (adj_lift) has them. Needs a free stretch of wall in both rooms.
+const SPIRAL_DOOR_W := 1.4
+const SPIRAL_DOOR_D := 0.5
+const SPIRAL_S_PER_STEP := 0.5        # seconds a step takes on average (Player: about 0.6 up, 0.4 down on the helix)
+
+
+func _add_spirals(taken: Array) -> void:
+	var va := vertical_access(Net.station_ids[idx])
+	if not va.has("spiral"):
+		return
+	# the rooms: the ticket hall and the deepest room that has platforms
+	var top_room := _room_named("hall")
+	var bot_room: Dictionary = {}
+	for m in modules:
+		var rn := String(m.get("room", "landing%d" % int(m["level"])))
+		var rm := _room_named(rn)
+		if not rm.is_empty() and (bot_room.is_empty() or float(rm["y"]) < float(bot_room["y"])):
+			bot_room = rm
+	if top_room.is_empty() or bot_room.is_empty():
+		return
+	var rise := float(top_room.get("y", 0.0)) - float(bot_room["y"])
+	if rise < 6.0:
+		return
+	var steps_src = (va["spiral"] as Dictionary).get("steps", null)
+	var steps: int = int(steps_src) if steps_src != null else int(round(rise / 0.18))
+	var near_top := Vector2.ZERO
+	var near_bot := Vector2.ZERO
+	for lf in lifts:
+		var t: Dictionary = lf["top"]
+		var b: Dictionary = lf["bot"]
+		if _room_of_point(t["pos"]) == String(top_room["name"]):
+			near_top = Vector2(t["pos"].x, t["pos"].z)
+		if _room_of_point(b["pos"]) == String(bot_room["name"]):
+			near_bot = Vector2(b["pos"].x, b["pos"].z)
+	var top_spot := _wall_spot(top_room, taken, near_top, true)
+	var bot_spot := _wall_spot(bot_room, taken, near_bot, false)
+	if top_spot.is_empty() or bot_spot.is_empty():
+		push_warning("%s: no free wall for the spiral stair's doors" % name)
+		return
+	# the tower: east of everything (rooms and the platform tunnels), at ground level of the plan
+	var xmax := -1e9
+	for rm in rooms:
+		xmax = maxf(xmax, float((rm["rect"] as Array)[1]))
+	for m in modules:
+		var ln: float = float((m["spec"] as Dictionary).get("length", 110.0))
+		var tun: float = float((m["spec"] as Dictionary).get("tun_e", PlatformModule.TUNNEL_EXT))
+		xmax = maxf(xmax, (m["pos"] as Vector3).x + ln * 0.5 + tun)
+	var tower := Vector3(xmax + 60.0, float(top_room.get("y", 0.0)), 0.0)
+	var d_in := SpiralStair.s_top_entry(steps, rise)
+	var d_out := SpiralStair.s_bottom_exit(steps, rise)
+	var down_dir := SpiralStair.s_tangent(-SpiralStair.s_dtheta() * 0.6)
+	var up_dir := -SpiralStair.s_tangent(SpiralStair.s_dtheta() * (steps - 1 + 0.9))
+	var interior: Array = []
+	for pt in SpiralStair.s_walk_points(steps, rise):
+		interior.append(tower + pt)
+	var sp := {"id": "spiral0", "steps": steps, "rise": rise, "riser": rise / steps, "top": top_spot, "bot": bot_spot, "tower": tower, "tin": tower + d_in, "tout": tower + d_out,
+		"tin_dir": down_dir, "tout_dir": up_dir, "interior": interior, "known": steps_src != null}
+	sp["top"]["room"] = String(top_room["name"])
+	sp["bot"]["room"] = String(bot_room["name"])
+	# graph: the door fronts hang on the room's walking graph (adj_lift), the stair itself is only in `adj_spiral` (used when `spiral_mode` is on): the planner never sends anybody up the
+	# emergency stair, the par times are the lifts', but a player can walk it and the bot can be told to
+	var ta: String = top_spot["attach"]
+	var ba: String = bot_spot["attach"]
+	taken.append(top_spot["footprint"])
+	taken.append(bot_spot["footprint"])
+	var tn := "spiral0_top"
+	var tin := "spiral0_tin"
+	var tout := "spiral0_tout"
+	var bn := "spiral0_bot"
+	_node(tn, top_spot["front"])
+	_node(tin, sp["tin"])
+	_node(tout, sp["tout"])
+	_node(bn, bot_spot["front"])
+	while adj_lift.size() < adj.size():
+		adj_lift.append([])
+		adj_sf.append([])
+	_edge_lift_only(tn, ta, -1.0)
+	_edge_lift_only(bn, ba, -1.0)
+	adj_spiral = []
+	for a in adj_lift:
+		adj_spiral.append((a as Array).duplicate())
+	_edge_spiral(tn, tin, 3.0)
+	_edge_spiral(tin, tout, 3.0 + steps * SPIRAL_S_PER_STEP)
+	_edge_spiral(tout, bn, 3.0)
+	spirals.append(sp)
+
+
+func _edge_spiral(a: String, b: String, cost: float) -> void:
+	var ia: int = node_idx[a]
+	var ib: int = node_idx[b]
+	adj_spiral[ia].append([ib, cost, -1])
+	adj_spiral[ib].append([ia, cost, -1])
+
+
+## an edge only the player's / planner's graph has (not the crowd's, not the step-free one)
+func _edge_lift_only(a: String, b: String, cost_override := -1.0) -> void:
+	var ia: int = node_idx[a]
+	var ib: int = node_idx[b]
+	var c := cost_override if cost_override >= 0.0 else (nodes[ia]["pos"] as Vector3).distance_to(nodes[ib]["pos"]) / 1.5
+	adj_lift[ia].append([ib, c, -1])
+	adj_lift[ib].append([ia, c, -1])
+
+
+func _room_of_point(p: Vector3) -> String:
+	for rm in rooms:
+		var r: Array = rm["rect"]
+		if p.x >= r[0] and p.x <= r[1] and p.z >= r[2] and p.z <= r[3] and absf(p.y - float(rm["y"])) < 1.5:
+			return String(rm["name"])
+	return ""
+
+
+## the walking-graph node of a room that a door front can be joined to: on the same floor, at least 1.8 m away, in plain sight (the straight way to it crosses none of `taken` and, in a hall,
+## stays on the paid side of the gateline), the nearest of those; "" when there is none
+func _attach_node(room: Dictionary, front: Vector3, taken: Array) -> String:
+	var r: Array = room["rect"]
+	var best := ""
+	var bd := 1e9
+	for n in nodes:
+		var np: Vector3 = n["pos"]
+		if np.x < r[0] + 0.4 or np.x > r[1] - 0.4 or np.z < r[2] + 0.4 or np.z > r[3] - 0.4 or absf(np.y - float(room["y"])) > 1.5:
+			continue
+		var nm: String = n["name"]
+		if nm.begins_with("lift") or nm.begins_with("spiral") or (nm.begins_with("esc") and (nm.ends_with("_top") or nm.ends_with("_bot"))) or nm.begins_with("street") or nm.begins_with("gate"):
+			continue
+		var d := np.distance_to(front)
+		if d < 1.8 or d >= bd or not _line_clear(front, np, taken, room):
+			continue
+		bd = d
+		best = nm
+	return best
+
+
+## the straight way between two points of a room is free: it crosses none of the housings (`taken`, grown by 0.35 m) and does not cross a gateline
+func _line_clear(a: Vector3, b: Vector3, taken: Array, room: Dictionary) -> bool:
+	for t in taken:
+		if _seg_hits_rect(a, b, t, 0.35):
+			return false
+	for gl in gatelines:
+		var gr: Array = gl.get("rect", hall["rect"])
+		var gz: float = gl["z"]
+		if (a.x >= gr[0] and a.x <= gr[1] and a.z >= gr[2] and a.z <= gr[3]) or (b.x >= gr[0] and b.x <= gr[1] and b.z >= gr[2] and b.z <= gr[3]):
+			if (a.z - gz) * (b.z - gz) < 0.0 or absf(a.z - gz) < 0.8 or absf(b.z - gz) < 0.8:
+				return false
+	return true
+
+
+## does the segment a-b (in xz) touch the rectangle [xmin, xmax, zmin, zmax] grown by m?  (Liang-Barsky)
+static func _seg_hits_rect(a: Vector3, b: Vector3, r: Array, m: float) -> bool:
+	var x0: float = r[0] - m
+	var x1: float = r[1] + m
+	var z0: float = r[2] - m
+	var z1: float = r[3] + m
+	var t0 := 0.0
+	var t1 := 1.0
+	var dx := b.x - a.x
+	var dz := b.z - a.z
+	for pq: Array in [[-dx, a.x - x0], [dx, x1 - a.x], [-dz, a.z - z0], [dz, z1 - a.z]]:
+		var pp: float = pq[0]
+		var qq: float = pq[1]
+		if absf(pp) < 1e-9:
+			if qq < 0.0:
+				return false
+		else:
+			var t := qq / pp
+			if pp < 0.0:
+				if t > t1:
+					return false
+				t0 = maxf(t0, t)
+			else:
+				if t < t0:
+					return false
+				t1 = minf(t1, t)
+	return true
+
+
+## a stretch of wall in a room for a door housing (SPIRAL_DOOR_W wide, SPIRAL_DOOR_D deep): clear of the room's openings, the other housings (`taken`) and the room's corners, the one nearest to `near`
+## (the lifts) first. Returns {pos (at the wall, on the floor), front (1.3 m out), yaw (housing rotation, door facing into the room), out (direction out of the door), footprint} or {}.
+func _wall_spot(room: Dictionary, taken: Array, near: Vector2, in_hall: bool) -> Dictionary:
+	var r: Array = room["rect"]
+	var y: float = room["y"]
+	var cands: Array = []
+	var x := float(r[0]) + 3.0
+	while x <= float(r[1]) - 3.0:
+		cands.append([x, float(r[2]), Vector2(0, 1)])        # the north wall (z0), the room is toward +z
+		cands.append([x, float(r[3]), Vector2(0, -1)])
+		x += 0.5
+	var z := float(r[2]) + 3.0
+	while z <= float(r[3]) - 3.0:
+		cands.append([float(r[0]), z, Vector2(1, 0)])
+		cands.append([float(r[1]), z, Vector2(-1, 0)])
+		z += 0.5
+	cands.sort_custom(func(a, b): return Vector2(a[0], a[1]).distance_to(near) < Vector2(b[0], b[1]).distance_to(near))
+	for c in cands:
+		var n: Vector2 = c[2]
+		var along := Vector2(-n.y, n.x)
+		var hw := SPIRAL_DOOR_W * 0.5
+		var p0 := Vector2(c[0], c[1])
+		var rect_pts: Array = []
+		for dd: float in [0.0, SPIRAL_DOOR_D + 1.4]:
+			for ww: float in [-hw - 0.4, hw + 0.4]:
+				var q: Vector2 = p0 + n * dd + along * ww
+				rect_pts.append(q)
+		var lo := Vector2(1e9, 1e9)
+		var hi := Vector2(-1e9, -1e9)
+		for q2: Vector2 in rect_pts:
+			lo = Vector2(minf(lo.x, q2.x), minf(lo.y, q2.y))
+			hi = Vector2(maxf(hi.x, q2.x), maxf(hi.y, q2.y))
+		var foot: Array = [lo.x, hi.x, lo.y, hi.y]
+		if not _rect_inside(foot, r, -0.01):
+			continue
+		var clash := false
+		for op in room.get("openings", []):
+			var o: Dictionary = op
+			var cc: float = float(o["c"])
+			var half: float = float(o["w"]) * 0.5 + 1.0
+			var orect: Array
+			match String(o["side"]):
+				"N":
+					orect = [cc - half, cc + half, r[2], r[2] + 1.6]
+				"S":
+					orect = [cc - half, cc + half, r[3] - 1.6, r[3]]
+				"W":
+					orect = [r[0], r[0] + 1.6, cc - half, cc + half]
+				_:
+					orect = [r[1] - 1.6, r[1], cc - half, cc + half]
+			if _rects_overlap(foot, orect, 0.0):
+				clash = true
+		for t in taken:
+			if _rects_overlap(foot, t, 0.4):
+				clash = true
+		if clash:
+			continue
+		var out_dir := Vector3(n.x, 0, n.y)
+		var front := Vector3(p0.x + n.x * 1.3, y, p0.y + n.y * 1.3)
+		# (in the ticket hall the stair is on the paid side: nobody gets to the platforms past the gates by it)
+		if in_hall:
+			var unpaid := false
+			for gl in gatelines:
+				var gr: Array = gl.get("rect", hall["rect"])
+				if front.x >= gr[0] and front.x <= gr[1] and front.z >= gr[2] and front.z <= gr[3] and front.z < float(gl["z"]) + 1.2:
+					unpaid = true
+			if unpaid:
+				continue
+		var att := _attach_node(room, front, taken)
+		if att == "":
+			continue
+		return {"pos": Vector3(p0.x, y, p0.y), "front": front, "yaw": atan2(-out_dir.x, -out_dir.z), "out": out_dir, "footprint": foot, "attach": att}
+	return {}
 
 
 ## the escalator-type banks of a lift-only station are not there in reality (lifts are): mark them removed, close their openings in the rooms and drop their edges from the walking graph;
@@ -947,6 +1208,9 @@ func path_segments(names: Array) -> Array:
 		var nxt: String = names[i + 1] if i + 1 < names.size() else ""
 		if n.begins_with("lift") and nxt.begins_with("lift") and n.get_slice("_", 0) == nxt.get_slice("_", 0):
 			out.append(cur)
+			cur = []
+		elif (n == "spiral0_top" and nxt == "spiral0_tin") or (n == "spiral0_tout" and nxt == "spiral0_bot") or (n == "spiral0_bot" and nxt == "spiral0_tout") or (n == "spiral0_tin" and nxt == "spiral0_top"):
+			out.append(cur)           # (the doors are portals: the room, the helix and the other room are three separate walks)
 			cur = []
 	if not cur.is_empty():
 		out.append(cur)
@@ -1019,6 +1283,46 @@ func walk_points(names: Array, pick := 0) -> Array:
 			var there: Dictionary = lf["bot"] if down else lf["top"]
 			out.append({"pos": here["front"], "kind": "lift", "lift": li, "dir": 1 if down else -1, "to": there["front"], "time": lf["time"]})
 			out.append({"pos": there["front"], "kind": "walk"})
+			i += 2
+			continue
+		if not spirals.is_empty() and ((n == "spiral0_top" and nxt == "spiral0_tin") or (n == "spiral0_bot" and nxt == "spiral0_tout")):
+			# through the spiral stair: a portal at the door (kind "spiral": `to` where it comes out in the tower, `to_dir` the way the player faces there), the walk along the helix, a portal at
+			# the far door of the tower, then on from the other room's door
+			var sp: Dictionary = spirals[0]
+			var down := n == "spiral0_top"
+			var near_d: Dictionary = sp["top"] if down else sp["bot"]
+			var far_d: Dictionary = sp["bot"] if down else sp["top"]
+			out.append({"pos": near_d["front"], "kind": "spiral", "spiral": 0, "end": "top" if down else "bot", "to": sp["tin"] if down else sp["tout"], "to_dir": sp["tin_dir"] if down else sp["tout_dir"]})
+			var helix: Array = (sp["interior"] as Array).duplicate()
+			if not down:
+				helix.reverse()
+			for hi in range(1, helix.size()):
+				out.append({"pos": helix[hi], "kind": "walk", "tower": true})
+			out.append({"pos": sp["tout"] if down else sp["tin"], "kind": "spiral", "spiral": 0, "end": "bot_tower" if down else "top_tower", "to": far_d["front"], "to_dir": far_d["out"]})
+			out.append({"pos": far_d["front"], "kind": "walk"})
+			var skip := 4
+			if i + 4 < names.size() and String(names[i + 4]) == String(far_d["attach"]):
+				out.append({"pos": nodes[node_idx[String(far_d["attach"])]]["pos"], "kind": "walk"})      # (the node the door hangs on is walked to as it is: the line to it was cleared in _attach_node)
+				skip = 5
+			i += skip
+			continue
+		if not spirals.is_empty() and (n == "spiral0_top" or n == "spiral0_bot") and nxt != "" and not nxt.begins_with("spiral"):
+			# a door front and the node it hangs on: straight from one to the other (the line was cleared in _attach_node)
+			var dd: Dictionary = spirals[0]["top" if n == "spiral0_top" else "bot"]
+			out.append({"pos": dd["front"], "kind": "walk"})
+			if nxt == String(dd["attach"]):
+				out.append({"pos": nodes[node_idx[nxt]]["pos"], "kind": "walk"})
+				i += 2
+			else:
+				i += 1
+			continue
+		if not spirals.is_empty() and ((n == "spiral0_tin" and nxt == "spiral0_tout") or (n == "spiral0_tout" and nxt == "spiral0_tin")):
+			# the helix on its own (a stretch of a path that starts or ends at a portal: see path_segments)
+			var hx: Array = (spirals[0]["interior"] as Array).duplicate()
+			if n == "spiral0_tout":
+				hx.reverse()
+			for hp in hx:
+				out.append({"pos": hp, "kind": "walk", "tower": true})
 			i += 2
 			continue
 		if n.begins_with("esc") and n.ends_with("_top") and nxt.begins_with("esc") and nxt.ends_with("_bot"):
@@ -1168,11 +1472,12 @@ static func warm_all() -> void:
 var _dcache: Dictionary = {}
 var _dcache_sf: Dictionary = {}
 var _dcache_lift: Dictionary = {}
+var _dcache_spiral: Dictionary = {}
 
 
 func walk_time(a: String, b: String, sf := step_free_mode, lifts := lifts_enabled) -> float:
 	var k := _graph_kind(sf, lifts)
-	var c: Dictionary = _dcache_sf if k == 2 else (_dcache_lift if k == 1 else _dcache)
+	var c: Dictionary = _dcache_sf if k == 2 else (_dcache_spiral if k == 3 else (_dcache_lift if k == 1 else _dcache))
 	if not c.has(a):
 		c[a] = dijkstra(a, sf, lifts)
 	return c[a].get(b, 1e9)

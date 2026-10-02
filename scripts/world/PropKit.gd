@@ -319,6 +319,36 @@ static func lift_housing() -> Node3D:
 	return n
 
 
+## The door of a spiral emergency stair in a wall: a shallow surround standing out of the wall (the origin is at the wall, the door faces local -Z, into the room), a plain painted leaf with a
+## push bar and a green sign above it. Solid, so nobody walks through it; the player uses it from the anchor in front (Station._build_spirals).
+static func stair_door() -> Node3D:
+	var kit := MeshKit.new()
+	var W := StationPlan.SPIRAL_DOOR_W
+	var D := StationPlan.SPIRAL_DOOR_D
+	var H := 2.6
+	kit.box("steel", Vector3(0, H * 0.5, -D * 0.5), Vector3(W, H, D), 0.0)                              # the surround
+	var zf := -D - 0.012
+	kit.box("charcoal", Vector3(0, 1.08, zf), Vector3(1.04, 2.14, 0.03), 0.0)                           # the frame
+	kit.box("green", Vector3(0, 1.05, zf - 0.025), Vector3(0.94, 2.06, 0.03), 0.0)               # the leaf (painted)
+	kit.box("steel", Vector3(0, 1.0, zf - 0.06), Vector3(0.8, 0.05, 0.04), 0.0)                         # the push bar
+	kit.box("charcoal", Vector3(0, 2.42, zf - 0.02), Vector3(1.2, 0.26, 0.04), 0.0)                     # the sign above
+	var n := _node(kit, "StairDoor")
+	var lab := Label3D.new()
+	lab.text = "EMERGENCY STAIRS"
+	lab.font = load("res://assets/fonts/Barlow-Bold.ttf")
+	lab.font_size = 64
+	lab.pixel_size = 0.0022
+	lab.modulate = Color(0.55, 1.0, 0.65)
+	lab.shaded = false
+	lab.double_sided = false
+	lab.position = Vector3(0, 2.42, zf - 0.045)
+	lab.rotation.y = PI
+	n.add_child(lab)
+	_solid(n, Vector3(0, H * 0.5, -D * 0.5), Vector3(W, H, D))
+	_fp(n, Vector2(0, -D * 0.5), Vector2(W * 0.5, D * 0.5))
+	return n
+
+
 ## A barrier across the mouth of an escalator or stair bank on a step-free journey: posts, two bars and a board; it stops the player only (collision layer 3, like the platform-edge guard)
 static func bank_barrier(width: float, stairs: bool) -> Node3D:
 	var kit := MeshKit.new()

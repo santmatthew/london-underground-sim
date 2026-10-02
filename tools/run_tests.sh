@@ -17,10 +17,12 @@ GTEST_ENGINE_ARGS="--fixed-fps 60" GTEST_TIMEOUT=200 tools/gtest.sh plan_warm_te
 check "background builds: plans and timetable equal the synchronous ones" "^OK" build/t_planwarm.log
 GTEST_ENGINE_ARGS="--fixed-fps 60" GTEST_TIMEOUT=200 tools/gtest.sh open_style_test > build/t_openstyle.log 2>&1
 check "photo-authored surface stations: roofs, spans, bridge" "^OK" build/t_openstyle.log
-for t in settings_test input_bindings_test announcer_test palette_test lift_plan_test step_free_plan_test lift_ride_test lift_crowd_test; do
-  GTEST_ENGINE_ARGS="--fixed-fps 60" GTEST_TIMEOUT=200 tools/gtest.sh $t > build/t_$t.log 2>&1
+for t in settings_test input_bindings_test announcer_test palette_test lift_plan_test step_free_plan_test lift_ride_test lift_crowd_test spiral_plan_test spiral_ride_test; do
+  GTEST_ENGINE_ARGS="--fixed-fps 60" GTEST_TIMEOUT=${T_TIMEOUT:-200} tools/gtest.sh $t > build/t_$t.log 2>&1
   check "$t" "^OK" build/t_$t.log
 done
+GTEST_TIMEOUT=300 tools/gtest.sh route_audit_test --stations="Covent Garden|Borough|Goodge Street|Hampstead|Russell Square" --spiral > build/t_spiral_routes.log 2>&1
+check "spiral stairs: every route through them (doors and helix swept) is free" "TOTAL: 5 stations, [0-9]+ routes, 0 failed" build/t_spiral_routes.log
 GTEST_TIMEOUT=100 tools/gtest.sh audio_test > build/t_audio.log 2>&1
 check "audio: streams load, speech plays" "speech playing: true \(missing streams: 0\)" build/t_audio.log
 if [ "$1" == "--full" ]; then
