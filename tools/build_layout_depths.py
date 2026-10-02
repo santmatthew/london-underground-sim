@@ -44,5 +44,10 @@ for name, rs in rows.items():
         if "hall" in d:
             entry["hall_depth"] = d["hall"][0]
         out[by_name[name]] = entry
+# readings corrected by hand (the OCR misreads a clipped leading digit): Covent Garden's table reads 36.0 m (the OCR said 56.0); 36 agrees with the 193 steps of its emergency spiral stair
+CORRECTIONS = {"Covent Garden": {"piccadilly": [36.0]}}
+for name, dd in CORRECTIONS.items():
+    if name in by_name and by_name[name] in out:
+        out[by_name[name]]["depths"].update(dd)
 json.dump(out, open(OUT, "w"), indent=0, sort_keys=True)
 print("wrote", OUT, len(out), "stations")

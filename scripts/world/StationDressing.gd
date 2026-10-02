@@ -37,6 +37,8 @@ func run(st: Station) -> void:
 			for end in ["top", "bot"]:
 				var ld: Dictionary = lf[end]
 				map.add_placed(ld["pos"], Vector2(StationPlan.LIFT_SIZE.x * 0.5, StationPlan.LIFT_SIZE.z * 0.5), float(ld["yaw"]))
+				for ex in ld.get("extra", []):
+					map.add_placed(ex["pos"], Vector2(StationPlan.LIFT_SIZE.x * 0.5, StationPlan.LIFT_SIZE.z * 0.5), float(ex["yaw"]))
 	picker = PosterKit.Picker.new(rng)
 	root = Node3D.new()
 	root.name = "Props"

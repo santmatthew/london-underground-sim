@@ -47,6 +47,7 @@ var lifts: Array = []              # step-free mode: one lift per escalator / st
 var adj_sf: Array = []             # the walking graph for step-free journeys: no escalators or stairs, lifts instead (lifts never appear in `adj`)
 var adj_lift: Array = []           # `adj` plus the lifts (stations that have real lifts): what the player and the planner walk; `adj` stays what the crowd walks
 var lifts_real := false            # the station has lifts in reality (TfL facility record)
+var lift_only := false             # its way up and down is lifts: the escalator-type banks of the plan are replaced by lifts (`removed` banks, lifts in every graph, see _apply_lift_only)
 var sf_ok := true                  # every vertical link has a lift, so the whole station can be used step-free
 var platform_no: Dictionary = {}   # pid -> 1..N
 var _dests: Dictionary = {}
@@ -58,6 +59,21 @@ static var step_free_mode := false
 ## Lifts in the walking graph of the player and the planner (Game turns it on): a station with real lifts has one beside every escalator / stair bank, usable like the escalator; the
 ## crowd never uses them. Off in tests that walk plans (route audits pass --lifts).
 static var lifts_enabled := false
+
+const VA_PATH := "res://data/vertical_access.json"
+static var _va: Dictionary = {}
+static var _va_loaded := false
+
+
+## data/vertical_access.json entry of a station (lift-only stations and their spiral stairs), {} when it has none; call once on the main thread before plans are built on workers
+static func vertical_access(naptan: String) -> Dictionary:
+	if not _va_loaded:
+		_va_loaded = true
+		if FileAccess.file_exists(VA_PATH):
+			var d = JSON.parse_string(FileAccess.get_file_as_string(VA_PATH))
+			if d is Dictionary:
+				_va = d
+	return _va.get(naptan, {})
 const LIFT_WAIT := 20.0            # call, wait for the car, doors (s)
 const LIFT_SPEED := 0.9            # m/s
 const LIFT_DOORS := 12.0           # both door cycles (s)
@@ -446,6 +462,7 @@ func _reset_plan() -> void:
 	adj_sf = []
 	adj_lift = []
 	lifts_real = false
+	lift_only = false
 	sf_ok = true
 
 
@@ -711,7 +728,7 @@ func _rects_overlap(a: Array, b: Array, margin: float) -> bool:
 
 ## a lift housing beside the mouth of escalator `ei` on one side of the bank (top = in the upper room, bottom = in the lower one): the first of the two sides where the housing and the
 ## space in front of its door lie inside the room, clear of the room's other openings, other lifts and the escalators' own shafts. Returns {} when neither fits.
-func _lift_side(ei: int, top: bool, taken: Array) -> Dictionary:
+func _lift_side(ei: int, top: bool, taken: Array, centred := false) -> Dictionary:
 	var e: Dictionary = escs[ei]
 	var room := _room_named(String(_esc_rooms(ei)[0 if top else 1]))
 	if room.is_empty() or not room.has("rect"):
@@ -722,21 +739,26 @@ func _lift_side(ei: int, top: bool, taken: Array) -> Dictionary:
 	var rise: float = e["rise"]
 	var depth := LIFT_SIZE.z
 	var across := LIFT_SIZE.x
-	for side in [1.0, -1.0]:
-		var zc: float = side * (w * 0.5 + 0.6 + across * 0.5)
+	# a removed bank (lift-only station): the lifts stand where the escalator's opening was, in the wall that is now closed: one housing, two side by side in a wide bank
+	var n_house := 2 if (centred and w >= 4.8) else 1
+	for side in ([1.0] if centred else [1.0, -1.0]):
+		var zc: float = 0.0 if centred else side * (w * 0.5 + 0.6 + across * 0.5)
 		# the housing against the wall the escalator pierces, the door on the room side
 		var hx0: float = -depth if top else len
 		var hx1: float = 0.0 if top else len + depth
 		var fx0: float = hx0 - 1.6 if top else hx1
 		var fx1: float = hx0 if top else hx1 + 1.6
-		var house := _esc_rect(ei, hx0, hx1, zc - across * 0.5, zc + across * 0.5)
-		var front := _esc_rect(ei, fx0, fx1, zc - across * 0.5, zc + across * 0.5)
+		var span: float = across * 0.5 + (0.0 if n_house == 1 else across * 0.5 + 0.15)
+		var house := _esc_rect(ei, hx0, hx1, zc - span, zc + span)
+		var front := _esc_rect(ei, fx0, fx1, zc - span, zc + span)
 		var both := [minf(house[0], front[0]), maxf(house[1], front[1]), minf(house[2], front[2]), maxf(house[3], front[3])]
 		if not (_rect_inside(house, rect, -0.01) and _rect_inside(front, rect, 0.4)):
 			continue                       # (the housing stands against the wall: only the space in front of its door needs a margin)
 		var clash := false
 		for op in room.get("openings", []):
 			var o: Dictionary = op
+			if centred:
+				break                     # (the closed opening is exactly where the lifts go)
 			var c: float = float(o["c"])
 			var half: float = float(o["w"]) * 0.5
 			var orect: Array
@@ -763,8 +785,14 @@ func _lift_side(ei: int, top: bool, taken: Array) -> Dictionary:
 		var door_x: float = hx0 if top else hx1
 		var floor_y: float = 0.0 if top else -rise
 		var front_x: float = door_x - 1.1 if top else door_x + 1.1
-		return {"pos": esc_point(ei, Vector3(xc, floor_y, zc)), "front": esc_point(ei, Vector3(front_x, floor_y, zc)), "yaw": float(e["yaw"]) + (PI * 0.5 if top else -PI * 0.5),
-			"y": floor_y, "footprint": both, "side": side}
+		var yaw: float = float(e["yaw"]) + (PI * 0.5 if top else -PI * 0.5)
+		var res := {"pos": esc_point(ei, Vector3(xc, floor_y, zc)), "front": esc_point(ei, Vector3(front_x, floor_y, zc)), "yaw": yaw, "y": floor_y, "footprint": both, "side": side, "extra": []}
+		if n_house == 2:
+			# two housings side by side: the first two are the ones at +-(across / 2 + 0.075), the node in front of the pair stays in the middle
+			res["pos"] = esc_point(ei, Vector3(xc, floor_y, zc - across * 0.5 - 0.075))
+			res["front_a"] = esc_point(ei, Vector3(front_x, floor_y, zc - across * 0.5 - 0.075))
+			res["extra"] = [{"pos": esc_point(ei, Vector3(xc, floor_y, zc + across * 0.5 + 0.075)), "front": esc_point(ei, Vector3(front_x, floor_y, zc + across * 0.5 + 0.075)), "yaw": yaw}]
+		return res
 	return {}
 
 
@@ -776,6 +804,9 @@ func _add_lifts() -> void:
 	adj_lift = []
 	sf_ok = true
 	lifts_real = int((RealData.station(Net.station_ids[idx]).get("facility", {}) as Dictionary).get("lifts", 0)) > 0
+	lift_only = bool(vertical_access(Net.station_ids[idx]).get("lift_only", false)) and lifts_real
+	if lift_only:
+		_apply_lift_only()
 	for i in adj.size():
 		var kept: Array = []
 		for e in adj[i]:
@@ -785,8 +816,9 @@ func _add_lifts() -> void:
 		adj_lift.append(adj[i].duplicate())
 	var taken: Array = []
 	for ei in escs.size():
-		var top := _lift_side(ei, true, taken)
-		var bot := _lift_side(ei, false, taken)
+		var removed: bool = escs[ei].get("removed", false)
+		var top := _lift_side(ei, true, taken, removed)
+		var bot := _lift_side(ei, false, taken, removed)
 		if top.is_empty() or bot.is_empty():
 			sf_ok = false
 			continue
@@ -809,17 +841,25 @@ func _add_lifts() -> void:
 		_edge_sf(tn, top_access, -1.0)
 		_edge_sf(bn, bot_access, -1.0)
 		_edge_sf(tn, bn, t)
-		lifts.append({"id": "lift%d" % ei, "esc": ei, "rise": rise, "time": t, "top": top, "bot": bot})
+		if removed:
+			# a lift-only station's lifts are its only link here: the crowd's graph has them too
+			_edge_plain(tn, top_access, -1.0)
+			_edge_plain(bn, bot_access, -1.0)
+			_edge_plain(tn, bn, t)
+		lifts.append({"id": "lift%d" % ei, "esc": ei, "rise": rise, "time": t, "top": top, "bot": bot, "removed": removed})
 
 
 ## the walking-graph node that the lift's door-front node hangs on: authored plans have a node set back from the mouth (escN_pre / escN_post), otherwise the nearest node on the same
 ## floor at least 2.5 m from the mouth (the barrier across the mouth must not stand on the route)
 func _access_node(ei: int, top: bool) -> String:
+	var removed: bool = escs[ei].get("removed", false)
 	var pre := "esc%d_%s" % [ei, "pre" if top else "post"]
-	if node_idx.has(pre):
+	if node_idx.has(pre) and not removed:
 		return pre
 	var me := "esc%d_%s" % [ei, "top" if top else "bot"]
 	var mouth: Vector3 = nodes[node_idx[me]]["pos"]
+	var room := _room_named(String(_esc_rooms(ei)[0 if top else 1]))
+	var rrect: Array = room.get("rect", [-1e9, 1e9, -1e9, 1e9])
 	var seen := {node_idx[me]: true}
 	var queue: Array = [node_idx[me]]
 	var fallback := ""
@@ -833,12 +873,51 @@ func _access_node(ei: int, top: bool) -> String:
 			var np: Vector3 = nodes[v]["pos"]
 			if absf(np.y - mouth.y) > 1.5:
 				continue
+			if np.x < rrect[0] + 0.5 or np.x > rrect[1] - 0.5 or np.z < rrect[2] + 0.5 or np.z > rrect[3] - 0.5:
+				queue.append(v)               # (a node in the passage beyond the room: the straight way to it would cut the wall; keep looking from there)
+				continue
 			if fallback == "":
 				fallback = nodes[v]["name"]
-			if np.distance_to(mouth) >= 2.5:
-				return nodes[v]["name"]
+			if np.distance_to(mouth) >= (LIFT_SIZE.z + 2.6 if removed else 2.5):
+				return nodes[v]["name"]          # (a removed bank's lifts stand in the old opening: the node must be in front of them)
 			queue.append(v)
 	return fallback
+
+
+## the escalator-type banks of a lift-only station are not there in reality (lifts are): mark them removed, close their openings in the rooms and drop their edges from the walking graph;
+## _add_lifts then puts the lifts where the openings were
+func _apply_lift_only() -> void:
+	for ei in escs.size():
+		var e: Dictionary = escs[ei]
+		if e.get("stairs", false):
+			continue
+		e["removed"] = true
+		for rm in rooms:
+			var kept: Array = []
+			for op in rm.get("openings", []):
+				if not String((op as Dictionary).get("id", "")).begins_with("esc%d_" % ei):
+					kept.append(op)
+			rm["openings"] = kept
+	for i in adj.size():
+		var kept2: Array = []
+		for ed in adj[i]:
+			var removed_edge := false
+			if int(ed[2]) >= 0 and _is_esc_edge(int(ed[2])):
+				var an: String = nodes[edges[int(ed[2])]["a"]]["name"]
+				var ei2 := int(an.substr(3, an.find("_") - 3))
+				removed_edge = bool(escs[ei2].get("removed", false))
+			if not removed_edge:
+				kept2.append(ed)
+		adj[i] = kept2
+
+
+## an edge in the crowd's graph `adj` only needs no care for the other two (they are made by _edge_sf)
+func _edge_plain(a: String, b: String, cost_override := -1.0) -> void:
+	var ia: int = node_idx[a]
+	var ib: int = node_idx[b]
+	var c := cost_override if cost_override >= 0.0 else (nodes[ia]["pos"] as Vector3).distance_to(nodes[ib]["pos"]) / 1.5
+	adj[ia].append([ib, c, -1])
+	adj[ib].append([ia, c, -1])
 
 
 func _edge_sf(a: String, b: String, cost_override := -1.0) -> void:
@@ -1045,6 +1124,7 @@ static func warm_all_async() -> void:
 	if _all_warm or _warm_group >= 0:
 		return
 	RealData.station("")            # the lazily loaded static tables are filled here, on the main thread, so the workers only read them
+	vertical_access("")
 	StationCharacter.color("")
 	_warm_out = []
 	_warm_out.resize(Net.stations.size())

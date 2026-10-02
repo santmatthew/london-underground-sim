@@ -1,0 +1,8 @@
+{
+ "_comment": "Stations whose way up and down is lifts (TfL facility record: lifts, no escalators), with the spiral emergency stair where one is documented. lift_only: the escalator-type banks of the generated / authored plan stand in for lifts: they are replaced by lifts (StationPlan._apply_lift_only); the fixed stair flights stay. spiral.steps only where a source gives the count (Railforums 'Emergency spiral stairs', David Lew's blog 'Tube Facts 2: Covent Garden', diamondgeezer 'undergroundest'; Wikipedia 'Borough tube station' for the Borough stair); null: the geometry's step count is derived from the depth.",
+ "940GZZLUHTD": {"name": "Hampstead", "lift_only": true, "spiral": {"steps": 320, "note": "over 320 steps, the longest on the network"}},
+ "940GZZLUCGN": {"name": "Covent Garden", "lift_only": true, "spiral": {"steps": 193}},
+ "940GZZLURSQ": {"name": "Russell Square", "lift_only": true, "spiral": {"steps": 171, "note": "the signs say 175"}},
+ "940GZZLUGDG": {"name": "Goodge Street", "lift_only": true, "spiral": {"steps": 136}},
+ "940GZZLUBOR": {"name": "Borough", "lift_only": true, "spiral": {"steps": null, "note": "from ground level to the lower lift lobby"}}
+}

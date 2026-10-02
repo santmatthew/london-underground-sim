@@ -17,7 +17,7 @@ class Agent:
 	var yaw := 0.0
 	var speed := 1.3
 	var cur := 0.0
-	var state := "walk"           # walk | gate | esc | wait | board | dead
+	var state := "walk"           # walk | gate | esc | hop (in a lift) | wait | board | dead
 	var char_idx := 0
 	var seed := 0
 	var node: PersonModel
@@ -48,7 +48,7 @@ var _board_t := 0.0
 var _rider_t := 0.0
 var enabled := true
 var density := 1.0                # global multiplier (settings)
-var stats := {"agents": 0, "awake": 0, "riders": 0}
+var stats := {"agents": 0, "awake": 0, "riders": 0, "lift_rides": 0}
 
 
 func setup(st: Station, p: Node3D) -> void:
@@ -116,6 +116,8 @@ func _advance_random(a: Agent, frac: float) -> void:
 			var p0: Vector3 = a.pts[k - 1]["pos"]
 			var p1: Vector3 = a.pts[k]["pos"]
 			a.pos = p0.lerp(p1, clampf(d / maxf(seg, 0.001), 0.0, 1.0))
+			if a.pts[k - 1]["kind"] == "lift":
+				a.pos = p1                 # (the step across a lift: out of its other door)
 			a.i = k
 			break
 		d -= seg
@@ -507,6 +509,11 @@ func _step(a: Agent, delta: float, ppos: Vector3) -> void:
 			return
 		"esc":
 			_step_escalator(a, delta)
+		"hop":
+			# inside a lift: out of sight for a while, then out of the other door
+			a.wait_t -= delta
+			if a.wait_t <= 0.0:
+				_finish_hop(a)
 		"walk", "board", "gate":
 			_step_walk(a, delta, ppos)
 	# sync visuals
@@ -541,6 +548,15 @@ func _step_walk(a: Agent, delta: float, ppos: Vector3) -> void:
 		elif kind == "esc_in":
 			_enter_escalator(a, a.i)
 			a.i += 1
+			return
+		elif kind == "lift":
+			# a lift-only station: the way up or down is a lift (the next waypoint is in front of its other door)
+			a.state = "hop"
+			a.wait_t = clampf(float(wp.get("time", 30.0)) * 0.35, 5.0, 14.0)
+			a.i += 1
+			_set_solid(a, false)
+			if a.node:
+				a.node.visible = false
 			return
 		a.pos.y = target.y
 		a.i += 1
@@ -630,6 +646,19 @@ func _step_escalator(a: Agent, delta: float) -> void:
 		a.cur = Escalator.SPEED
 	elif a.node:
 		a.node.play(&"escalator_stand" if not info["walk"] else &"walk_normal", 0.3)
+
+
+func _finish_hop(a: Agent) -> void:
+	if a.i < a.pts.size():
+		a.pos = a.pts[a.i]["pos"]
+		a.i += 1
+	a.state = "walk"
+	_set_solid(a, true)
+	stats["lift_rides"] += 1
+	if a.node:
+		a.node.visible = true
+		a.node.position = a.pos
+	a.cur = 0.0
 
 
 func _finish_route(a: Agent) -> void:

@@ -77,6 +77,9 @@ func build_async(p: StationPlan, use_async := true) -> void:
 		await _slice()
 	_t0 = _t("rooms", _t0)
 	for e in plan.escs:
+		if e.get("removed", false):
+			await _slice()
+			continue          # (a lift-only station: its lifts stand where this escalator would be)
 		var esc := Escalator.new()
 		esc.build(e["rise"], e["lanes"], "tile_white", e.get("stairs", false))
 		esc.position = e["pos"]
@@ -146,7 +149,7 @@ var lift_doors: Array = []         # Node3D anchors in front of each lift door (
 
 ## lifts are built where the station has them in reality (the TfL facility record) and for step-free journeys at every station; the closed escalators only on step-free journeys
 func has_lifts() -> bool:
-	return plan != null and not plan.lifts.is_empty() and (StationPlan.step_free_mode or (StationPlan.lifts_enabled and plan.lifts_real))
+	return plan != null and not plan.lifts.is_empty() and (StationPlan.step_free_mode or plan.lift_only or (StationPlan.lifts_enabled and plan.lifts_real))
 
 
 func _build_lifts() -> void:
@@ -157,29 +160,34 @@ func _build_lifts() -> void:
 		for end in ["top", "bot"]:
 			var d: Dictionary = lf[end]
 			var other: Dictionary = lf["bot" if end == "top" else "top"]
-			var car := PropKit.lift_housing()
-			car.name = "Lift%d_%s" % [li, end]
-			fitting_root.add_child(car)
-			car.position = d["pos"]
-			car.rotation.y = d["yaw"]
-			var door := Node3D.new()
-			door.name = "LiftDoor%d_%s" % [li, end]
-			fitting_root.add_child(door)
-			door.position = d["front"]
-			door.set_meta("lift", li)
-			door.set_meta("end", end)
-			door.set_meta("to", other["front"])
-			door.set_meta("time", lf["time"])
-			door.set_meta("out", Basis(Vector3.UP, float(d["yaw"])) * Vector3(0, 0, -1))
-			door.set_meta("to_out", Basis(Vector3.UP, float(other["yaw"])) * Vector3(0, 0, -1))
-			door.add_to_group("lift_door")
-			lift_doors.append(door)
+			# the housings of this end: one, or a pair side by side (every one has a door the player can use; the graph's node is in front of the middle of the pair)
+			var houses: Array = [{"pos": d["pos"], "front": d.get("front_a", d["front"]), "yaw": d["yaw"]}]
+			houses.append_array(d.get("extra", []))
+			for hi in houses.size():
+				var hs: Dictionary = houses[hi]
+				var car := PropKit.lift_housing()
+				car.name = "Lift%d_%s_%d" % [li, end, hi]
+				fitting_root.add_child(car)
+				car.position = hs["pos"]
+				car.rotation.y = hs["yaw"]
+				var door := Node3D.new()
+				door.name = "LiftDoor%d_%s_%d" % [li, end, hi]
+				fitting_root.add_child(door)
+				door.position = hs["front"]
+				door.set_meta("lift", li)
+				door.set_meta("end", end)
+				door.set_meta("to", other["front"])
+				door.set_meta("time", lf["time"])
+				door.set_meta("out", Basis(Vector3.UP, float(d["yaw"])) * Vector3(0, 0, -1))
+				door.set_meta("to_out", Basis(Vector3.UP, float(other["yaw"])) * Vector3(0, 0, -1))
+				door.add_to_group("lift_door")
+				lift_doors.append(door)
 	if not StationPlan.step_free_mode:
 		return
 	# step-free journeys: the escalators and stairs are closed to the player, a barrier across each mouth
 	for ei in plan.escs.size():
 		var e: Dictionary = plan.escs[ei]
-		if plan.lift_of(ei).is_empty():
+		if plan.lift_of(ei).is_empty() or e.get("removed", false):
 			continue
 		for top in [true, false]:
 			var b := PropKit.bank_barrier(float(e["width"]), bool(e.get("stairs", false)))

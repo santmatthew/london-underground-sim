@@ -1,5 +1,5 @@
 {
- "note": "Covent Garden, from TfL station layout diagram P057-02 (topology; dimensions estimated)",
+ "note": "Covent Garden, from TfL station layout diagram P057-02; depth 36.0 m (the table's first digit is clipped: 36 agrees with the 193 steps of the emergency spiral stair, 56 does not); lifts modelled as lifts (no escalators at this station) (topology; dimensions estimated)",
  "rooms": [
   {
    "id": "hall",
@@ -33,7 +33,7 @@
     36.0,
     16.0
    ],
-   "depth": 56.0
+   "depth": 36.0
   }
  ],
  "esc": [
