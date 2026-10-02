@@ -278,13 +278,70 @@ func _rider_pass() -> void:
 			var car: Node3D = train.cars[ci]
 			var d := pp.distance_to(car.global_position)
 			if d < 44.0 and not cars.has(ci):
-				cars[ci] = _populate_car(train, ci, st["load"])
+				cars[ci] = _begin_populate(train, ci, st["load"])
 			elif d > 72.0 and cars.has(ci):
 				for p in cars[ci]:
 					if is_instance_valid(p):
 						lod.unregister(p)
 						p.queue_free()
 				cars.erase(ci)
+
+
+## Riders appear a few per frame (RIDERS_PER_FRAME): filling a whole train at once took 150 ms to 1 s in one frame, the frame-rate experiment's biggest hitches.
+## The list that is returned is filled in place; the choices (which seats, which people) are the same as populating the car in one go.
+const RIDERS_PER_FRAME := 5
+var _pending: Array = []         # cars being filled: {train, ci, arr, markers: [[marker, seated]], i, crng, ld}
+
+
+func _begin_populate(train: Train, ci: int, ld: float) -> Array:
+	var car: Node3D = train.cars[ci]
+	var crng := RandomNumberGenerator.new()
+	crng.seed = hash("%d/%d" % [train.run, ci])
+	var markers: Array = []
+	for m in car.find_children("seat_*", "Node3D", true, false):
+		markers.append([m, true])
+	for m in car.find_children("stand_*", "Node3D", true, false):
+		if String((m as Node3D).get_meta("extras", {}).get("kind", "stand")) != "stand_door":
+			markers.append([m, false])
+	var arr: Array = []
+	_pending.append({"train": train, "ci": ci, "arr": arr, "markers": markers, "i": 0, "crng": crng, "ld": ld})
+	return arr
+
+
+func _fill_pending(budget: int, only_train: Train = null) -> void:
+	var k := 0
+	while k < _pending.size() and budget > 0:
+		var e: Dictionary = _pending[k]
+		var train = e["train"]
+		var alive: bool = is_instance_valid(train) and train_state.has(train) and (train_state[train]["cars"] as Dictionary).has(e["ci"]) \
+				and is_same(train_state[train]["cars"][e["ci"]], e["arr"])
+		if not alive:
+			_pending.remove_at(k)
+			continue
+		if only_train != null and train != only_train:
+			k += 1
+			continue
+		var car: Node3D = (train as Train).cars[e["ci"]]
+		var crng: RandomNumberGenerator = e["crng"]
+		var markers: Array = e["markers"]
+		while budget > 0 and e["i"] < markers.size():
+			var m: Array = markers[e["i"]]
+			e["i"] += 1
+			var seated: bool = m[1]
+			var ld: float = e["ld"]
+			if crng.randf() < (ld * 0.9 if seated else ld * ld * 0.8):
+				(e["arr"] as Array).append(_place_rider(car, m[0], seated, crng))
+				stats["riders"] += 1
+				budget -= 1
+		if e["i"] >= markers.size():
+			_pending.remove_at(k)
+		else:
+			k += 1
+
+
+## fill every car of `train` now (before its riders are handed to another station's crowd)
+func finish_riders(train: Train) -> void:
+	_fill_pending(1 << 20, train)
 
 
 func _populate_car(train: Train, ci: int, ld: float) -> Array:
@@ -427,6 +484,8 @@ func _process(delta: float) -> void:
 	if _rider_t <= 0.0:
 		_rider_t = 0.7
 		_rider_pass()
+	if not _pending.is_empty():
+		_fill_pending(RIDERS_PER_FRAME)
 	var dead: Array = []
 	var ppos := to_local(player.global_position) if player else Vector3(1e6, 1e6, 1e6)
 	for a in agents:

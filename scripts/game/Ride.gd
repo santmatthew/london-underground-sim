@@ -182,6 +182,7 @@ func _start_tunnel(travelled: float) -> void:
 	tunnel.scale.z = (train.get_meta("visit", {}) as Dictionary).get("side", 1.0)
 	tunnel.direction = 1.0 if train.facing > 0 else -1.0
 	if origin.crowd != null:
+		origin.crowd.finish_riders(train)            # riders appear a few per frame; the destination station takes over the complete cars
 		rider_state = origin.crowd.train_state.get(train, {})
 	# match the fixture phase: origin fixtures sit at x1 + 6 + 12k (module frame)
 	tunnel.offset = travelled

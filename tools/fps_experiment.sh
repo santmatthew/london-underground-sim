@@ -28,7 +28,7 @@ for r in $RUNS; do
     L5_bug) exp L5_bug 5 "Oxford Circus" "" "UG_ON=tubemap_redraw";;
     L6_game)
       python3 tools/sys_sampler.py $OUT/L6_game_sys.csv & sp=$!
-      godot --path . --resolution $RES --windowed res://scenes/main.tscn -- --autopilot --seed=5 --length=long --fps-log=$OUT/L6_game.csv --fps-secs=$SECS --fps-quit > $OUT/L6_game.log 2>&1
+      godot --path . --resolution $RES --windowed --disable-vsync res://scenes/main.tscn -- --autopilot --seed=5 --length=long --fps-log=$OUT/L6_game.csv --fps-secs=$SECS --fps-quit > $OUT/L6_game.log 2>&1
       kill $sp 2>/dev/null; wait $sp 2>/dev/null
       grep FRAMELOG $OUT/L6_game.log | tail -1;;
   esac

@@ -57,6 +57,8 @@ func _ready() -> void:
 			_empty_scene()
 		_:
 			_station(sname)
+	if level >= 5 and arg("warm", "1") == "1":
+		await CrowdWarmup.run(self)
 	log = FrameLog.new()
 	add_child(log)
 	log.on_done = func(_s): get_tree().quit()
@@ -135,7 +137,16 @@ func _station(sname: String) -> void:
 		st.attach_crowd(player)
 
 
+var _last_nodes := 0
+var _hitch_log := false
+
+
 func _process(delta: float) -> void:
+	if OS.has_environment("UG_HITCH"):
+		var nc := get_tree().get_node_count()
+		if delta > 0.1 and log != null and log.running:
+			print("HITCH t=%.1f frame=%.0f ms  nodes %d (%+d)  crowd %s" % [log.frames() * 0.0 + (Time.get_ticks_usec() - log._t0_us) / 1e6, delta * 1000.0, nc, nc - _last_nodes, str(st.crowd.stats) if (st != null and st.crowd != null) else "-"])
+		_last_nodes = nc
 	if route.size() < 2:
 		return
 	# walk the polyline back and forth

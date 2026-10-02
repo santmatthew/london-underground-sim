@@ -73,6 +73,7 @@ func _ready() -> void:
 	get_tree().root.size_changed.connect(_apply_settings)        # "Auto" render scale follows the window size
 	_apply_settings()
 	_preload()
+	_warm_up_people.call_deferred()
 	_parse_cli()
 	_load_display_settings()
 	if cli.has("fps-log"):
@@ -215,6 +216,13 @@ func _apply_settings() -> void:
 	if station and station.crowd:
 		station.crowd.density = opts["crowd"]
 		station.crowd.enabled = opts["crowd"] > 0.0
+
+
+## Draw every character once, off screen, while the menu is up: otherwise the first appearance of each of the 36 characters in a station costs about 130 ms
+func _warm_up_people() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await CrowdWarmup.run(self)
 
 
 func _preload() -> void:
