@@ -104,6 +104,43 @@ static func _ensure_loaded() -> void:
 		_loco_clips.sort_custom(func(a, b): return a["speed"] < b["speed"])
 
 
+## Start loading every character (scene + textures) and the shared textures on worker threads: loading them on first use took about 140 ms each on the main thread
+## (6 s for all 36). Call at start-up; `preload_ready()` says when everything is in.
+static func preload_async() -> void:
+	_ensure_loaded()
+	for c in _chars:
+		_request(String(c["file"]))
+		var ms: Dictionary = c.get("material_slots", {})
+		for k in ["skin", "face", "outfit", "outfit_normal", "hair"]:
+			_request(String(ms.get(k, "")))
+	for n in ["skin_detail_n.png", "cloth_detail_n.png"]:
+		_request(TEX_DIR + n)
+	for sh in ["person_skin.gdshader", "person_face.gdshader", "person_outfit.gdshader", "person_hair.gdshader"]:
+		_request(SHADER_DIR + sh)
+	_request(ANIMS_PATH)
+
+
+static func _request(path: String) -> void:
+	if path != "" and ResourceLoader.exists(path):
+		ResourceLoader.load_threaded_request(path, "", true)
+
+
+static func preload_ready() -> bool:
+	_ensure_loaded()
+	var paths: Array = []
+	for c in _chars:
+		paths.append(String(c["file"]))
+		var ms: Dictionary = c.get("material_slots", {})
+		for k in ["skin", "face", "outfit", "outfit_normal", "hair"]:
+			if String(ms.get(k, "")) != "":
+				paths.append(String(ms[k]))
+	for p in paths:
+		var st := ResourceLoader.load_threaded_get_status(p)
+		if st == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			return false
+	return true
+
+
 static func count() -> int:
 	_ensure_loaded()
 	return _chars.size()

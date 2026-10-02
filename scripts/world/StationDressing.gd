@@ -24,31 +24,36 @@ var _kits: Dictionary = {}                # room name -> MeshKit collecting that
 
 static func place(st: Station) -> void:
 	var d := StationDressing.new()
-	d.run(st)
+	await d.run(st)
 
 
 func run(st: Station) -> void:
 	station = st
 	plan = st.plan
 	rng.seed = plan.seed_value + 4242
-	map = DressMap.build(st)
+	map = await DressMap.build(st)
 	picker = PosterKit.Picker.new(rng)
 	root = Node3D.new()
 	root.name = "Props"
 	station.add_child(root)
 	_note_signs()
+	await station._slice()
 	# (UG_OFF=d_hall,d_rooms,d_plat,d_cull switch the parts off one by one: used by the frame-rate experiment)
+	# (each part is a frame of its own when the station is built asynchronously: all of it at once is a stall of well over a second)
 	if not Station.debug_off("d_hall"):
 		for gl in plan.gatelines:
 			_hall(gl)
+			await station._slice()
 	if not Station.debug_off("d_rooms"):
 		for rm in plan.rooms:
 			var nm: String = rm["name"]
 			if nm.begins_with("landing") or nm.begins_with("corridor"):
 				_room(rm)
+				await station._slice()
 	if not Station.debug_off("d_plat"):
 		for mi in plan.modules.size():
 			_platform(mi)
+			await station._slice()
 	for k in _kits:
 		var mi := PosterKit.finish(_kits[k], root, "Posters_" + String(k))
 		if mi != null:

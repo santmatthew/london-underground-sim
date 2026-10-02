@@ -5,6 +5,7 @@ extends RefCounted
 ## Call `await CrowdWarmup.run(self)` once, e.g. while the menu or briefing is up; it takes a few frames and frees what it made.
 
 static var done := false
+const PER_FRAME := 3               # characters created per frame once their files are loaded
 
 
 static func run(host: Node, frames := 4) -> void:
@@ -30,14 +31,24 @@ static func run(host: Node, frames := 4) -> void:
 	light.position = Vector3(0, 3, 4)
 	light.omni_range = 20.0
 	sv.add_child(light)
-	var n := PersonModel.count()
-	for i in n:
-		var p := PersonModel.create(i, 1)
-		sv.add_child(p)
-		p.position = Vector3((i % 9 - 4) * 0.7, 0.0, -float(i / 9) * 0.7)
-		p.play(&"idle_stand_1", 0.0, 1.0)
-	host.add_child(sv)
 	var tree := host.get_tree()
+	# the character files load on worker threads (PersonModel.preload_async); wait for them without blocking a frame
+	PersonModel.preload_async()
+	while not PersonModel.preload_ready():
+		await tree.create_timer(0.1).timeout
+	var n := PersonModel.count()
+	host.add_child(sv)
+	var i := 0
+	while i < n:
+		for k in PER_FRAME:
+			if i >= n:
+				break
+			var p := PersonModel.create(i, 1)
+			sv.add_child(p)
+			p.position = Vector3((i % 9 - 4) * 0.7, 0.0, -float(i / 9) * 0.7)
+			p.play(&"idle_stand_1", 0.0, 1.0)
+			i += 1
+		await tree.process_frame
 	for k in frames:
 		await tree.process_frame
 	sv.queue_free()

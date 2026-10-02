@@ -40,10 +40,9 @@ func run():
 	# a new journey must start from there
 	g.cli["seed"] = "6"
 	g.start_journey()
-	var guard := 0
-	while g.state != Game.State.BRIEFING and guard < 600:
+	var t_wait := Time.get_ticks_msec()          # (wall clock: the timetable and the journey are built on worker threads)
+	while g.state != Game.State.BRIEFING and Time.get_ticks_msec() - t_wait < 60000:
 		await get_tree().process_frame
-		guard += 1
 	print("new journey reaches the briefing: ", g.state == Game.State.BRIEFING)
 	ok = ok and g.state == Game.State.BRIEFING
 	print("OK" if ok else "FAILED")

@@ -94,6 +94,28 @@ func _weekend_scale(band: int) -> float:
 	return [1.0, 0.72, 0.9, 0.72, 1.0, 1.0][band]      # thinner peak services at weekends
 
 
+## `build` on a worker thread, so that the loading screen keeps animating (about a second of work). Nothing may read the timetable until this returns:
+## the previous journey's station is gone by then (the menu frees it).
+func build_async(seed_value: int) -> void:
+	_build_task = WorkerThreadPool.add_task(build.bind(seed_value), false, "timetable")
+	var task := _build_task
+	while not WorkerThreadPool.is_task_completed(task):
+		await get_tree().process_frame
+	if _build_task == task:
+		WorkerThreadPool.wait_for_task_completion(task)
+		_build_task = -1
+
+
+var _build_task := -1
+
+
+## quitting during the loading screen: the worker must be finished with this node before it is freed
+func _exit_tree() -> void:
+	if _build_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_build_task)
+		_build_task = -1
+
+
 func build(seed_value: int) -> void:
 	var t_begin := Time.get_ticks_msec()
 	seed_used = seed_value

@@ -40,9 +40,27 @@ func build(p: StationPlan) -> void:
 	build_async(p, false)
 
 
+var _chunk_us := 0
+const SLICE_US := 25000         # a stretch of build work between two frames should not be much longer than this
+
+
+## Frame break between the big steps of the build (a no-op for the synchronous `build`)
 func _yield() -> void:
 	if async_mode:
+		if Station.debug_on("loadtime"):        # which stretch of the build ran without a break for long: UG_ON=loadtime lists every stretch over 60 ms with the line that ended it
+			var now := Time.get_ticks_usec()
+			if _chunk_us != 0 and now - _chunk_us > 60000:
+				var stk := get_stack()
+				var at: Dictionary = stk[2] if stk.size() > 2 and stk[1]["function"] == "_slice" else (stk[1] if stk.size() > 1 else {"function": "?", "line": 0})
+				print("LOAD     chunk %4d ms ends at %s:%d" % [(now - _chunk_us) / 1000, at["function"], at["line"]])
 		await get_tree().process_frame
+		_chunk_us = Time.get_ticks_usec()
+
+
+## Frame break inside a loop of small items: only when the stretch since the last break has used up its time slice
+func _slice() -> void:
+	if async_mode and Time.get_ticks_usec() - _chunk_us > SLICE_US:
+		await _yield()
 
 
 ## Builds the station spreading the work over several frames (call with `await`).
@@ -56,7 +74,7 @@ func build_async(p: StationPlan, use_async := true) -> void:
 		sp.build(spec)
 		add_child(sp)
 		spaces[spec["name"]] = sp
-		await _yield()
+		await _slice()
 	_t0 = _t("rooms", _t0)
 	for e in plan.escs:
 		var esc := Escalator.new()
@@ -68,7 +86,7 @@ func build_async(p: StationPlan, use_async := true) -> void:
 		escalators.append(esc)
 		if not e.get("stairs", false):
 			Sfx.loop_at("escalator_loop", esc, Vector3(esc.length * 0.5, -esc.rise * 0.5 + 1.5, 0), -4.0, 26.0)
-		await _yield()
+		await _slice()
 	_t0 = _t("escalators", _t0)
 	for mi in plan.modules.size():
 		var m: Dictionary = plan.modules[mi]
@@ -89,25 +107,28 @@ func build_async(p: StationPlan, use_async := true) -> void:
 		pm.build(m["spec"])
 		modules.append(pm)
 		stats["tris"] += pm.meta.get("tri_count", 0)
-		await _yield()
+		await _slice()
 	fitting_root = Node3D.new()
 	fitting_root.name = "Fittings"
 	add_child(fitting_root)
 	_t0 = _t("modules", _t0)
 	_build_gateline()
+	await _slice()
 	_build_street_doors()
+	await _slice()
 	_t0 = _t("gates+doors", _t0)
 	if not Station.debug_off("occlusion"):
 		StationOcclusion.build(self)
-	StationSigns.place(self)
+	await _slice()
+	await StationSigns.place(self)
 	_t0 = _t("signs", _t0)
 	if not Station.debug_off("dressing"):
-		StationDressing.place(self)
+		await StationDressing.place(self)
 	_t0 = _t("props", _t0)
 	if DECALS and not Station.debug_off("decals"):
 		StationDecals.place(self)
 	_t0 = _t("decals", _t0)
-	await _yield()
+	await _slice()
 	trains = TrainService.new()
 	trains.name = "Trains"
 	add_child(trains)

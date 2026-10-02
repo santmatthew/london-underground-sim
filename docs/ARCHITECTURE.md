@@ -140,6 +140,17 @@ loaded its car model synchronously (about 0.8 s each): `Train.preload_async` at 
 the empty scene already costs 4.3 ms at 1080p (the full-screen passes of the Balanced tier at the GPU's throttled clock). The laptop's GPU spends the runs in "software power cap" / "software thermal
 slowdown" (SM clock mean about 740 MHz of 2100) and its CPU package idles near 100 C with the fans at maximum while a VM, k3s and Chrome run in the background.
 
+### Starting a journey (loading hitches, 2026-10-02)
+Measured with `UG_ON=loadtime` (a line per stage of start-up and per stretch of the station build over 60 ms) and `--fps-log`; `--menu-secs=N` makes the autopilot wait at the menu like a person. Before, choosing
+a journey froze the window for up to 9 s in stretches of 1 to 2 s; now nothing after "Start" is longer than about 0.3 s. What moved where: the 36 characters' files (and shaders, textures, animations) load on
+worker threads (`PersonModel.preload_async`) and `CrowdWarmup` then creates 3 per frame behind the menu; every station's plan and walk-time cache are built by a worker group at start-up
+(`StationPlan.warm_all_async`, 1.7 s of work on one core, 0.25 s on all; `warm_all()` hands them to the cache and waits if they are not done); the prop models load on workers (`StationProps.preload_async`);
+`Timetable.build_async` and the journey pick run on worker threads while the loading label keeps drawing (nothing may read the timetable meanwhile: the menu has freed the old station;
+quitting waits for the workers, `_exit_tree`); the station build is time-sliced: `Station._slice()` (also in `DressMap.build`, `StationSigns.place`, `StationDressing.run`) breaks for a frame only when 25 ms of work
+have run since the last break, so a warm build has no stretch over 85 ms. What is left is first-use cost of a run: the first platform module (about 0.3 s: shaders, textures) and escalator (0.15 s).
+`tests/build_chunks_test.gd` (`--station=`, `--preload`) shows the cold and the warm build's longest stretches; `tests/plan_warm_test.gd` checks the threaded builds against the synchronous ones.
+Waiting for the briefing in a test must use the wall clock, not a frame count (headless frames are much faster than the workers).
+
 ### GPU cost at a 4K target (2026-10-02, RTX 3050 Ti Mobile, static hall, Auto scale = FSR 1 at 54 %)
 Measured with `tests/fps_experiment.gd --vp=3840x2160 --cycle=<json>` (configs rotated inside one process in a shuffled order, a 60 s warm-up and 8 rounds, because the GPU's clock drifts
 with temperature and one-after-another runs are not comparable). Floor (empty scene) 4.2 ms; the static station adds about 3.5 ms (lighting and materials; the lights cost about 1.7 ms *as soon as there
@@ -160,7 +171,7 @@ FSR 1 and FSR 2 for `tools/upscale_sheet.py`; Godot has no DLSS (it needs NVIDIA
 `layouts_test` (every data/layouts file maps to a station and compiles), `plan_dump_test` (`--station`, optional `--from/--to`: platform ids, rooms, modules, waypoints of a route),
 `ray_probe_test` (what is at a point), `esc_edge_test` (real capsule pinned on every escalator lane, incl. `--crowd` = the station's real crowd at 08:50; fails if the player climbs a
 balustrade or leaves the shaft), `bot_test` (autopilot journey; `--seed`, `--multi=N`, `--start/--dest/--spot/--hour`, `--every`, `--frames`; prints DROP/TRAIL diagnostics
-when the player falls), `shots_test` (autopilot journey with screenshots), `overlap_test`.
+when the player falls), `shots_test` (autopilot journey with screenshots), `overlap_test`, `plan_warm_test` (threaded plan / timetable builds equal the synchronous ones), `build_chunks_test` (longest uninterrupted stretch of a station build, cold and warm).
 
 ## Conventions
 - Station-local frame: hall at y=0; platforms below. `PlatformModule` local frame: x along the track, z across, y=0 at platform level, rail head y=-0.9.

@@ -58,6 +58,7 @@ func _ready() -> void:
 	player.fell.connect(_on_player_fell)
 	player.interact_pressed.connect(_on_interact)
 	player.respawn_provider = _respawn_point
+	_stage("Game._ready begins")
 	hud = Hud.new()
 	add_child(hud)
 	hud.set_visible_hud(false)
@@ -70,7 +71,9 @@ func _ready() -> void:
 	_ui.add_child(map)
 	map.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	Sfx.subtitle.connect(func(t, secs): if hud: hud.say(t, secs))
+	_stage("HUD, map, UI nodes")
 	_build_menu()
+	_stage("_build_menu")
 	_show_menu()
 	get_tree().root.size_changed.connect(func():
 		opts.erase("_auto_now")                                  # "Auto" render scale follows the window size (and restarts its adaptation)
@@ -78,14 +81,24 @@ func _ready() -> void:
 			_adaptive.stop()
 		_apply_settings())
 	_apply_settings()
+	_stage("settings + signals")
 	_preload()
+	_stage("_preload (materials)")
 	_warm_up_people.call_deferred()
 	_parse_cli()
 	_load_display_settings()
 	if cli.has("fps-log"):
 		_start_fps_log(String(cli["fps-log"]), float(cli.get("fps-secs", "0")), cli.has("fps-quit"))
 	if cli.has("autopilot") or cli.has("auto-start"):
-		call_deferred("start_journey")
+		_auto_start.call_deferred()
+
+
+## `--menu-secs=N` waits N seconds at the main menu first, as a person would (the start-up work behind the menu then runs before the journey is chosen)
+func _auto_start() -> void:
+	var wait := float(cli.get("menu-secs", "0"))
+	if wait > 0.0:
+		await get_tree().create_timer(wait).timeout
+	start_journey()
 
 
 ## Full screen: borderless full-screen window at the desktop's resolution (F11 or Alt+Enter, or the menu). Remembered between runs; `--fullscreen` / `--windowed` override it.
@@ -239,10 +252,16 @@ func _apply_settings() -> void:
 
 ## Draw every character once, off screen, while the menu is up: otherwise the first appearance of each of the 36 characters in a station costs about 130 ms
 func _warm_up_people() -> void:
+	_stage("_ready ends / warm-up starts")
 	Train.preload_async()            # the car models load in the background while the menu is up
+	StationProps.preload_async()
+	StationPlan.warm_all_async()     # ... and so do the plans of all stations (1.7 s of work) that choosing a journey needs
 	await get_tree().process_frame
+	_stage("frame 1 after _ready")
 	await get_tree().process_frame
+	_stage("frame 2 after _ready")
 	await CrowdWarmup.run(self)
+	_stage("CrowdWarmup done")
 
 
 func _preload() -> void:
@@ -483,7 +502,19 @@ func _hide_all_panels() -> void:
 # ---------------------------------------------------------------------------------------------------
 # Journey setup
 # ---------------------------------------------------------------------------------------------------
+var _stage_t := 0
+
+
+## UG_ON=loadtime prints how long each stage of starting a journey takes (and the frame-time hitch each leaves)
+func _stage(label: String) -> void:
+	if Station.debug_on("loadtime"):
+		var now := Time.get_ticks_msec()
+		print("LOAD %-34s %6d ms   (t = %.2f s since the engine started)" % [label, now - _stage_t if _stage_t != 0 else 0, now / 1000.0])
+		_stage_t = now
+
+
 func start_journey() -> void:
+	_stage("(before start_journey)")
 	_hide_all_panels()
 	state = State.LOADING
 	_loading = _mk_label("Building the timetable...", 30, Color.WHITE, true)
@@ -492,26 +523,38 @@ func start_journey() -> void:
 	_ui.add_child(_loading)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	_stage("loading label up")
 	var seed := int(cli["seed"]) if cli.has("seed") else (int(Time.get_unix_time_from_system()) ^ randi())
 	var day_rng := RandomNumberGenerator.new()
 	day_rng.seed = seed + 99
 	var day := Journey.pick_day(day_rng, str(cli.get("day", opts.get("day", "random"))))
 	Clock.weekend = day != "weekday"
 	var day_name: String = {"weekday": "Weekday", "saturday": "Saturday", "sunday": "Sunday"}[day]
-	Timetable.build(seed)
+	if station:                      # nothing may read the timetable while the worker rebuilds it
+		station.queue_free()
+		station = null
+	await Timetable.build_async(seed)
+	_stage("Timetable.build")
 	_loading.text = "Choosing your journey..."
-	await get_tree().process_frame
+	while not StationPlan.warm_ready():      # normally long done: the plans were built in the background behind the menu
+		await get_tree().process_frame
+	StationPlan.warm_all()
+	_stage("StationPlan.warm_all")
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
-	StationPlan.warm_all()
 	var multi: bool = opts.get("mode", "single") == "multi"
 	if cli.has("start") and cli.has("dest"):
-		journey = Journey.make(str(cli["start"]).replace("_", " "), str(cli.get("spot", "platform")).replace("_", " "), str(cli["dest"]).replace("_", " "), float(cli.get("hour", "9")), rng)
 		multi = false
-	else:
-		journey = Journey.generate_multi(rng, opts) if multi else Journey.generate(rng, opts)
-		while journey.is_empty():
-			journey = Journey.generate_multi(rng, opts) if multi else Journey.generate(rng, opts)
+	# the pick plans routes over every station (a third of a second): on a worker thread, everything it reads is built and no longer written
+	_pick_task = WorkerThreadPool.add_task(_pick_journey.bind(rng, multi), false, "journey pick")
+	var pick_task := _pick_task
+	while not WorkerThreadPool.is_task_completed(pick_task):
+		await get_tree().process_frame
+	if _pick_task == pick_task:
+		WorkerThreadPool.wait_for_task_completion(pick_task)
+		_pick_task = -1
+	journey = _picked
+	_stage("journey pick")
 	journey["seed"] = seed
 	journey["day"] = day_name
 	journey["mode"] = "multi" if multi else "single"
@@ -527,6 +570,7 @@ func start_journey() -> void:
 	Clock.running = false
 	Clock.time_scale = 1.0
 	await _enter_station(journey["start"])
+	_stage("_enter_station (build + hook)")
 	var spot: Dictionary = journey["spot"]
 	player.cancel_sit()
 	player.global_position = spot["pos"] + Vector3(0, 0.05, 0)
@@ -535,9 +579,32 @@ func start_journey() -> void:
 	player.face(Vector3(sin(yaw), 0, cos(yaw)))
 	_loading.queue_free()
 	_show_briefing()
+	_stage("briefing up")
 	if cli.has("autopilot") or cli.has("auto-start"):
 		await get_tree().create_timer(float(cli.get("brief-secs", "2.5"))).timeout
 		_begin_play()
+
+
+var _picked: Dictionary = {}
+var _pick_task := -1
+
+
+## quitting while the journey is being picked: the worker reads this node, so it must be finished before the node is freed
+func _exit_tree() -> void:
+	StationPlan.finish_warm()
+	if _pick_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_pick_task)
+		_pick_task = -1
+
+
+## runs on a worker thread (see start_journey)
+func _pick_journey(rng: RandomNumberGenerator, multi: bool) -> void:
+	if cli.has("start") and cli.has("dest"):
+		_picked = Journey.make(str(cli["start"]).replace("_", " "), str(cli.get("spot", "platform")).replace("_", " "), str(cli["dest"]).replace("_", " "), float(cli.get("hour", "9")), rng)
+		return
+	_picked = Journey.generate_multi(rng, opts) if multi else Journey.generate(rng, opts)
+	while _picked.is_empty():
+		_picked = Journey.generate_multi(rng, opts) if multi else Journey.generate(rng, opts)
 
 
 func _enter_station(idx: int) -> void:
@@ -546,6 +613,9 @@ func _enter_station(idx: int) -> void:
 	station = Station.new()
 	add_child(station)
 	await station.build_async(StationPlan.for_station(idx))
+	_stage("  station.build_async")
+	if Station.debug_on("loadtime"):
+		print("LOAD   station build ms per part: ", station.prof)
 	_hook_station(station)
 
 
@@ -554,7 +624,9 @@ func _hook_station(st: Station) -> void:
 	st.trains.setup(st, player)
 	st.trains.doors_closing.connect(_on_doors_closing)
 	st.trains.doors_opened.connect(_on_doors_opened)
+	_stage("  trains.setup")
 	st.attach_crowd(player)
+	_stage("  attach_crowd")
 	if st.crowd:
 		st.crowd.density = opts["crowd"]
 		st.crowd.enabled = opts["crowd"] > 0.0

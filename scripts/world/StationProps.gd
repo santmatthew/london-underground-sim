@@ -11,6 +11,13 @@ static var _poster_tex: Dictionary = {}
 static var _poster_mats: Dictionary = {}
 
 
+## Start loading every prop model on the worker threads (while the menu is up): the first station of a run otherwise loads them one by one on the main thread
+static func preload_async() -> void:
+	for f in ResourceLoader.list_directory(DIR):
+		if f.ends_with(".glb"):
+			ResourceLoader.load_threaded_request(DIR + f, "", true)
+
+
 static func scene(name: String) -> PackedScene:
 	if not _packed.has(name):
 		_packed[name] = load(DIR + name + ".glb")

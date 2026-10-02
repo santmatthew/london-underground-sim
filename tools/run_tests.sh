@@ -13,6 +13,8 @@ check "planner: routes found" "arrive exit" build/t_planner.log
 if grep -q "no route" build/t_planner.log; then echo "FAIL  planner: some case had no route"; fail=1; fi
 GTEST_TIMEOUT=250 tools/gtest.sh walk_test > build/t_walk.log 2>&1
 check "floor audit: no gaps" "TOTAL gap spots: 0" build/t_walk.log
+GTEST_ENGINE_ARGS="--fixed-fps 60" GTEST_TIMEOUT=200 tools/gtest.sh plan_warm_test > build/t_planwarm.log 2>&1
+check "background builds: plans and timetable equal the synchronous ones" "^OK" build/t_planwarm.log
 GTEST_TIMEOUT=100 tools/gtest.sh audio_test > build/t_audio.log 2>&1
 check "audio: streams load, speech plays" "speech playing: true \(missing streams: 0\)" build/t_audio.log
 if [ "$1" == "--full" ]; then

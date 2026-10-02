@@ -7,6 +7,7 @@ const HANG_ROD := Color(0.35, 0.36, 0.38)
 static var _rod_mat: StandardMaterial3D
 
 
+## (a coroutine: when the station is built asynchronously each group of signs is a frame of its own)
 static func place(station: Station) -> void:
 	if Station.debug_off("signs"):
 		return
@@ -17,13 +18,17 @@ static func place(station: Station) -> void:
 	var lines: Array = _lines_here(plan)
 	for gl in plan.gatelines:
 		_hall_signs_at(root, plan, gl, lines)
+		await station._slice()
 	if plan.authored:
 		_authored_signs(root, plan)
+		await station._slice()
 	else:
 		for li in plan.escs.size():
 			_landing_signs(station, root, plan, li)
+			await station._slice()
 	for mi in plan.modules.size():
 		_module_signs(station, root, plan, mi)
+		await station._slice()
 	cull(root, 42.0)
 	for pm in station.modules:
 		for c in pm.get_children():

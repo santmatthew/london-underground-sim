@@ -773,13 +773,53 @@ func warm() -> void:
 
 
 static var _all_warm := false
+static var _warm_group := -1
+static var _warm_out: Array = []
 
 
+## Builds every station's plan and its walk-time cache on the worker threads (about 1.7 s of work on one core): started while the main menu is up, so that starting a journey does not stall.
+## The plans are only handed to the cache by `warm_all()`; the workers write nothing but their own slot of `_warm_out`.
+static func warm_all_async() -> void:
+	if _all_warm or _warm_group >= 0:
+		return
+	RealData.station("")            # the lazily loaded static tables are filled here, on the main thread, so the workers only read them
+	StationCharacter.color("")
+	_warm_out = []
+	_warm_out.resize(Net.stations.size())
+	_warm_group = WorkerThreadPool.add_group_task(_warm_one, Net.stations.size(), -1, false, "station plans")
+
+
+static func _warm_one(i: int) -> void:
+	var p := StationPlan.new()
+	p.generate(i)
+	p.warm()
+	_warm_out[i] = p
+
+
+## true when `warm_all()` will not have to wait
+static func warm_ready() -> bool:
+	return _all_warm or (_warm_group >= 0 and WorkerThreadPool.is_group_task_completed(_warm_group))
+
+
+## Quitting while the workers are still building plans: they read the network, so they must be done before it is freed
+static func finish_warm() -> void:
+	if _warm_group >= 0:
+		warm_all()
+
+
+## Every plan generated and warm (waits for `warm_all_async()` when it is still running; does the work itself when it was never started)
 static func warm_all() -> void:
 	if _all_warm:
 		return
-	for i in Net.stations.size():
-		for_station(i).warm()
+	warm_all_async()
+	WorkerThreadPool.wait_for_group_task_completion(_warm_group)
+	for i in _warm_out.size():
+		if _cache.has(i):
+			_cache[i].warm()           # built on the main thread meanwhile: keep that object, the worker's copy is dropped
+		else:
+			_cache[i] = _warm_out[i]
+	_warm_out = []
+	_warm_group = -1
 	_all_warm = true
 
 

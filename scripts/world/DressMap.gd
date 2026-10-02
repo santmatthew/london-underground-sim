@@ -12,6 +12,7 @@ var _route: Dictionary = {}          # Vector3i -> true
 var _placed: Array = []              # [Vector3 centre, Vector2 half, float yaw, float y]
 
 
+## (a coroutine: when the station is built asynchronously the work breaks for a frame whenever its time slice is used up; the whole map in one go is a stall of 300 ms)
 static func build(station: Station) -> DressMap:
 	var dm := DressMap.new()
 	var plan := station.plan
@@ -21,16 +22,20 @@ static func build(station: Station) -> DressMap:
 		for fk in fkeys:
 			routes.append([plan.path(sd["id"], "face:" + fk), null, "face:" + fk])
 			routes.append([plan.path("face:" + fk, sd["id"]), "face:" + fk, null])
+		await station._slice()
 	for fa in fkeys:
 		for fb in fkeys:
 			if fa != fb:
 				routes.append([plan.path("face:" + fa, "face:" + fb), "face:" + fa, "face:" + fb])
+		await station._slice()
 	for sp in plan.start_spots:
 		for sd in plan.street_doors:
 			routes.append([plan.path(String(sp["node"]), sd["id"]), sp["pos"], null])
 		for fk in fkeys:
 			routes.append([plan.path(String(sp["node"]), "face:" + fk), sp["pos"], "face:" + fk])
+		await station._slice()
 	for r in routes:
+		await station._slice()
 		var names: Array = r[0]
 		if names.is_empty():
 			continue
