@@ -31,7 +31,7 @@ godot --path .             # or open the project in Godot 4.7 and press F5
 Jump straight to a journey (handy for the authored stations): `godot --path . -- --start=Victoria --dest=Bank --spot=street_entrance --hour=8.5 --auto-start`
 (station names with underscores for spaces; `--spot=platform` or `street_entrance`; `--seed=N`).
 Controls (all rebindable under Settings > Controls; a gamepad works too): **WASD** or the left stick move · **Shift** / RB hurry (stamina), with **Ctrl** / LB run · mouse or right stick look · **E** / A sit down on a free seat (train seat or platform bench; move or press again to stand) · **M** / Y tube map (**G** / B switches between the classic diagram and the geographic map; right stick pans, triggers zoom) · **H** / X route hint · **Tab** skip time (when standing still or riding) ·
-**F3** performance overlay · **F4** frame-time log · **F11** (or Alt+Enter) full screen · **Esc** / Start pause/menu. The main menu has the journey options and graphics (quality, render scale (Auto adapts to the GPU to keep about 60 fps), upscaler, anti-aliasing, full screen, crowd density); **Settings** has Sound (volumes, announcements, subtitles), Accessibility (colour-blind line colours, HUD and subtitle size, no camera sway) and Controls.
+**F3** performance overlay · **F4** frame-time log · **F11** (or Alt+Enter) full screen · **Esc** / Start pause/menu. The main menu has the journey options and graphics (quality, render scale (Auto adapts to the GPU to keep about 60 fps), upscaler, anti-aliasing, full screen, crowd density); **Settings** has Sound (volumes, announcements, subtitles), Accessibility (colour-blind line colours, step-free journeys with lifts, HUD and subtitle size, no camera sway) and Controls.
 
 See `docs/ARCHITECTURE.md` and `docs/ASSETS.md`. Code: `scripts/autoload` (Net, Clock, Timetable, Sfx), `scripts/sim` (Planner),
 `scripts/world` (station generator, trains, crowds, signs, props), `scripts/game` (game loop, ride, HUD, map, autopilot), `scripts/people`.
@@ -40,7 +40,7 @@ See `docs/ARCHITECTURE.md` and `docs/ASSETS.md`. Code: `scripts/autoload` (Net, 
 - Surface (outer-zone) stations are glass-roofed halls; rides between them still show a tunnel rather than open-air scenery.
 - 19 major stations have layouts authored from TfL's station diagrams (Oxford Circus, King's Cross, Bank, Waterloo, Victoria, ... see docs/REAL_LAYOUTS.md); the rest are procedural per station (stable between runs) but use the real exit numbers, platform numbers and depths.
 - The autopilot's multi-stop mode is slower than the planner's par (85-90%) and can wander into the wrong platform strip in crowds; it recovers by re-routing.
-- Escalators use a simple shader for treads; no lifts or fixed stairs yet; a busker loop exists in the audio set but is not placed.
+- Escalators use a simple shader for treads; lifts exist only on step-free journeys (a fade, no car); no fixed stairs yet; a busker loop exists in the audio set but is not placed.
 - Performance was measured on an RTX 3050 Ti laptop under a virtual display only; use F3 and the Graphics setting to tune on your machine.
 - Real-station specifics (tile patterns, exact layouts) are generic; only names, lines, zones, depth class and line colours are per-station.
 

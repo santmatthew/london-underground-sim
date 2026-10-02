@@ -43,11 +43,20 @@ var node_idx: Dictionary = {}
 var edges: Array = []              # {a, b, len, cost}
 var adj: Array = []                # per node: [[to, cost, edge idx]]
 var start_spots: Array = []        # candidate player start points: {name, pos, yaw, node}
+var lifts: Array = []              # step-free mode: one lift per escalator / stair bank: {id, esc, rise, time, top:{pos, front, yaw, rot, y}, bot:{...}} (see _add_lifts)
+var adj_sf: Array = []             # the walking graph for step-free journeys: no escalators or stairs, lifts instead (lifts never appear in `adj`)
+var sf_ok := true                  # every vertical link has a lift, so the whole station can be used step-free
 var platform_no: Dictionary = {}   # pid -> 1..N
 var _dests: Dictionary = {}
 var bounds := AABB()
 
 static var _cache: Dictionary = {}
+## Step-free journeys (Settings access/step_free; Game sets it before it plans or builds anything): walking queries use the lift graph, gates the wide lanes.
+static var step_free_mode := false
+const LIFT_WAIT := 20.0            # call, wait for the car, doors (s)
+const LIFT_SPEED := 0.9            # m/s
+const LIFT_DOORS := 12.0           # both door cycles (s)
+const LIFT_SIZE := Vector3(2.2, 3.0, 2.4)     # housing: width across the door, height, depth
 
 
 static func for_station(station_idx: int) -> StationPlan:
@@ -98,6 +107,7 @@ func generate(station_idx: int) -> void:
 	var lspec: Dictionary = RealData.layout_spec(naptan)
 	if not lspec.is_empty():
 		if LayoutCompiler.compile(self, lspec):
+			_add_lifts()
 			return
 		# a broken authored layout must never break the station: start again from scratch with the generator
 		_reset_plan()
@@ -407,6 +417,7 @@ func finish_common(rng: RandomNumberGenerator = null) -> void:
 	if real_no.size() == platform_no.size():
 		platform_no = real_no
 	_add_start_spots(rng)
+	_add_lifts()
 
 
 func _reset_plan() -> void:
@@ -426,6 +437,9 @@ func _reset_plan() -> void:
 	adj = []
 	start_spots = []
 	platform_no = {}
+	lifts = []
+	adj_sf = []
+	sf_ok = true
 
 
 func station_platform(pid: String) -> Dictionary:
@@ -535,7 +549,8 @@ func _add_start_spots(rng: RandomNumberGenerator) -> void:
 # ---------------------------------------------------------------------------------------------------
 # Walking-time queries (seconds) on the graph
 # ---------------------------------------------------------------------------------------------------
-func dijkstra(from_name: String) -> Dictionary:
+func dijkstra(from_name: String, sf := step_free_mode) -> Dictionary:
+	var A: Array = adj_sf if (sf and not adj_sf.is_empty()) else adj
 	var dist := {}
 	var n := nodes.size()
 	var d := PackedFloat64Array()
@@ -554,7 +569,7 @@ func dijkstra(from_name: String) -> Dictionary:
 		open.remove_at(bi)
 		if cur[0] > d[cur[1]]:
 			continue
-		for e in adj[cur[1]]:
+		for e in A[cur[1]]:
 			var nd: float = cur[0] + e[1]
 			if nd < d[e[0]]:
 				d[e[0]] = nd
@@ -565,7 +580,8 @@ func dijkstra(from_name: String) -> Dictionary:
 
 
 ## node-name path from a to b (shortest by cost); empty if unreachable
-func path(a: String, b: String) -> Array:
+func path(a: String, b: String, sf := step_free_mode) -> Array:
+	var A: Array = adj_sf if (sf and not adj_sf.is_empty()) else adj
 	var n := nodes.size()
 	var d := PackedFloat64Array()
 	d.resize(n)
@@ -588,7 +604,7 @@ func path(a: String, b: String) -> Array:
 			continue
 		if cur[1] == dst:
 			break
-		for e in adj[cur[1]]:
+		for e in A[cur[1]]:
 			var nd: float = cur[0] + e[1]
 			if nd < d[e[0]]:
 				d[e[0]] = nd
@@ -627,13 +643,218 @@ func esc_lane_for(ei: int, dir: int, pick := 0) -> int:
 	return idxs[pick % idxs.size()]
 
 
+# ---------------------------------------------------------------------------------------------------
+# Lifts (step-free journeys)
+# ---------------------------------------------------------------------------------------------------
+func _is_esc_edge(ei: int) -> bool:
+	if ei < 0:
+		return false
+	var a: String = nodes[edges[ei]["a"]]["name"]
+	var b: String = nodes[edges[ei]["b"]]["name"]
+	return (a.begins_with("esc") and a.ends_with("_top") and b.begins_with("esc") and b.ends_with("_bot")) or (a.begins_with("esc") and a.ends_with("_bot") and b.begins_with("esc") and b.ends_with("_top"))
+
+
+## names of the rooms an escalator / stair bank joins (top room, bottom room): authored plans name them, the generator's chain is hall -> landing0 -> landing1 ...
+func _esc_rooms(ei: int) -> Array:
+	var e: Dictionary = escs[ei]
+	if e.has("from"):
+		return [String(e["from"]), String(e["to"])]
+	return ["hall" if ei == 0 else "landing%d" % (ei - 1), "landing%d" % ei]
+
+
+func _room_named(n: String) -> Dictionary:
+	for rm in rooms:
+		if rm["name"] == n:
+			return rm
+	return {}
+
+
+## the footprint of an escalator-local rectangle (x0..x1 along the escalator, z0..z1 across) as a plan-space xz rectangle [xmin, xmax, zmin, zmax]
+func _esc_rect(ei: int, x0: float, x1: float, z0: float, z1: float) -> Array:
+	var lo := Vector2(1e9, 1e9)
+	var hi := Vector2(-1e9, -1e9)
+	for cx in [x0, x1]:
+		for cz in [z0, z1]:
+			var p := esc_point(ei, Vector3(cx, 0.0, cz))
+			lo = Vector2(minf(lo.x, p.x), minf(lo.y, p.z))
+			hi = Vector2(maxf(hi.x, p.x), maxf(hi.y, p.z))
+	return [lo.x, hi.x, lo.y, hi.y]
+
+
+func _rect_inside(inner: Array, outer: Array, margin: float) -> bool:
+	return inner[0] >= outer[0] + margin and inner[1] <= outer[1] - margin and inner[2] >= outer[2] + margin and inner[3] <= outer[3] - margin
+
+
+func _rects_overlap(a: Array, b: Array, margin: float) -> bool:
+	return a[0] < b[1] + margin and a[1] > b[0] - margin and a[2] < b[3] + margin and a[3] > b[2] - margin
+
+
+## a lift housing beside the mouth of escalator `ei` on one side of the bank (top = in the upper room, bottom = in the lower one): the first of the two sides where the housing and the
+## space in front of its door lie inside the room, clear of the room's other openings, other lifts and the escalators' own shafts. Returns {} when neither fits.
+func _lift_side(ei: int, top: bool, taken: Array) -> Dictionary:
+	var e: Dictionary = escs[ei]
+	var room := _room_named(String(_esc_rooms(ei)[0 if top else 1]))
+	if room.is_empty() or not room.has("rect"):
+		return {}
+	var rect: Array = room["rect"]
+	var w: float = e["width"]
+	var len: float = e["length"]
+	var rise: float = e["rise"]
+	var depth := LIFT_SIZE.z
+	var across := LIFT_SIZE.x
+	for side in [1.0, -1.0]:
+		var zc: float = side * (w * 0.5 + 0.6 + across * 0.5)
+		# the housing against the wall the escalator pierces, the door on the room side
+		var hx0: float = -depth if top else len
+		var hx1: float = 0.0 if top else len + depth
+		var fx0: float = hx0 - 1.6 if top else hx1
+		var fx1: float = hx0 if top else hx1 + 1.6
+		var house := _esc_rect(ei, hx0, hx1, zc - across * 0.5, zc + across * 0.5)
+		var front := _esc_rect(ei, fx0, fx1, zc - across * 0.5, zc + across * 0.5)
+		var both := [minf(house[0], front[0]), maxf(house[1], front[1]), minf(house[2], front[2]), maxf(house[3], front[3])]
+		if not (_rect_inside(house, rect, -0.01) and _rect_inside(front, rect, 0.4)):
+			continue                       # (the housing stands against the wall: only the space in front of its door needs a margin)
+		var clash := false
+		for op in room.get("openings", []):
+			var o: Dictionary = op
+			var c: float = float(o["c"])
+			var half: float = float(o["w"]) * 0.5
+			var orect: Array
+			match String(o["side"]):
+				"N":
+					orect = [c - half, c + half, rect[2], rect[2] + 1.4]
+				"S":
+					orect = [c - half, c + half, rect[3] - 1.4, rect[3]]
+				"W":
+					orect = [rect[0], rect[0] + 1.4, c - half, c + half]
+				_:
+					orect = [rect[1] - 1.4, rect[1], c - half, c + half]
+			# (the opening of this escalator itself is where the housing stands next to: only its neighbours count)
+			if String(o.get("id", "")).begins_with("esc%d_" % ei):
+				continue
+			if _rects_overlap(both, orect, 0.3):
+				clash = true
+		for t in taken:
+			if _rects_overlap(both, t, 0.3):
+				clash = true
+		if clash:
+			continue
+		var xc: float = (hx0 + hx1) * 0.5
+		var door_x: float = hx0 if top else hx1
+		var floor_y: float = 0.0 if top else -rise
+		var front_x: float = door_x - 1.1 if top else door_x + 1.1
+		return {"pos": esc_point(ei, Vector3(xc, floor_y, zc)), "front": esc_point(ei, Vector3(front_x, floor_y, zc)), "yaw": float(e["yaw"]) + (PI * 0.5 if top else -PI * 0.5),
+			"y": floor_y, "footprint": both, "side": side}
+	return {}
+
+
+## Lifts for every escalator / stair bank: a housing at each end beside the mouth, a node in front of each door joined to the room's walking graph, and a lift edge between them
+## (call + ride + doors) that only the step-free graph `adj_sf` has; that graph lacks the escalator edges. Without a lift for some bank the station is not usable step-free (sf_ok false).
+func _add_lifts() -> void:
+	lifts = []
+	adj_sf = []
+	sf_ok = true
+	for i in adj.size():
+		var kept: Array = []
+		for e in adj[i]:
+			if not _is_esc_edge(int(e[2])):
+				kept.append(e)
+		adj_sf.append(kept)
+	var taken: Array = []
+	for ei in escs.size():
+		var top := _lift_side(ei, true, taken)
+		var bot := _lift_side(ei, false, taken)
+		if top.is_empty() or bot.is_empty():
+			sf_ok = false
+			continue
+		taken.append(top["footprint"])
+		taken.append(bot["footprint"])
+		var rise: float = escs[ei]["rise"]
+		var t: float = LIFT_WAIT + rise / LIFT_SPEED + LIFT_DOORS
+		var tn := "lift%d_top" % ei
+		var bn := "lift%d_bot" % ei
+		_node(tn, top["front"])
+		_node(bn, bot["front"])
+		while adj_sf.size() < adj.size():
+			adj_sf.append([])
+		var top_access := _access_node(ei, true)
+		var bot_access := _access_node(ei, false)
+		if top_access == "" or bot_access == "":
+			sf_ok = false
+			continue
+		_edge_sf(tn, top_access, -1.0)
+		_edge_sf(bn, bot_access, -1.0)
+		_edge_sf(tn, bn, t)
+		lifts.append({"id": "lift%d" % ei, "esc": ei, "rise": rise, "time": t, "top": top, "bot": bot})
+
+
+## the walking-graph node that the lift's door-front node hangs on: authored plans have a node set back from the mouth (escN_pre / escN_post), otherwise the nearest node on the same
+## floor at least 2.5 m from the mouth (the barrier across the mouth must not stand on the route)
+func _access_node(ei: int, top: bool) -> String:
+	var pre := "esc%d_%s" % [ei, "pre" if top else "post"]
+	if node_idx.has(pre):
+		return pre
+	var me := "esc%d_%s" % [ei, "top" if top else "bot"]
+	var mouth: Vector3 = nodes[node_idx[me]]["pos"]
+	var seen := {node_idx[me]: true}
+	var queue: Array = [node_idx[me]]
+	var fallback := ""
+	while not queue.is_empty():
+		var u: int = queue.pop_front()
+		for e in adj[u]:
+			var v: int = e[0]
+			if seen.has(v) or _is_esc_edge(int(e[2])):
+				continue
+			seen[v] = true
+			var np: Vector3 = nodes[v]["pos"]
+			if absf(np.y - mouth.y) > 1.5:
+				continue
+			if fallback == "":
+				fallback = nodes[v]["name"]
+			if np.distance_to(mouth) >= 2.5:
+				return nodes[v]["name"]
+			queue.append(v)
+	return fallback
+
+
+func _edge_sf(a: String, b: String, cost_override := -1.0) -> void:
+	var ia: int = node_idx[a]
+	var ib: int = node_idx[b]
+	var c := cost_override if cost_override >= 0.0 else (nodes[ia]["pos"] as Vector3).distance_to(nodes[ib]["pos"]) / 1.5
+	adj_sf[ia].append([ib, c, -1])
+	adj_sf[ib].append([ia, c, -1])
+
+
+func lift_of(ei: int) -> Dictionary:
+	for l in lifts:
+		if int(l["esc"]) == ei:
+			return l
+	return {}
+
+
+## a node path split where it rides a lift: [[names before], [names after], ...] (each part is one continuous walk)
+func path_segments(names: Array) -> Array:
+	var out: Array = []
+	var cur: Array = []
+	for i in names.size():
+		cur.append(names[i])
+		var n: String = names[i]
+		var nxt: String = names[i + 1] if i + 1 < names.size() else ""
+		if n.begins_with("lift") and nxt.begins_with("lift") and n.get_slice("_", 0) == nxt.get_slice("_", 0):
+			out.append(cur)
+			cur = []
+	if not cur.is_empty():
+		out.append(cur)
+	return out
+
+
 ## x of a gate lane of the wanted kind (+1 entry, -1 exit); `pick` selects among the lanes nearest the centre (non-accessible preferred)
 func gate_lane_x(kind: int, pick := 0, gl: Dictionary = {}) -> float:
 	if gl.is_empty():
 		gl = gates
 	var xs: Array = []
 	for ld in gl["lanes"]:
-		if ld["kind"] == kind and not ld["wide"]:
+		if ld["kind"] == kind and (ld["wide"] == step_free_mode):
 			xs.append(ld["x"])
 	if xs.is_empty():
 		for ld in gl["lanes"]:
@@ -682,6 +903,17 @@ func walk_points(names: Array, pick := 0) -> Array:
 			out.append({"pos": Vector3(lx2, 0, gl2["z"] + 1.6), "kind": "walk"})
 			out.append({"pos": Vector3(lx2, 0, gl2["z"] + 0.2), "kind": "gate"})
 			out.append({"pos": Vector3(lx2, 0, gl2["z"] - 1.8), "kind": "walk"})
+			i += 2
+			continue
+		if n.begins_with("lift") and nxt.begins_with("lift") and n.get_slice("_", 0) == nxt.get_slice("_", 0):
+			# a lift ride: stand at the door in front of the car (kind "lift", with the way it goes and where it comes out), then walk on from the other door
+			var li := int(n.get_slice("_", 0).substr(4))
+			var lf := lift_of(li)
+			var down := n.ends_with("_top")
+			var here: Dictionary = lf["top"] if down else lf["bot"]
+			var there: Dictionary = lf["bot"] if down else lf["top"]
+			out.append({"pos": here["front"], "kind": "lift", "lift": li, "dir": 1 if down else -1, "to": there["front"], "time": lf["time"]})
+			out.append({"pos": there["front"], "kind": "walk"})
 			i += 2
 			continue
 		if n.begins_with("esc") and n.ends_with("_top") and nxt.begins_with("esc") and nxt.ends_with("_bot"):
@@ -769,7 +1001,9 @@ func _landing_rect(level: int) -> Array:
 func warm() -> void:
 	for n in nodes:
 		if not _dcache.has(n["name"]):
-			_dcache[n["name"]] = dijkstra(n["name"])
+			_dcache[n["name"]] = dijkstra(n["name"], false)
+		if not _dcache_sf.has(n["name"]):
+			_dcache_sf[n["name"]] = dijkstra(n["name"], true)
 
 
 static var _all_warm := false
@@ -824,12 +1058,14 @@ static func warm_all() -> void:
 
 
 var _dcache: Dictionary = {}
+var _dcache_sf: Dictionary = {}
 
 
-func walk_time(a: String, b: String) -> float:
-	if not _dcache.has(a):
-		_dcache[a] = dijkstra(a)
-	return _dcache[a].get(b, 1e9)
+func walk_time(a: String, b: String, sf := step_free_mode) -> float:
+	var c: Dictionary = _dcache_sf if sf else _dcache
+	if not c.has(a):
+		c[a] = dijkstra(a, sf)
+	return c[a].get(b, 1e9)
 
 
 ## time from the paid side of the gateline (arriving from the street) to the platform face node

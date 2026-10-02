@@ -282,6 +282,71 @@ static func roundel_post(name: String) -> Node3D:
 	return n
 
 
+# ---------------------------------------------------------------------------------------------------
+# step-free journeys (see StationPlan.lifts): a lift beside each escalator / stair bank, and a barrier across the bank
+# ---------------------------------------------------------------------------------------------------
+## A lift as it looks from the passenger side: a stainless-steel clad housing with a pair of doors, a call panel beside them and "LIFT" above. StationPlan.LIFT_SIZE (width, height, depth),
+## origin at the floor in the middle of the footprint, the doors on the -Z face. (The car is not modelled: the ride is a fade, see Game._ride_lift.)
+static func lift_housing() -> Node3D:
+	var kit := MeshKit.new()
+	var W := StationPlan.LIFT_SIZE.x
+	var H := StationPlan.LIFT_SIZE.y
+	var D := StationPlan.LIFT_SIZE.z
+	kit.box("steel", Vector3(0, H * 0.5, 0), Vector3(W, H, D), 0.0)
+	var zf := -D * 0.5 - 0.012
+	kit.box("charcoal", Vector3(0, 1.1, zf), Vector3(1.38, 2.18, 0.03), 0.0)                    # the door frame
+	for sx in [-1.0, 1.0]:
+		kit.box("steel", Vector3(sx * 0.33, 1.08, zf - 0.025), Vector3(0.62, 2.06, 0.03), 0.0)    # the door leaves
+	kit.box("charcoal", Vector3(0, 1.08, zf - 0.043), Vector3(0.02, 2.06, 0.01), 0.0)            # the seam between them
+	kit.box("charcoal", Vector3(0.9, 1.05, zf - 0.02), Vector3(0.2, 0.34, 0.03), 0.0)            # the call panel
+	kit.box("lantern", Vector3(0.9, 1.12, zf - 0.04), Vector3(0.05, 0.05, 0.01), 0.0)
+	kit.box("yellow", Vector3(0.9, 0.98, zf - 0.04), Vector3(0.05, 0.05, 0.01), 0.0)
+	kit.box("charcoal", Vector3(0, 2.46, zf - 0.02), Vector3(1.4, 0.34, 0.04), 0.0)              # the sign above
+	var n := _node(kit, "LiftHousing")
+	var lab := Label3D.new()
+	lab.text = "LIFT"
+	lab.font = load("res://assets/fonts/Barlow-Bold.ttf")
+	lab.font_size = 96
+	lab.pixel_size = 0.0021
+	lab.modulate = Color(1, 1, 1)
+	lab.shaded = false
+	lab.double_sided = false
+	lab.position = Vector3(0, 2.46, zf - 0.045)
+	lab.rotation.y = PI
+	n.add_child(lab)
+	_solid(n, Vector3(0, H * 0.5, 0), Vector3(W, H, D))
+	_fp(n, Vector2.ZERO, Vector2(W * 0.5, D * 0.5))
+	return n
+
+
+## A barrier across the mouth of an escalator or stair bank on a step-free journey: posts, two bars and a board; it stops the player only (collision layer 3, like the platform-edge guard)
+static func bank_barrier(width: float, stairs: bool) -> Node3D:
+	var kit := MeshKit.new()
+	var hw := width * 0.5 + 0.35
+	for sx in [-1.0, 1.0]:
+		kit.box("steel", Vector3(sx * hw, 0.5, 0), Vector3(0.07, 1.0, 0.07), 0.0)
+		kit.box("black", Vector3(sx * hw, 0.04, 0), Vector3(0.3, 0.08, 0.3), 0.0)
+	for y in [0.55, 0.9]:
+		kit.box("yellow" if y > 0.7 else "white", Vector3(0, y, 0), Vector3(hw * 2.0, 0.05, 0.03), 0.0)
+	var n := _node(kit, "BankBarrier")
+	var board := Signs.board([{"text": "Stairs only" if stairs else "Escalators", "bold": true}, {"text": "not step-free: use the lift", "text_color": Color(0.85, 0.85, 0.85)}], 1.2, 0.34)
+	board.position = Vector3(0, 1.25, 0)
+	n.add_child(board)
+	var body := StaticBody3D.new()
+	body.name = "Collision"
+	body.collision_layer = 1 << 2
+	body.collision_mask = 0
+	var cs := CollisionShape3D.new()
+	var sh := BoxShape3D.new()
+	sh.size = Vector3(hw * 2.0, 1.8, 0.4)
+	cs.shape = sh
+	cs.position = Vector3(0, 0.9, 0)
+	body.add_child(cs)
+	n.add_child(body)
+	_fp(n, Vector2.ZERO, Vector2(hw, 0.2))
+	return n
+
+
 ## A platform waste hoop: a steel hoop about 0.45 m across at 0.85 m on a short pole, with a CLEAR polythene sack so the contents show
 ## (bins were withdrawn after 1991 and came back from 2011 as clear sacks on hoops). recycle = green hoop, else black.
 static func bin_hoop(recycle := false) -> Node3D:

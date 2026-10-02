@@ -18,38 +18,49 @@ static func build(station: Station) -> DressMap:
 	var plan := station.plan
 	var fkeys: Array = plan.faces.keys()
 	var routes: Array = []
+	# (step-free journeys: the lift routes as well as the normal ones, the crowd still walks the normal ones)
+	var modes: Array = [false, true] if StationPlan.step_free_mode else [false]
 	for sd in plan.street_doors:
 		for fk in fkeys:
-			routes.append([plan.path(sd["id"], "face:" + fk), null, "face:" + fk])
-			routes.append([plan.path("face:" + fk, sd["id"]), "face:" + fk, null])
+			for m in modes:
+				routes.append([plan.path(sd["id"], "face:" + fk, m), null, "face:" + fk])
+				routes.append([plan.path("face:" + fk, sd["id"], m), "face:" + fk, null])
 		await station._slice()
 	for fa in fkeys:
 		for fb in fkeys:
 			if fa != fb:
-				routes.append([plan.path("face:" + fa, "face:" + fb), "face:" + fa, "face:" + fb])
+				for m in modes:
+					routes.append([plan.path("face:" + fa, "face:" + fb, m), "face:" + fa, "face:" + fb])
 		await station._slice()
 	for sp in plan.start_spots:
 		for sd in plan.street_doors:
-			routes.append([plan.path(String(sp["node"]), sd["id"]), sp["pos"], null])
+			for m in modes:
+				routes.append([plan.path(String(sp["node"]), sd["id"], m), sp["pos"], null])
 		for fk in fkeys:
-			routes.append([plan.path(String(sp["node"]), "face:" + fk), sp["pos"], "face:" + fk])
+			for m in modes:
+				routes.append([plan.path(String(sp["node"]), "face:" + fk, m), sp["pos"], "face:" + fk])
 		await station._slice()
 	for r in routes:
 		await station._slice()
 		var names: Array = r[0]
 		if names.is_empty():
 			continue
-		var pts: Array = []
-		if r[1] is Vector3:
-			pts.append(r[1])
-		elif r[1] != null:
-			pts.append(station.platform_point(String(r[1]).substr(5), 0.5, 1.4))
-		for w in plan.walk_points(names, 0):
-			pts.append(w["pos"])
-		if r[2] != null:
-			pts.append(station.platform_point(String(r[2]).substr(5), 0.5, 1.4))
-		for i in pts.size() - 1:
-			dm._mark(pts[i], pts[i + 1])
+		# a lift ride is not a walk: each stretch between lifts is marked on its own
+		var segs: Array = plan.path_segments(names)
+		for si in segs.size():
+			var seg: Array = segs[si]
+			var pts: Array = []
+			if si == 0:
+				if r[1] is Vector3:
+					pts.append(r[1])
+				elif r[1] != null:
+					pts.append(station.platform_point(String(r[1]).substr(5), 0.5, 1.4))
+			for w in plan.walk_points(seg, 0):
+				pts.append(w["pos"])
+			if si == segs.size() - 1 and r[2] != null:
+				pts.append(station.platform_point(String(r[2]).substr(5), 0.5, 1.4))
+			for i in pts.size() - 1:
+				dm._mark(pts[i], pts[i + 1])
 	return dm
 
 

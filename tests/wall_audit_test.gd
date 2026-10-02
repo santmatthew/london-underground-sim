@@ -17,6 +17,7 @@ func run():
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--station="): names = a.substr(10).split("|")
 		if a == "--all-authored": all_authored = true
+		if a == "--sf": StationPlan.step_free_mode = true
 		if a.begins_with("--range="):
 			var c := a.substr(8).split(",")
 			for i in range(int(c[0]), int(c[1]) + 1):

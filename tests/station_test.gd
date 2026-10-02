@@ -6,6 +6,7 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--station="): sname = a.substr(10)
 		if a.begins_with("--view="): view = a.substr(7)
+	StationPlan.step_free_mode = sys_arg("sf", "") != ""          # --sf=1: step-free journey fittings (lifts, barriers across the escalators)
 	Timetable.build(1)
 	Clock.set_time(float(sys_arg("hour", "8.0")) * 3600.0)
 	var idx: int = Net.name_to_idx[sname]
@@ -97,6 +98,13 @@ func _ready() -> void:
 			var zwl: float = mpz + float(fpw["side"]) * PlatformModule.GAP * 0.5
 			pos = Vector3(pwx, fpw["y"] + 1.5, float(fpw["edge_z"]) - float(fpw["side"]) * 0.4)
 			look = Vector3(pwx + float(sys_arg("dx", "6")), fpw["y"] + 1.3, zwl)
+		"lift_top", "lift_bot":
+			# in front of a lift (--li=bank index), looking at the housing; --back=metres further away
+			var lf: Dictionary = plan.lift_of(int(sys_arg("li", "0")))
+			var ld: Dictionary = lf["top" if view == "lift_top" else "bot"]
+			var out: Vector3 = Basis(Vector3.UP, float(ld["yaw"])) * Vector3(0, 0, -1)
+			pos = (ld["front"] as Vector3) + out * float(sys_arg("back", "1.0")) + Vector3(0, 1.65, 0)
+			look = (ld["pos"] as Vector3) + Vector3(0, 1.4, 0)
 		"plat_w":
 			# from near the west end of a platform looking west, along the track into the (shortened) running tunnel and its cap
 			var fw: Dictionary = plan.faces[plan.faces.keys()[int(sys_arg("fi", "0"))]]

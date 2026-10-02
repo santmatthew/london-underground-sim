@@ -32,6 +32,11 @@ func run(st: Station) -> void:
 	plan = st.plan
 	rng.seed = plan.seed_value + 4242
 	map = await DressMap.build(st)
+	if StationPlan.step_free_mode:
+		for lf in plan.lifts:
+			for end in ["top", "bot"]:
+				var ld: Dictionary = lf[end]
+				map.add_placed(ld["pos"], Vector2(StationPlan.LIFT_SIZE.x * 0.5, StationPlan.LIFT_SIZE.z * 0.5), float(ld["yaw"]))
 	picker = PosterKit.Picker.new(rng)
 	root = Node3D.new()
 	root.name = "Props"

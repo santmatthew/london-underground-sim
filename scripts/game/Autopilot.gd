@@ -361,11 +361,32 @@ func _replan() -> void:
 		_log("replanned: %d leg(s)" % legs.size())
 
 
+var _lift_at: Dictionary = {}       # waypoint index -> the lift waypoint (step-free routes): stand at the door, ride, carry on from the other door
+
+
 func _waypoints_for(st: Station, names: Array) -> Array:
 	var out: Array = []
+	_lift_at.clear()
 	for wp in st.plan.walk_points(names, 0):
 		out.append(st.to_global(wp["pos"]))
+		if wp["kind"] == "lift":
+			_lift_at[out.size() - 1] = wp
 	return out
+
+
+func _use_lift(info: Dictionary) -> void:
+	var st := _station()
+	if st == null:
+		return
+	var want := "top" if int(info["dir"]) == 1 else "bot"
+	for d in st.lift_doors:
+		if int(d.get_meta("lift")) == int(info["lift"]) and String(d.get_meta("end")) == want:
+			_log("lift %d %s" % [int(info["lift"]), "down" if want == "top" else "up"])
+			await game._ride_lift(d)
+			wp_i += 1
+			return
+	_log("no lift door for %s" % str(info))
+	wp_i += 1
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -374,6 +395,13 @@ func _waypoints_for(st: Station, names: Array) -> Array:
 func _follow(delta: float) -> void:
 	if wp_i >= wps.size():
 		_arrived_at_path_end()
+		return
+	if game._lift_busy:
+		player.bot_move = Vector2.ZERO
+		_stuck_t = 0.0
+		return
+	if _lift_at.has(wp_i) and player.global_position.distance_to(wps[wp_i]) < 0.9:
+		_use_lift(_lift_at[wp_i])
 		return
 	var target: Vector3 = wps[wp_i]
 	var pos := player.global_position

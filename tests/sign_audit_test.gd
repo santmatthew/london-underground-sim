@@ -13,6 +13,7 @@ func run():
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--stations="): names = a.substr(11).split("|")
 		if a == "--verbose": verbose = true
+		if a == "--sf": StationPlan.step_free_mode = true
 	var total_signs := 0
 	var total_bad := 0
 	for nm in names:

@@ -30,6 +30,7 @@ func run():
 		if a.begins_with("--step="): step = float(a.substr(7))
 		if a == "--verbose": verbose = true
 		if a == "--faces-only": faces_only = true
+		if a == "--sf": StationPlan.step_free_mode = true       # step-free journeys: lifts instead of escalators (walk each stretch between lifts)
 	Timetable.build(1)
 	Clock.set_time(11.0 * 3600.0)
 	add_child(Env.make(0))
@@ -98,20 +99,24 @@ func _audit_station(idx: int, step: float, verbose: bool, faces_only: bool) -> A
 			fails += 1
 			lines.append("   NO PATH  %s" % r[0])
 			continue
-		var wps: Array = plan.walk_points(names, 0)
-		var pts: Array = []
-		if r[2] is Vector3:
-			pts.append(r[2])
-		elif r[2] != null:
-			pts.append(st.platform_point(String(r[2]).substr(5), 0.5, 1.4))
-		for w in wps:
-			pts.append(w["pos"])
-		if r[3] != null:
-			pts.append(st.platform_point(String(r[3]).substr(5), 0.5, 1.4))
-		var err := _sweep(st, pts, step)
-		if err != "":
-			fails += 1
-			lines.append("   FAIL  %s : %s" % [r[0], err])
+		var segs: Array = plan.path_segments(names)       # (a lift ride is not a walk: every stretch between lifts is swept on its own)
+		for si in segs.size():
+			var wps: Array = plan.walk_points(segs[si], 0)
+			var pts: Array = []
+			if si == 0:
+				if r[2] is Vector3:
+					pts.append(r[2])
+				elif r[2] != null:
+					pts.append(st.platform_point(String(r[2]).substr(5), 0.5, 1.4))
+			for w in wps:
+				pts.append(w["pos"])
+			if si == segs.size() - 1 and r[3] != null:
+				pts.append(st.platform_point(String(r[3]).substr(5), 0.5, 1.4))
+			var err := _sweep(st, pts, step)
+			if err != "":
+				fails += 1
+				lines.append("   FAIL  %s : %s" % [r[0], err])
+				break
 	var name_s := plan.name + (" [authored]" if plan.authored else "")
 	if fails > 0 or verbose:
 		print("== %s: %d routes, %d failed" % [name_s, routes.size(), fails])

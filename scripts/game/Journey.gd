@@ -33,10 +33,10 @@ static func generate(rng: RandomNumberGenerator, opts: Dictionary) -> Dictionary
 	var best := {}
 	var best_score := 1e18
 	for attempt in 14:
-		var start := Net.random_station(rng, true)
+		var start := _station(rng, true)
 		var plan := StationPlan.for_station(start)
 		var spot := _pick_spot(rng, plan)
-		var dest := Net.random_station(rng, false)
+		var dest := _station(rng, false)
 		if dest == start:
 			continue
 		var res := Planner.plan(start, spot["node"], t0, dest)
@@ -51,6 +51,18 @@ static func generate(rng: RandomNumberGenerator, opts: Dictionary) -> Dictionary
 			if score == 0.0:
 				break
 	return best
+
+
+## a random station; with step-free journeys on, one that can be used step-free (a platform with step-free access and a lift beside every escalator and stair bank)
+static func _station(rng: RandomNumberGenerator, weighted: bool) -> int:
+	if not StationPlan.step_free_mode:
+		return Net.random_station(rng, weighted)
+	for k in 80:
+		var s := Net.random_station(rng, weighted)
+		if StepFree.station_ok(s):
+			return s
+	var pool := StepFree.station_list()
+	return pool[rng.randi() % pool.size()] if not pool.is_empty() else Net.random_station(rng, weighted)
 
 
 static func _pick_spot(rng: RandomNumberGenerator, plan: StationPlan) -> Dictionary:
@@ -79,7 +91,7 @@ static func generate_multi(rng: RandomNumberGenerator, opts: Dictionary) -> Dict
 	var n: int = clampi(int(opts.get("stops", 3)), 2, 5)
 	var t0 := pick_time(rng, opts.get("time", "random"))
 	for attempt in 30:
-		var start := Net.random_station(rng, true)
+		var start := _station(rng, true)
 		var sx: float = Net.stations[start]["x"]
 		var sy: float = Net.stations[start]["y"]
 		var cands: Array = []
@@ -87,7 +99,7 @@ static func generate_multi(rng: RandomNumberGenerator, opts: Dictionary) -> Dict
 			if s["idx"] == start:
 				continue
 			var d := Vector2(s["x"] - sx, s["y"] - sy).length()
-			if d > 2.5 and d < 11.0:
+			if d > 2.5 and d < 11.0 and (not StationPlan.step_free_mode or StepFree.station_ok(s["idx"])):
 				cands.append(s["idx"])
 		if cands.size() < n * 2:
 			continue

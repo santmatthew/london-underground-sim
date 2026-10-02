@@ -251,7 +251,7 @@ static func _authored_signs(root: Node3D, plan: StationPlan) -> void:
 		var tr: Array = to["rect"]
 		var ty: float = to["y"]
 		var th: float = to["h"]
-		var rows: Array = [{"text": "Way out", "bold": true, "arrow": 1}, {"text": "Escalators up" if not e["stairs"] else "Stairs up", "text_color": Color(0.8, 0.8, 0.8)}]
+		var rows: Array = [{"text": "Way out", "bold": true, "arrow": 1}, {"text": ("Lift up" if StationPlan.step_free_mode else ("Escalators up" if not e["stairs"] else "Stairs up")), "text_color": Color(0.8, 0.8, 0.8)}]
 		var face := Vector3.ZERO
 		var pos := Vector3.ZERO
 		match d:
@@ -331,7 +331,7 @@ static func _landing_signs(station: Station, root: Node3D, plan: StationPlan, li
 	var y: float = landing["y"]
 	var h: float = landing["h"]
 	# way out (up the escalators) facing +z, above the escalator opening on the N wall
-	hang_room(root, Signs.board([{"text": "Way out", "bold": true, "arrow": 1}, {"text": "Escalators up", "text_color": Color(0.8, 0.8, 0.8)}], 2.4, 0.4), Vector3(0, y + h - 1.2, lr[2] + 0.3), Vector3(0, 0, 1), y, y + h, 3.0)
+	hang_room(root, Signs.board([{"text": "Way out", "bold": true, "arrow": 1}, {"text": "Lift up" if StationPlan.step_free_mode else "Escalators up", "text_color": Color(0.8, 0.8, 0.8)}], 2.4, 0.4), Vector3(0, y + h - 1.2, lr[2] + 0.3), Vector3(0, 0, 1), y, y + h, 3.0)
 	# platforms of this level: one board per module corridor above its opening on the E wall, facing -x
 	for mi in plan.modules.size():
 		var m: Dictionary = plan.modules[mi]

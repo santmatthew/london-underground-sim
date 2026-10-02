@@ -112,6 +112,7 @@ func build_async(p: StationPlan, use_async := true) -> void:
 	fitting_root.name = "Fittings"
 	add_child(fitting_root)
 	_t0 = _t("modules", _t0)
+	_build_lifts()
 	_build_gateline()
 	await _slice()
 	_build_street_doors()
@@ -135,6 +136,50 @@ func build_async(p: StationPlan, use_async := true) -> void:
 	for k in spaces:
 		stats["tris"] += (spaces[k] as Space).kit.triangle_count()
 		stats["lights"] += (spaces[k] as Space).light_points.size()
+
+
+# ---------------------------------------------------------------------------------------------------
+# Lifts and bank barriers (step-free journeys only: StationPlan.step_free_mode)
+# ---------------------------------------------------------------------------------------------------
+var lift_doors: Array = []         # Node3D anchors in front of each lift door (group "lift_door"): meta lift, end, to (the other door's anchor position), time, out (the direction out of the door)
+
+
+func _build_lifts() -> void:
+	if not StationPlan.step_free_mode or plan.lifts.is_empty():
+		return
+	for lf in plan.lifts:
+		var li: int = lf["esc"]
+		for end in ["top", "bot"]:
+			var d: Dictionary = lf[end]
+			var other: Dictionary = lf["bot" if end == "top" else "top"]
+			var car := PropKit.lift_housing()
+			car.name = "Lift%d_%s" % [li, end]
+			fitting_root.add_child(car)
+			car.position = d["pos"]
+			car.rotation.y = d["yaw"]
+			var door := Node3D.new()
+			door.name = "LiftDoor%d_%s" % [li, end]
+			fitting_root.add_child(door)
+			door.position = d["front"]
+			door.set_meta("lift", li)
+			door.set_meta("end", end)
+			door.set_meta("to", other["front"])
+			door.set_meta("time", lf["time"])
+			door.set_meta("out", Basis(Vector3.UP, float(d["yaw"])) * Vector3(0, 0, -1))
+			door.set_meta("to_out", Basis(Vector3.UP, float(other["yaw"])) * Vector3(0, 0, -1))
+			door.add_to_group("lift_door")
+			lift_doors.append(door)
+	# the escalators and stairs are closed to the player: a barrier across each mouth
+	for ei in plan.escs.size():
+		var e: Dictionary = plan.escs[ei]
+		if plan.lift_of(ei).is_empty():
+			continue
+		for top in [true, false]:
+			var b := PropKit.bank_barrier(float(e["width"]), bool(e.get("stairs", false)))
+			b.name = "Barrier%d_%s" % [ei, "top" if top else "bot"]
+			fitting_root.add_child(b)
+			b.position = plan.esc_point(ei, Vector3(-0.8, 0.0, 0.0) if top else Vector3(float(e["length"]) + 0.8, -float(e["rise"]), 0.0))
+			b.rotation.y = float(e["yaw"]) + (-PI * 0.5 if top else PI * 0.5)      # (the board faces the passenger coming from the room)
 
 
 # ---------------------------------------------------------------------------------------------------

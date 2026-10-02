@@ -1,0 +1,917 @@
+{
+"940GZZBPSUST": {
+"northern|Northbound": true
+},
+"940GZZLUACT": {
+"piccadilly|Eastbound": true,
+"piccadilly|Westbound": true
+},
+"940GZZLUACY": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUAGL": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUALD": {
+"circle|Eastbound": false,
+"circle|Westbound": false,
+"metropolitan|Northbound": false
+},
+"940GZZLUALP": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUASG": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUASL": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUBDS": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUBEC": {
+"district|Eastbound": false,
+"district|Westbound": false
+},
+"940GZZLUBKE": {
+"central|Eastbound": true,
+"central|Westbound": false
+},
+"940GZZLUBKH": {
+"central|Eastbound": true,
+"central|Westbound": true
+},
+"940GZZLUBLG": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUBLM": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUBLR": {
+"victoria|Northbound": false,
+"victoria|Southbound": false
+},
+"940GZZLUBMY": {
+"jubilee|Eastbound": true,
+"jubilee|Westbound": true
+},
+"940GZZLUBND": {
+"central|Eastbound": true,
+"central|Westbound": true,
+"jubilee|Northbound": true,
+"jubilee|Southbound": true
+},
+"940GZZLUBNK": {
+"central|Eastbound": false,
+"central|Westbound": false,
+"northern|Northbound": true,
+"northern|Southbound": true,
+"waterloo-city|Westbound": true
+},
+"940GZZLUBOR": {
+"northern|Northbound": true,
+"northern|Southbound": false
+},
+"940GZZLUBOS": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUBSC": {
+"district|Eastbound": false,
+"district|Westbound": false,
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUBST": {
+"bakerloo|Northbound": false,
+"bakerloo|Southbound": false,
+"jubilee|Northbound": false,
+"jubilee|Southbound": false,
+"metropolitan|Northbound": false,
+"metropolitan|Southbound": false
+},
+"940GZZLUBTK": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUBTX": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUBXN": {
+"victoria|Northbound": true
+},
+"940GZZLUBZP": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUCAL": {
+"metropolitan|Westbound": false
+},
+"940GZZLUCAR": {
+"piccadilly|Eastbound": true,
+"piccadilly|Westbound": true
+},
+"940GZZLUCFM": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUCGN": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUCGT": {
+"jubilee|Eastbound": true,
+"jubilee|Westbound": true
+},
+"940GZZLUCHL": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUCHX": {
+"bakerloo|Northbound": false,
+"bakerloo|Southbound": false,
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUCKS": {
+"piccadilly|Westbound": true
+},
+"940GZZLUCND": {
+"northern|Northbound": true,
+"northern|Southbound": true
+},
+"940GZZLUCPC": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUCPK": {
+"jubilee|Northbound": false,
+"jubilee|Southbound": false
+},
+"940GZZLUCPN": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUCPS": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUCSD": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUCSM": {
+"metropolitan|Southbound": true
+},
+"940GZZLUCTN": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUCWL": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUCWP": {
+"district|Eastbound": false,
+"district|Westbound": false
+},
+"940GZZLUCWR": {
+"jubilee|Eastbound": true,
+"jubilee|Westbound": true
+},
+"940GZZLUCXY": {
+"metropolitan|Northbound": false,
+"metropolitan|Southbound": false
+},
+"940GZZLUCYF": {
+"jubilee|Eastbound": true,
+"jubilee|Westbound": true
+},
+"940GZZLUDBN": {
+"central|Eastbound": true,
+"central|Westbound": true
+},
+"940GZZLUDGE": {
+"district|Eastbound": false,
+"district|Westbound": false
+},
+"940GZZLUDGY": {
+"district|Eastbound": true,
+"district|Westbound": true
+},
+"940GZZLUDOH": {
+"jubilee|Northbound": false,
+"jubilee|Southbound": false
+},
+"940GZZLUEAC": {
+"bakerloo|Northbound": false,
+"northern|Northbound": false,
+"northern|Southbound": true
+},
+"940GZZLUEAN": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUEBY": {
+"central|Eastbound": true,
+"district|Eastbound": true
+},
+"940GZZLUECT": {
+"district|Eastbound": true,
+"district|Westbound": true,
+"piccadilly|Eastbound": true,
+"piccadilly|Westbound": true
+},
+"940GZZLUEFY": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUEGW": {
+"northern|Southbound": true
+},
+"940GZZLUEMB": {
+"bakerloo|Northbound": false,
+"bakerloo|Southbound": false,
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUEPG": {
+"central|Westbound": true
+},
+"940GZZLUEPK": {
+"district|Eastbound": true,
+"district|Westbound": true
+},
+"940GZZLUEPY": {
+"district|Eastbound": false,
+"district|Westbound": false
+},
+"940GZZLUERB": {
+"bakerloo|Northbound": false,
+"bakerloo|Southbound": false
+},
+"940GZZLUEUS": {
+"northern|Northbound": false,
+"northern|Southbound": false,
+"victoria|Northbound": false,
+"victoria|Southbound": false
+},
+"940GZZLUFBY": {
+"district|Eastbound": true,
+"district|Westbound": true
+},
+"940GZZLUFLP": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUFPK": {
+"piccadilly|Eastbound": true,
+"piccadilly|Westbound": true,
+"victoria|Northbound": true,
+"victoria|Southbound": true
+},
+"940GZZLUFYC": {
+"northern|Northbound": true,
+"northern|Southbound": true
+},
+"940GZZLUFYR": {
+"jubilee|Northbound": false,
+"jubilee|Southbound": false,
+"metropolitan|Northbound": false,
+"metropolitan|Southbound": false
+},
+"940GZZLUGDG": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUGFD": {
+"central|Eastbound": true,
+"central|Westbound": true
+},
+"940GZZLUGGH": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUGGN": {
+"northern|Northbound": true,
+"northern|Southbound": true
+},
+"940GZZLUGPK": {
+"jubilee|Northbound": true,
+"jubilee|Southbound": true,
+"piccadilly|Eastbound": true,
+"piccadilly|Westbound": true,
+"victoria|Northbound": true,
+"victoria|Southbound": true
+},
+"940GZZLUGTH": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUGTR": {
+"circle|Westbound": false,
+"district|Westbound": false,
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUHAI": {
+"victoria|Northbound": false,
+"victoria|Southbound": false
+},
+"940GZZLUHBN": {
+"central|Eastbound": false,
+"central|Westbound": false,
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUHBT": {
+"northern|Southbound": true
+},
+"940GZZLUHCH": {
+"district|Eastbound": false,
+"district|Westbound": false
+},
+"940GZZLUHCL": {
+"northern|Northbound": true,
+"northern|Southbound": true
+},
+"940GZZLUHGR": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUHGT": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUHLT": {
+"central|Westbound": true
+},
+"940GZZLUHNX": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUHOH": {
+"metropolitan|Northbound": true,
+"metropolitan|Southbound": true
+},
+"940GZZLUHPC": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUHPK": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUHR4": {
+"piccadilly|Eastbound": true
+},
+"940GZZLUHR5": {
+"piccadilly|Eastbound": true
+},
+"940GZZLUHRC": {
+"piccadilly|Eastbound": true,
+"piccadilly|Westbound": true
+},
+"940GZZLUHSD": {
+"district|Eastbound": true,
+"district|Westbound": true,
+"piccadilly|Eastbound": true,
+"piccadilly|Westbound": true
+},
+"940GZZLUHTD": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUHWC": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUHWE": {
+"piccadilly|Eastbound": true,
+"piccadilly|Westbound": true
+},
+"940GZZLUHWT": {
+"piccadilly|Eastbound": true,
+"piccadilly|Westbound": true
+},
+"940GZZLUHWY": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUKBN": {
+"jubilee|Northbound": true,
+"jubilee|Southbound": true
+},
+"940GZZLUKBY": {
+"jubilee|Northbound": true,
+"jubilee|Southbound": true
+},
+"940GZZLUKNB": {
+"piccadilly|Eastbound": true,
+"piccadilly|Westbound": true
+},
+"940GZZLUKNG": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUKOY": {
+"district|Eastbound": true
+},
+"940GZZLUKPK": {
+"bakerloo|Northbound": false,
+"bakerloo|Southbound": false
+},
+"940GZZLUKSH": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUKSX": {
+"northern|Northbound": true,
+"northern|Southbound": true,
+"piccadilly|Eastbound": true,
+"piccadilly|Westbound": true,
+"victoria|Northbound": true,
+"victoria|Southbound": true
+},
+"940GZZLULBN": {
+"bakerloo|Northbound": false,
+"bakerloo|Southbound": false
+},
+"940GZZLULGN": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLULGT": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLULNB": {
+"jubilee|Eastbound": true,
+"jubilee|Westbound": true,
+"northern|Northbound": true,
+"northern|Southbound": true
+},
+"940GZZLULSQ": {
+"northern|Northbound": false,
+"northern|Southbound": false,
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLULVT": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLULYN": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLULYS": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUMBA": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUMDN": {
+"northern|Northbound": true
+},
+"940GZZLUMED": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUMGT": {
+"northern|Northbound": true,
+"northern|Southbound": true
+},
+"940GZZLUMHL": {
+"northern|Southbound": true
+},
+"940GZZLUMPK": {
+"metropolitan|Northbound": false,
+"metropolitan|Southbound": false
+},
+"940GZZLUMRH": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUMTC": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUMVL": {
+"bakerloo|Northbound": false,
+"bakerloo|Southbound": false
+},
+"940GZZLUMYB": {
+"bakerloo|Northbound": false,
+"bakerloo|Southbound": false
+},
+"940GZZLUNAN": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUNBP": {
+"central|Eastbound": true,
+"central|Westbound": true
+},
+"940GZZLUNDN": {
+"jubilee|Northbound": false,
+"jubilee|Southbound": false
+},
+"940GZZLUNEN": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUNFD": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUNGW": {
+"jubilee|Eastbound": true,
+"jubilee|Westbound": true
+},
+"940GZZLUNHA": {
+"metropolitan|Northbound": false,
+"metropolitan|Southbound": false
+},
+"940GZZLUNHG": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUNHT": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUNKP": {
+"metropolitan|Northbound": false,
+"metropolitan|Southbound": false
+},
+"940GZZLUNOW": {
+"metropolitan|Northbound": false,
+"metropolitan|Southbound": false
+},
+"940GZZLUNWH": {
+"metropolitan|Northbound": false,
+"metropolitan|Southbound": false
+},
+"940GZZLUOAK": {
+"piccadilly|Eastbound": true,
+"piccadilly|Westbound": true
+},
+"940GZZLUODS": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUOSY": {
+"piccadilly|Eastbound": true,
+"piccadilly|Westbound": true
+},
+"940GZZLUOVL": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUOXC": {
+"bakerloo|Northbound": false,
+"bakerloo|Southbound": false,
+"central|Eastbound": false,
+"central|Westbound": false,
+"victoria|Northbound": false,
+"victoria|Southbound": false
+},
+"940GZZLUPAC": {
+"bakerloo|Northbound": true,
+"bakerloo|Southbound": true
+},
+"940GZZLUPCC": {
+"bakerloo|Northbound": false,
+"bakerloo|Southbound": false,
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUPCO": {
+"victoria|Northbound": false,
+"victoria|Southbound": false
+},
+"940GZZLUPKR": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUPNR": {
+"metropolitan|Northbound": true,
+"metropolitan|Southbound": true
+},
+"940GZZLUPRD": {
+"metropolitan|Northbound": false,
+"metropolitan|Southbound": false
+},
+"940GZZLUPSG": {
+"district|Eastbound": false,
+"district|Westbound": false
+},
+"940GZZLUPVL": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUPYB": {
+"district|Eastbound": false,
+"district|Westbound": false
+},
+"940GZZLUQBY": {
+"jubilee|Northbound": false,
+"jubilee|Southbound": false
+},
+"940GZZLUQPS": {
+"bakerloo|Northbound": false,
+"bakerloo|Southbound": false
+},
+"940GZZLUQWY": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLURBG": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLURGP": {
+"bakerloo|Northbound": false,
+"bakerloo|Southbound": false
+},
+"940GZZLURMD": {
+"district|Eastbound": true
+},
+"940GZZLURSG": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLURSQ": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLURVP": {
+"district|Eastbound": false,
+"district|Westbound": false
+},
+"940GZZLURVY": {
+"central|Eastbound": true,
+"central|Westbound": true
+},
+"940GZZLUSBC": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUSEA": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUSFB": {
+"district|Eastbound": false,
+"district|Westbound": false
+},
+"940GZZLUSFS": {
+"district|Eastbound": true,
+"district|Westbound": true
+},
+"940GZZLUSGT": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUSHH": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUSJW": {
+"jubilee|Northbound": false,
+"jubilee|Southbound": false
+},
+"940GZZLUSKS": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUSKW": {
+"northern|Northbound": false,
+"northern|Southbound": false,
+"victoria|Northbound": false,
+"victoria|Southbound": false
+},
+"940GZZLUSNB": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUSPU": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUSRP": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUSTD": {
+"central|Eastbound": true,
+"central|Westbound": true,
+"jubilee|Westbound": true
+},
+"940GZZLUSTM": {
+"jubilee|Southbound": true
+},
+"940GZZLUSUH": {
+"piccadilly|Eastbound": true,
+"piccadilly|Westbound": true
+},
+"940GZZLUSUT": {
+"piccadilly|Eastbound": true,
+"piccadilly|Westbound": true
+},
+"940GZZLUSVS": {
+"victoria|Northbound": false,
+"victoria|Southbound": false
+},
+"940GZZLUSWC": {
+"jubilee|Northbound": false,
+"jubilee|Southbound": false
+},
+"940GZZLUSWF": {
+"central|Eastbound": true,
+"central|Westbound": true
+},
+"940GZZLUSWK": {
+"jubilee|Eastbound": true,
+"jubilee|Westbound": true
+},
+"940GZZLUSWN": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUTAW": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUTBC": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUTBY": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUTCR": {
+"central|Eastbound": true,
+"central|Westbound": true,
+"northern|Northbound": true,
+"northern|Southbound": true
+},
+"940GZZLUTFP": {
+"northern|Northbound": false,
+"northern|Southbound": false
+},
+"940GZZLUTHB": {
+"central|Eastbound": true,
+"central|Westbound": false
+},
+"940GZZLUTMH": {
+"victoria|Northbound": true,
+"victoria|Southbound": true
+},
+"940GZZLUTNG": {
+"district|Eastbound": false,
+"district|Westbound": false,
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUTPN": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUUPB": {
+"district|Eastbound": false,
+"district|Westbound": false
+},
+"940GZZLUUPM": {
+"district|Westbound": true
+},
+"940GZZLUUPY": {
+"district|Eastbound": true,
+"district|Westbound": true
+},
+"940GZZLUVIC": {
+"victoria|Northbound": true,
+"victoria|Southbound": true
+},
+"940GZZLUVXL": {
+"victoria|Northbound": true,
+"victoria|Southbound": true
+},
+"940GZZLUWAF": {
+"metropolitan|Southbound": false
+},
+"940GZZLUWBN": {
+"district|Eastbound": true,
+"district|Westbound": false
+},
+"940GZZLUWCY": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUWFN": {
+"northern|Northbound": true,
+"northern|Southbound": true
+},
+"940GZZLUWHM": {
+"jubilee|Eastbound": true,
+"jubilee|Westbound": true
+},
+"940GZZLUWHP": {
+"jubilee|Northbound": false,
+"jubilee|Southbound": false
+},
+"940GZZLUWHW": {
+"metropolitan|Northbound": false,
+"metropolitan|Southbound": false
+},
+"940GZZLUWIG": {
+"jubilee|Northbound": false,
+"jubilee|Southbound": false,
+"metropolitan|Northbound": false,
+"metropolitan|Southbound": false
+},
+"940GZZLUWIM": {
+"district|Eastbound": true
+},
+"940GZZLUWIP": {
+"district|Eastbound": true,
+"district|Westbound": true
+},
+"940GZZLUWKA": {
+"bakerloo|Northbound": false,
+"bakerloo|Southbound": false
+},
+"940GZZLUWKN": {
+"district|Eastbound": false,
+"district|Westbound": false
+},
+"940GZZLUWLO": {
+"bakerloo|Northbound": false,
+"bakerloo|Southbound": false,
+"jubilee|Eastbound": true,
+"jubilee|Westbound": true,
+"northern|Northbound": false,
+"northern|Southbound": false,
+"waterloo-city|Eastbound": false,
+"waterloo-city|Westbound": true
+},
+"940GZZLUWOF": {
+"central|Eastbound": true,
+"central|Westbound": true
+},
+"940GZZLUWOG": {
+"piccadilly|Eastbound": false,
+"piccadilly|Westbound": false
+},
+"940GZZLUWOP": {
+"northern|Northbound": true,
+"northern|Southbound": true
+},
+"940GZZLUWRP": {
+"central|Eastbound": false
+},
+"940GZZLUWRR": {
+"northern|Northbound": false,
+"northern|Southbound": false,
+"victoria|Northbound": false,
+"victoria|Southbound": false
+},
+"940GZZLUWSD": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUWSM": {
+"jubilee|Eastbound": true,
+"jubilee|Westbound": true
+},
+"940GZZLUWTA": {
+"central|Eastbound": false,
+"central|Westbound": false
+},
+"940GZZLUWWL": {
+"victoria|Southbound": false
+},
+"940GZZLUWYP": {
+"jubilee|Northbound": true,
+"jubilee|Southbound": true,
+"metropolitan|Northbound": true,
+"metropolitan|Southbound": true
+},
+"940GZZNEUGST": {
+"northern|Northbound": true,
+"northern|Southbound": true
+}
+}

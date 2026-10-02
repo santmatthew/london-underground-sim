@@ -57,6 +57,7 @@ func _ready() -> void:
 func open() -> void:
 	visible = true
 	_refresh_bindings()
+	_tabs.get_tab_bar().grab_focus.call_deferred()          # (so a gamepad can move around: left / right changes tab, down enters the page)
 
 
 func close() -> void:
@@ -179,7 +180,7 @@ func _tab_access() -> Control:
 	_slider(g, "HUD text size", "access", "text_scale", 0.8, 1.6, 0.1)
 	_option(g, "Colour vision", "access", "colour_vision", [["Standard", "standard"], ["Deuteranopia (red-green)", "deuteranopia"], ["Protanopia (red-green)", "protanopia"], ["Tritanopia (blue-yellow)", "tritanopia"]],
 		"Line colours on signs, trains, the Tube map and the HUD are changed so that every line can be told apart. Applies from the next journey; the map at once.")
-	_check(g, "Step-free journeys", "access", "step_free", "Only journeys that need no stairs or escalators: lifts and level routes. Not every station has one.")
+	_check(g, "Step-free journeys", "access", "step_free", "Journeys that need no stairs or escalators: they start, change and end only at stations with step-free platforms (about a quarter of them), the escalators and stairs are closed to you and every one has a lift beside it.")
 	return pg[0]
 
 

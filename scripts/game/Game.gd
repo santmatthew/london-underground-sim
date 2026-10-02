@@ -43,6 +43,7 @@ var _scores_label: Label
 var _par_task := -1
 var par_result: Dictionary = {}
 var _settings: SettingsPanel
+var _btn_start: Button                  # (focused when the menu opens, so a gamepad can navigate it)
 var autopilot: Autopilot
 var announcer := PlatformAnnouncer.new()          # what the station says and does around the player (platform PA, tunnel wind ...)
 var cli := {}
@@ -415,7 +416,8 @@ func _build_menu() -> void:
 	ob_c.select(2)
 	ob_c.item_selected.connect(func(i): opts["crowd"] = ob_c.get_item_metadata(i))
 	grid.add_child(ob_c)
-	vb.add_child(_mk_button("Start journey", func(): start_journey()))
+	_btn_start = _mk_button("Start journey", func(): start_journey())
+	vb.add_child(_btn_start)
 	vb.add_child(_mk_button("Settings (sound, accessibility, controls)", func(): _open_settings(_menu)))
 	vb.add_child(_mk_button("Quit", func(): get_tree().quit()))
 	_scores_label = _mk_label("", 15, Color(0.75, 0.8, 0.95))
@@ -433,6 +435,8 @@ func _open_settings(back_to: Control) -> void:
 	await _settings.closed
 	if is_instance_valid(back_to):
 		back_to.visible = true
+		if back_to == _menu and _btn_start != null:
+			_btn_start.grab_focus.call_deferred()
 
 
 func _refresh_scores() -> void:
@@ -474,6 +478,8 @@ func _show_menu() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	player.enabled = false
 	_menu.visible = true
+	if _btn_start != null:
+		_btn_start.grab_focus.call_deferred()
 	hud.set_visible_hud(false)
 	if _result:
 		_result.queue_free()
@@ -511,6 +517,8 @@ func start_journey() -> void:
 	_stage("(before start_journey)")
 	_hide_all_panels()
 	announcer.greeted = false
+	StationPlan.step_free_mode = bool(Settings.get_v("access", "step_free"))      # (before anything is planned, picked or built)
+	StepFree.ensure_loaded()
 	state = State.LOADING
 	_loading = _mk_label("Building the timetable...", 30, Color.WHITE, true)
 	_loading.set_anchors_preset(Control.PRESET_CENTER)
@@ -648,6 +656,8 @@ func _show_briefing() -> void:
 	else:
 		vb.add_child(_mk_label("Destination: %s" % Net.station_name(journey["dest"]), 34, Color(0.5, 0.9, 1.0), true))
 		vb.add_child(_mk_label("Reach the street exit ('Way out') at your destination as quickly as you can. The clock starts when you press %s. Press %s for the Tube map." % [go_key, InputBindings.prompt("map")], 18, Color(0.8, 0.85, 0.95)))
+	if StationPlan.step_free_mode:
+		vb.add_child(_mk_label("Step-free journey: the escalators and stairs are closed to you. Use the lifts (%s at the door); a lift ride takes about half a minute of the clock." % InputBindings.prompt("interact"), 18, Color(0.55, 0.9, 1.0)))
 	var start_btn := _mk_button("Start  (%s)" % go_key, func(): _begin_play())
 	vb.add_child(start_btn)
 	start_btn.grab_focus.call_deferred()
@@ -687,6 +697,8 @@ func _begin_play() -> void:
 # Per-frame
 # ---------------------------------------------------------------------------------------------------
 var _seat_candidate: Node3D
+var _lift_candidate: Node3D
+var _lift_busy := false
 
 
 ## "E  Sit down" near an empty seat (train seat or platform bench), "E  Stand up" while seated
@@ -699,7 +711,53 @@ func _update_seat_prompt() -> void:
 		hud.set_prompt("%s  Stand up   (or just move)" % InputBindings.prompt("interact"))
 		return
 	_seat_candidate = Seats.nearest_free(get_tree(), player.global_position)
-	hud.set_prompt("%s  Sit down" % InputBindings.prompt("interact") if _seat_candidate != null else "")
+	_lift_candidate = null if _seat_candidate != null else _nearest_lift_door()
+	if _seat_candidate != null:
+		hud.set_prompt("%s  Sit down" % InputBindings.prompt("interact"))
+	elif _lift_candidate != null and not _lift_busy:
+		hud.set_prompt("%s  Call the lift (%s)" % [InputBindings.prompt("interact"), "down" if _lift_candidate.get_meta("end") == "top" else "up"])
+	else:
+		hud.set_prompt("")
+
+
+## the lift door in front of the player (step-free journeys), within reach on the same floor
+func _nearest_lift_door() -> Node3D:
+	var best: Node3D = null
+	var bd := 1.9
+	for d in get_tree().get_nodes_in_group("lift_door"):
+		var dn := d as Node3D
+		var off := dn.global_position - player.global_position
+		if absf(off.y) < 1.2 and Vector2(off.x, off.z).length() < bd:
+			bd = Vector2(off.x, off.z).length()
+			best = dn
+	return best
+
+
+## A lift ride on a step-free journey: the doors close, the screen fades, the time of the wait and the ride passes (the world runs fast meanwhile, like skipping time), and the player
+## comes out at the other end of the bank, facing out of the door. `door` is the anchor in front of the door the player is at (Station._build_lifts).
+func _ride_lift(door: Node3D) -> void:
+	if _lift_busy or station == null:
+		return
+	_lift_busy = true
+	player.frozen = true
+	player.velocity = Vector3.ZERO
+	var secs: float = float(door.get_meta("time"))
+	Sfx.play("door_chime_close", -4.0)
+	Sfx.play("door_slide_close", -3.0)
+	hud.fade_to(1.0, 0.6)
+	await get_tree().create_timer(0.7).timeout
+	hud.toast("Lift: %d seconds" % int(round(secs)))
+	await get_tree().create_timer(maxf(secs / 8.0 - 1.3, 0.3)).timeout    # (Clock.time_scale is 8 for the whole ride, fades included)
+	var to: Vector3 = station.to_global(door.get_meta("to") as Vector3)
+	player.global_position = to + Vector3(0, 0.05, 0)
+	player.velocity = Vector3.ZERO
+	player.face(station.global_transform.basis * (door.get_meta("to_out") as Vector3))
+	Sfx.play("door_chime_open", -2.0)
+	Sfx.play("door_slide_open", -3.0)
+	hud.fade_to(0.0, 0.6)
+	await get_tree().create_timer(0.6).timeout
+	player.frozen = false
+	_lift_busy = false
 
 
 func _on_interact() -> void:
@@ -710,6 +768,8 @@ func _on_interact() -> void:
 	elif _seat_candidate != null and is_instance_valid(_seat_candidate):
 		player.sit_on(_seat_candidate)
 		_seat_candidate = null
+	elif _lift_candidate != null and is_instance_valid(_lift_candidate) and not _lift_busy:
+		_ride_lift(_lift_candidate)
 
 
 func _process(delta: float) -> void:
@@ -752,7 +812,7 @@ func _process(delta: float) -> void:
 		_fail_journey("The last trains have gone. You didn't make it before the network closed for the night.")
 		return
 	var skip := Input.is_action_pressed("skip_time") and (riding or player.last_speed < 0.3)
-	Clock.time_scale = 8.0 if (skip or bot_skip) else 1.0
+	Clock.time_scale = 8.0 if (skip or bot_skip or _lift_busy) else 1.0
 
 
 func _refresh_dest_label() -> void:

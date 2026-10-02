@@ -18,6 +18,8 @@ static func plan(start_station: int, start_node: String, t0: float, dest_station
 	var st: Dictionary = Net.stations[start_station]
 	# start: walk to every platform of the start station
 	for pid in st["platforms"]:
+		if StationPlan.step_free_mode and not StepFree.platform_ok(start_station, pid):
+			continue
 		var gp: int = Timetable.plat_index[start_station][pid]
 		var w := 1e9
 		for f in plan0.faces:
@@ -72,6 +74,8 @@ static func plan(start_station: int, start_node: String, t0: float, dest_station
 				var gp_j: int = gps[j]
 				var plan_j := StationPlan.for_station(s_j)
 				var pid_j: String = Timetable.plat_pid[gp_j]
+				if StationPlan.step_free_mode and not StepFree.platform_ok(s_j, pid_j):
+					continue          # (step-free journeys: no alighting where the platform has stairs only)
 				var face_key := "%s#%d" % [pid_j, faces[j]]
 				if s_j == dest_station:
 					var exit_w := plan_j.time_face_to_exit(face_key) if plan_j.faces.has(face_key) else 60.0
@@ -82,6 +86,8 @@ static func plan(start_station: int, start_node: String, t0: float, dest_station
 					continue
 				# transfer to every platform of the station
 				for pid2 in Net.stations[s_j]["platforms"]:
+					if StationPlan.step_free_mode and not StepFree.platform_ok(s_j, pid2):
+						continue
 					var q: int = Timetable.plat_index[s_j][pid2]
 					var w2: float
 					if q == gp_j:
@@ -127,6 +133,8 @@ static func plan_all(start_station: int, start_node: String, t0: float, horizon 
 	var plan0 := StationPlan.for_station(start_station)
 	var st: Dictionary = Net.stations[start_station]
 	for pid in st["platforms"]:
+		if StationPlan.step_free_mode and not StepFree.platform_ok(start_station, pid):
+			continue
 		var gp: int = Timetable.plat_index[start_station][pid]
 		var w := 1e9
 		for f in plan0.faces:
@@ -173,12 +181,16 @@ static func plan_all(start_station: int, start_node: String, t0: float, horizon 
 				var gp_j: int = gps[j]
 				var plan_j := StationPlan.for_station(s_j)
 				var pid_j: String = Timetable.plat_pid[gp_j]
+				if StationPlan.step_free_mode and not StepFree.platform_ok(s_j, pid_j):
+					continue          # (step-free journeys: no alighting where the platform has stairs only)
 				var face_key := "%s#%d" % [pid_j, faces[j]]
 				var exit_w := plan_j.time_face_to_exit(face_key) if plan_j.faces.has(face_key) else 60.0
 				var ex := a_t + exit_w
 				if ex < best_exit.get(s_j, INF):
 					best_exit[s_j] = ex
 				for pid2 in Net.stations[s_j]["platforms"]:
+					if StationPlan.step_free_mode and not StepFree.platform_ok(s_j, pid2):
+						continue
 					var q: int = Timetable.plat_index[s_j][pid2]
 					var w2: float
 					if q == gp_j:
