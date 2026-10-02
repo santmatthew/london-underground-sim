@@ -37,24 +37,29 @@ func run(st: Station) -> void:
 	root.name = "Props"
 	station.add_child(root)
 	_note_signs()
-	for gl in plan.gatelines:
-		_hall(gl)
-	for rm in plan.rooms:
-		var nm: String = rm["name"]
-		if nm.begins_with("landing") or nm.begins_with("corridor"):
-			_room(rm)
-	for mi in plan.modules.size():
-		_platform(mi)
+	# (UG_OFF=d_hall,d_rooms,d_plat,d_cull switch the parts off one by one: used by the frame-rate experiment)
+	if not Station.debug_off("d_hall"):
+		for gl in plan.gatelines:
+			_hall(gl)
+	if not Station.debug_off("d_rooms"):
+		for rm in plan.rooms:
+			var nm: String = rm["name"]
+			if nm.begins_with("landing") or nm.begins_with("corridor"):
+				_room(rm)
+	if not Station.debug_off("d_plat"):
+		for mi in plan.modules.size():
+			_platform(mi)
 	for k in _kits:
 		var mi := PosterKit.finish(_kits[k], root, "Posters_" + String(k))
 		if mi != null:
 			mi.visibility_range_end = 45.0
 			mi.visibility_range_end_margin = 4.0
-	StationSigns.cull(root, 55.0)
-	for pm in station.modules:
-		var ph: Node = pm.get_node_or_null("Props")
-		if ph:
-			StationSigns.cull(ph, 55.0)
+	if not Station.debug_off("d_cull"):
+		StationSigns.cull(root, 55.0)
+		for pm in station.modules:
+			var ph: Node = pm.get_node_or_null("Props")
+			if ph:
+				StationSigns.cull(ph, 55.0)
 
 
 # ---------------------------------------------------------------------------------------------------

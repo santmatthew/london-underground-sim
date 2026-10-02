@@ -49,3 +49,7 @@ static func _fit(map: TubeMap) -> void:
 	await tree.process_frame
 	if map.get_parent() is SubViewport:
 		(map.get_parent() as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
+	# the map must not keep queueing redraws: TubeMap._process re-recorded its whole 2000 x 1600 diagram every frame (about 20 ms of main-thread time in every
+	# station with a wall map, found by the frame-rate experiment); the texture is complete, so nothing about it needs to run any more
+	if not Station.debug_on("tubemap_redraw"):          # (UG_ON=tubemap_redraw brings the old behaviour back for the frame-rate experiment)
+		map.set_process(false)

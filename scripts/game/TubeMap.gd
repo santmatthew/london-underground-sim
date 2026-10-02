@@ -417,7 +417,7 @@ func _marker(p0: Vector2, col: Color, label: String) -> void:
 
 
 func _process(_d: float) -> void:
-	if visible:
+	if visible and (not poster_mode or Station.debug_on("tubemap_redraw")):
 		queue_redraw()
 
 

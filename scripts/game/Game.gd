@@ -75,6 +75,8 @@ func _ready() -> void:
 	_preload()
 	_parse_cli()
 	_load_display_settings()
+	if cli.has("fps-log"):
+		_start_fps_log(String(cli["fps-log"]), float(cli.get("fps-secs", "0")), cli.has("fps-quit"))
 	if cli.has("autopilot") or cli.has("auto-start"):
 		call_deferred("start_journey")
 
@@ -136,6 +138,34 @@ func _load_display_settings() -> void:
 	if cli.has("upscaler"):
 		up = String(cli["upscaler"])
 	set_upscaler("fsr2" if up == "fsr2" else "fsr1", false)
+
+
+## Frame-time log (FrameLog): `--fps-log=<file.csv> [--fps-secs=300] [--fps-quit]` from the command line, F4 in game (writes user://fps_<time>.csv and says where)
+var _frame_log: FrameLog
+
+
+func _start_fps_log(path: String, secs := 0.0, quit_when_done := false) -> void:
+	if _frame_log != null and _frame_log.running:
+		return
+	if _frame_log == null:
+		_frame_log = FrameLog.new()
+		add_child(_frame_log)
+	_frame_log.on_done = func(sm):
+		if hud:
+			hud.toast("Frame log saved: %s  (%s fps average, 1%% low %s)" % [_frame_log.path, str(sm.get("fps_mean", "?")), str(sm.get("fps_1pct_low", "?"))])
+		if quit_when_done:
+			get_tree().quit()
+	_frame_log.start(path, secs)
+
+
+func _toggle_fps_log() -> void:
+	if _frame_log != null and _frame_log.running:
+		_frame_log.stop()
+	else:
+		var stamp := Time.get_datetime_string_from_system().replace(":", "-")
+		_start_fps_log(ProjectSettings.globalize_path("user://fps_%s.csv" % stamp))
+		if hud:
+			hud.toast("Frame log started (F4 again to stop and save)")
 
 
 func _parse_cli() -> void:
@@ -708,6 +738,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 					map.toggle_mode()          # tube map: diagram <-> geographic
 			KEY_F3:
 				hud.toggle_perf()
+			KEY_F4:
+				_toggle_fps_log()
 			KEY_ESCAPE:
 				if map_open:
 					_toggle_map()
