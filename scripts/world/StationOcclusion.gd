@@ -31,7 +31,13 @@ static func build(st: Station) -> void:
 		var top := (PlatformModule.BOX_H if m.box else PlatformModule.SPRING_Y + PlatformModule.RISE) + 0.15
 		if m.open:
 			# open to the sky: only the canopy occludes (a slab over the island)
-			_box(verts, idx, m.position + Vector3(0, PlatformModule.BOX_H + 0.2, 0), Vector3(L, 0.3, PlatformOpen.CANOPY_HALF * 2.0 - 0.4))
+			# (only where there is a roof: short shelters and umbrellas leave gaps the sky shows through)
+			var spans: Array = m.roof_spans if not m.roof_spans.is_empty() else [Vector2(-L * 0.5, L * 0.5)]
+			var rh := PlatformOpen.roof_h(m.open_style)
+			for sp in spans:
+				var a: float = (sp as Vector2).x
+				var b: float = (sp as Vector2).y
+				_box(verts, idx, m.position + Vector3((a + b) * 0.5, rh + 0.2, 0), Vector3(b - a, 0.3, PlatformOpen.CANOPY_HALF * 2.0 - 0.4))
 		else:
 			_box(verts, idx, m.position + Vector3(0, top + 0.5, 0), Vector3(L, 1.0, zfar * 2.0 - 0.6))
 	if verts.is_empty():

@@ -45,6 +45,22 @@ static func mat(key: String) -> Material:
 			m.albedo_color = Color(0.7, 0.6, 0.45); m.roughness = 0.8
 		"timber":
 			m.albedo_texture = _tex("timber.png"); m.roughness = 0.6; m.uv1_scale = Vector3(2, 2, 1)
+		"shrub":
+			m.albedo_color = Color(0.16, 0.34, 0.12); m.roughness = 0.9
+		"shrub_light":
+			m.albedo_color = Color(0.26, 0.42, 0.14); m.roughness = 0.9
+		"soil":
+			m.albedo_color = Color(0.17, 0.12, 0.08); m.roughness = 0.95
+		"brick":
+			m.albedo_color = Color(0.46, 0.2, 0.15); m.roughness = 0.85
+		"coping":
+			m.albedo_color = Color(0.72, 0.7, 0.66); m.roughness = 0.8
+		"concrete_lamp":
+			m.albedo_color = Color(0.82, 0.81, 0.77); m.roughness = 0.9
+		"pole_grey":
+			m.albedo_color = Color(0.6, 0.66, 0.64); m.roughness = 0.5; m.metallic = 0.3
+		"lantern":
+			m.albedo_color = Color(0.95, 0.93, 0.85); m.emission_enabled = true; m.emission = Color(1.0, 0.92, 0.75); m.emission_energy_multiplier = 0.8
 		"perforated":
 			m.albedo_texture = _tex("perforated.png"); m.albedo_color = Color(1.4, 1.4, 1.4); m.roughness = 0.5; m.metallic = 0.1; m.uv1_scale = Vector3(6, 6, 1)
 		"sign_blue":
@@ -174,6 +190,95 @@ static func bench_timber() -> Node3D:
 	_seat_markers(n, 4, -L * 0.5 + 0.1 + (L - 0.2) / 8.0, (L - 0.2) / 4.0, -0.02)
 	_solid(n, Vector3(0, 0.45, 0.04), Vector3(L, 0.9, 0.64))
 	_fp(n, Vector2(0, 0.04), Vector2(L * 0.5, 0.32))
+	return n
+
+
+# ---------------------------------------------------------------------------------------------------
+# open-air platform furniture (surface stations, after the reference photos in build/refs_dress/surface)
+# ---------------------------------------------------------------------------------------------------
+static func _shrub(kit: MeshKit, c: Vector3, r: float, h: float, key := "shrub") -> void:
+	# a rounded bush: a squashed dome built as a surface of revolution
+	var prof := PackedVector2Array()
+	for q in [[0.0, 1.0], [0.45, 0.93], [0.78, 0.7], [0.97, 0.38], [1.0, 0.1], [0.9, 0.0]]:
+		prof.append(Vector2(q[0] * r, c.y + q[1] * h))
+	kit.lathe(key, prof, c.x, c.z, 1.0, 1.0, 10, 0.0)
+
+
+## A timber box planter with shrubs, 1.1 x 0.45 m (the planters along the Kew Gardens platforms); front faces -Z
+static func planter_box() -> Node3D:
+	var kit := MeshKit.new()
+	kit.seed_rng(5)
+	kit.box("timber", Vector3(0, 0.22, 0), Vector3(1.1, 0.44, 0.46), 0.0)
+	kit.box("soil", Vector3(0, 0.45, 0), Vector3(1.0, 0.03, 0.36), 0.0)
+	for k in 3:
+		_shrub(kit, Vector3(-0.34 + k * 0.34, 0.45, 0.0), 0.2, 0.42 + 0.06 * (k % 2), "shrub" if k != 1 else "shrub_light")
+	var n := _node(kit, "PlanterBox")
+	_solid(n, Vector3(0, 0.3, 0), Vector3(1.1, 0.6, 0.46))
+	_fp(n, Vector2.ZERO, Vector2(0.55, 0.23))
+	return n
+
+
+## A low red-brick raised planter, 2.4 x 0.8 m, 0.55 m high, stone coping, planted (Northwick Park)
+static func planter_brick() -> Node3D:
+	var kit := MeshKit.new()
+	kit.seed_rng(9)
+	kit.box("brick", Vector3(0, 0.26, 0), Vector3(2.4, 0.52, 0.8), 0.0)
+	kit.box("coping", Vector3(0, 0.55, 0), Vector3(2.5, 0.06, 0.9), 0.0)
+	kit.box("soil", Vector3(0, 0.59, 0), Vector3(2.2, 0.03, 0.6), 0.0)
+	for k in 4:
+		_shrub(kit, Vector3(-0.8 + k * 0.54, 0.6, 0.0), 0.3, 0.5 + 0.1 * (k % 2), "shrub" if k % 2 == 0 else "shrub_light")
+	var n := _node(kit, "PlanterBrick")
+	_solid(n, Vector3(0, 0.4, 0), Vector3(2.5, 0.8, 0.9))
+	_fp(n, Vector2.ZERO, Vector2(1.25, 0.45))
+	return n
+
+
+## A lamp standard for an open-air platform, 5.2 m: "victorian" (black fluted post with a lantern), "concrete" (a slim concrete pole with a round shade, Loughton),
+## "cctv" (pale grey-green pole with an outrigger arm carrying CCTV cameras, Northwick Park)
+static func lamp_post(kind: String) -> Node3D:
+	var kit := MeshKit.new()
+	var h := 5.2
+	match kind:
+		"victorian":
+			kit.box("black", Vector3(0, 0.3, 0), Vector3(0.3, 0.6, 0.3), 0.0)
+			kit.box("black", Vector3(0, 2.4, 0), Vector3(0.14, 4.4, 0.14), 0.0)
+			kit.box("black", Vector3(0, 1.0, 0), Vector3(0.22, 0.1, 0.22), 0.0)
+			kit.box("black", Vector3(0, h - 0.55, 0), Vector3(0.28, 0.08, 0.28), 0.0)
+			kit.box("lantern", Vector3(0, h - 0.25, 0), Vector3(0.34, 0.4, 0.34), 0.0)
+			kit.box("black", Vector3(0, h + 0.02, 0), Vector3(0.44, 0.06, 0.44), 0.0)
+			kit.box("black", Vector3(0, h + 0.14, 0), Vector3(0.2, 0.2, 0.2), 0.0)
+		"concrete":
+			kit.box("concrete_lamp", Vector3(0, h * 0.5, 0), Vector3(0.22, h, 0.22), 0.0)
+			kit.box("concrete_lamp", Vector3(0, 0.25, 0), Vector3(0.34, 0.5, 0.34), 0.0)
+			kit.box("lantern", Vector3(0, h + 0.05, 0), Vector3(0.62, 0.12, 0.62), 0.0)
+			kit.box("concrete_lamp", Vector3(0, h + 0.16, 0), Vector3(0.7, 0.08, 0.7), 0.0)
+		_:
+			kit.box("pole_grey", Vector3(0, h * 0.5, 0), Vector3(0.16, h, 0.16), 0.0)
+			kit.box("pole_grey", Vector3(0, 0.3, 0), Vector3(0.26, 0.6, 0.26), 0.0)
+			kit.box("pole_grey", Vector3(0.6, h - 0.35, 0), Vector3(1.2, 0.1, 0.1), 0.0)
+			kit.box("lantern", Vector3(1.05, h - 0.45, 0), Vector3(0.5, 0.06, 0.2), 0.0)
+			for cy in [h - 0.1, h - 1.0]:
+				kit.box("charcoal", Vector3(-0.12, cy, 0.0), Vector3(0.14, 0.16, 0.3), 0.0)
+				kit.box("charcoal", Vector3(0.12, cy, 0.0), Vector3(0.14, 0.16, 0.3), 0.0)
+			kit.box("yellow", Vector3(0, 1.4, 0), Vector3(0.18, 0.12, 0.18), 0.0)
+	var n := _node(kit, "Lamp_" + kind)
+	_solid(n, Vector3(0, 1.0, 0), Vector3(0.3, 2.0, 0.3))
+	_fp(n, Vector2.ZERO, Vector2(0.2, 0.2))
+	return n
+
+
+## A platform name board on a post, double sided (the white board carries the red ring and blue bar), as at Northwick Park; origin at the foot
+static func roundel_post(name: String) -> Node3D:
+	var kit := MeshKit.new()
+	kit.box("pole_grey", Vector3(0, 1.2, 0), Vector3(0.12, 2.4, 0.12), 0.0)
+	var n := _node(kit, "RoundelPost")
+	for sd in [-1.0, 1.0]:
+		var rd := Signs.roundel(name, 0.62, false)
+		rd.position = Vector3(0, 1.7, sd * 0.07)
+		rd.rotation.y = PI if sd < 0.0 else 0.0
+		n.add_child(rd)
+	_solid(n, Vector3(0, 1.2, 0), Vector3(0.9, 2.4, 0.2))
+	_fp(n, Vector2.ZERO, Vector2(0.45, 0.12))
 	return n
 
 

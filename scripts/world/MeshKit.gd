@@ -125,6 +125,69 @@ func box_xf(mats, xf: Transform3D, size: Vector3, floor_y: float = 0.0) -> void:
 	quad(m.call("left"), c.call(-1, 1, -1), c.call(-1, -1, -1), c.call(-1, -1, 1), c.call(-1, 1, 1), floor_y, Vector2.ZERO, 0.0, true)
 
 
+## One quad with a normal per corner (smooth shading), p0..p3 counter-clockwise from the front like `quad`; UV in metres from `uv0` along p0->p1 / p0->p3
+func quad_smooth(mat: String, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, n0: Vector3, n1: Vector3, n2: Vector3, n3: Vector3, floor_y: float = 0.0, uv0: Vector2 = Vector2.ZERO) -> void:
+	var s := _surf(mat)
+	var t := (p1 - p0).normalized()
+	var v_dir := (p3 - p0).normalized()
+	var nf := (p1 - p0).cross(p2 - p0).normalized()
+	var w := 1.0 if nf.cross(t).dot(-v_dir) >= 0.0 else -1.0
+	var base: int = s["v"].size()
+	var rnd := _rng.randf()
+	var pts := [p0, p1, p2, p3]
+	var nrm := [n0, n1, n2, n3]
+	for k in 4:
+		var p: Vector3 = pts[k]
+		var d: Vector3 = p - p0
+		s["v"].append(p)
+		s["n"].append(nrm[k])
+		s["uv"].append(uv0 + Vector2(d.dot(t), d.dot(v_dir)))
+		s["t"].append_array([t.x, t.y, t.z, w])
+		s["c"].append(Color(p.y - floor_y, rnd, 0.0, 1.0))
+	s["i"].append_array([base, base + 2, base + 1, base, base + 3, base + 2])
+
+
+## A surface of revolution about the vertical axis through (cx, cz): `profile` is a list of Vector2(radius, y) from the axis outward / upward; the radius is scaled by (ax, az)
+## in x and z (an ellipse when they differ). The visible side is the one on the LEFT walking along the profile seen from outside with +y up; `flip` shows the other.
+## Normals are smooth (taken from the profile). `segs` quads round; the seam is closed.
+func lathe(mat: String, profile: PackedVector2Array, cx: float, cz: float, ax: float, az: float, segs := 20, floor_y := 0.0, flip := false) -> void:
+	var n := profile.size()
+	if n < 2:
+		return
+	# profile normals (r, y): the left of the travel direction
+	var pn: Array = []
+	for i in n:
+		var a := profile[maxi(i - 1, 0)]
+		var b := profile[mini(i + 1, n - 1)]
+		var d := (b - a).normalized()
+		pn.append(Vector2(-d.y, d.x))
+	for k in segs:
+		var a0 := TAU * float(k) / segs
+		var a1 := TAU * float(k + 1) / segs
+		for i in n - 1:
+			var pa := profile[i]
+			var pb := profile[i + 1]
+			var v := func(r: float, y: float, ang: float) -> Vector3:
+				return Vector3(cx + cos(ang) * r * ax, y, cz + sin(ang) * r * az)
+			var nv := func(pnrm: Vector2, ang: float) -> Vector3:
+				# the ellipse's normal: scale the radial part by 1/axis
+				var rad := Vector3(cos(ang) / ax, 0.0, sin(ang) / az) * pnrm.x
+				return (rad + Vector3(0.0, pnrm.y, 0.0)).normalized()
+			var p00: Vector3 = v.call(pa.x, pa.y, a0)
+			var p01: Vector3 = v.call(pa.x, pa.y, a1)
+			var p10: Vector3 = v.call(pb.x, pb.y, a0)
+			var p11: Vector3 = v.call(pb.x, pb.y, a1)
+			var n00: Vector3 = nv.call(pn[i], a0)
+			var n01: Vector3 = nv.call(pn[i], a1)
+			var n10: Vector3 = nv.call(pn[i + 1], a0)
+			var n11: Vector3 = nv.call(pn[i + 1], a1)
+			var uv0 := Vector2(float(k) * 0.9, pa.y)
+			if flip:
+				quad_smooth(mat, p00, p10, p11, p01, -n00, -n10, -n11, -n01, floor_y, uv0)
+			else:
+				quad_smooth(mat, p00, p01, p11, p10, n00, n01, n11, n10, floor_y, uv0)
+
+
 ## Sweep a 2D profile (Vector2(z, y) points, in order) along the X axis from x0 to x1.
 ## The visible side is the one on the LEFT when walking along the profile order seen with +x pointing away from the viewer
 ## (use `flip` to invert). U runs along the profile (metres), V along x.

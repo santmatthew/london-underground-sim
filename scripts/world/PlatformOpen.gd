@@ -32,43 +32,181 @@ static func sun() -> float:
 # geometry written into the module's MeshKit
 # ---------------------------------------------------------------------------------------------------------------------------------------
 
-## the canopy over the island: slab (flat concrete), valanced (white boards + a shallow gable on top), flared (mushroom capitals, Loughton), timber (Metropolitan)
+## Style keys (data/station_character.json "open_styles"; a station may have a style of its own, named after it, see "surface_overrides"):
+##   canopy     "slab" (flat concrete) | "valanced" (white boards, shallow gable on top, scalloped valance) | "timber" | "gable" (pitched roof: rise, rafters, rooflights, valance) | "mushroom" (concrete umbrellas)
+##   roof_h     height of the eaves / rim (default BOX_H);  spans: [[a, b], ...] fractions of the module length the roof covers (default all of it)
+##   valance    "scallop" (default) | "saw" | "none";  rise (gable, m);  rooflights (gable: strips of glass in the slopes);  top / soffit / fascia: materials or colours
+##   col        "square" | "round" | "iron" | "mushroom";  col_main / col_band / col_ring colours;  col_row: "edge" (two rows beside the platform walls, default) | "centre"
+##   pitch      distance between columns (7.2) or between umbrella caps (12);  cap_r  umbrella radius (5.0)
+##   front / wall / floor  platform front, track-side wall and platform deck materials (see StationCharacter)
+##   bridge, planters, lamps ...  extras (PlatformExtras)
+
+static func _spans(st: Dictionary, x0: float, x1: float) -> Array:
+	var out: Array = []
+	var sp: Array = st.get("spans", [])
+	if sp.is_empty():
+		out.append(Vector2(x0, x1))
+	else:
+		for a in sp:
+			out.append(Vector2(lerpf(x0, x1, float(a[0])), lerpf(x0, x1, float(a[1]))))
+	return out
+
+
+static func roof_h(st: Dictionary) -> float:
+	return float(st.get("roof_h", PlatformModule.BOX_H))
+
+
+## the roof over the island: see the style keys above. Writes pm.roof_spans / pm.roof_info (what is overhead where) for the signs and fittings that hang from it
 static func canopy(pm: PlatformModule, st: Dictionary, x0: float, x1: float, openings: Array) -> void:
-	var kit := pm.kit
-	var h := PlatformModule.BOX_H
-	var zc := CANOPY_HALF
 	var kind := String(st.get("canopy", "slab"))
+	var spans := _spans(st, x0, x1)
+	pm.roof_info = {"kind": kind, "h": roof_h(st), "rise": float(st.get("rise", 0.0)) if kind == "gable" else 0.0, "zc": CANOPY_HALF, "caps": []}
+	pm.column_extra = []
+	# the way in from the cross-passages is under a flat roof of its own where the style's roofs do not reach back to the platform's west end (umbrellas, short shelters)
+	var entry_end := x0
+	if kind == "mushroom" or (st.has("spans") and (spans[0] as Vector2).x > x0 + 0.5):
+		var last_open := x0
+		for ox in openings:
+			last_open = maxf(last_open, float(ox))
+		entry_end = last_open + 3.4
+		pm.roof_info["entry"] = Vector2(x0, entry_end)
+	if kind == "mushroom":
+		_mushrooms(pm, st, x0, x1, openings, entry_end)
+	else:
+		pm.roof_spans = spans
+		for sp in spans:
+			_roof(pm, st, kind, sp.x, sp.y)
+		_columns(pm, st, spans, x0, x1, openings)
+		for sp in spans:
+			_strip_lights(pm, sp.x, sp.y, roof_h(st), kind == "gable")
+	if entry_end > x0:
+		_entry_roof(pm, st, x0, entry_end)
+	if st.has("bridge"):
+		_bridge(pm, st["bridge"], lerpf(x0, x1, float(st["bridge"].get("x", 0.7))))
+
+
+## the flat roof over the way in (x0 .. x1): slab, two columns at each end clear of the cross-passages; part of the covered stretches (snap_x / soffit_y know it)
+static func _entry_roof(pm: PlatformModule, st: Dictionary, x0: float, x1: float) -> void:
+	_roof(pm, st, "slab", x0, x1)
+	_strip_lights(pm, x0, x1, roof_h(st))
+	var h := roof_h(st)
+	var col_z := PlatformModule.GAP * 0.5 + 0.85
+	var shaft := "flat:" + (st.get("col_main", Color(0.88, 0.88, 0.85)) as Color).to_html(false)
+	for cx in [x0 + 3.5, x1 - 0.5]:
+		for zz in [-col_z, col_z]:
+			pm.kit.box(shaft, Vector3(cx, h * 0.5, zz), Vector3(0.42, h, 0.42), 0.0)
+			pm.column_extra.append(Vector2(cx, zz))
+	pm.roof_spans.append(Vector2(x0, x1))
+
+
+static func _roof(pm: PlatformModule, st: Dictionary, kind: String, x0: float, x1: float) -> void:
+	var kit := pm.kit
+	var h := roof_h(st)
+	var zc := CANOPY_HALF
 	var soffit := String(st.get("soffit", "ceiling"))
 	var fascia := "flat:" + (st.get("fascia", Color(0.85, 0.85, 0.82)) as Color).to_html(false)
-	var top := "concrete"
-	kit.horiz(soffit, x0, x1, -zc, zc, h, false, 0.0)
-	# ribs under the soffit every 3.6 m (they also carry the strip lights)
-	var bx := x0 + 1.8
-	while bx < x1:
-		kit.box(soffit if kind == "timber" else "ceiling", Vector3(bx, h - 0.09, 0.0), Vector3(0.18, 0.18, zc * 2.0), 0.0)
-		bx += 3.6
+	var top := String(st.get("top", "concrete"))
+	var valance := String(st.get("valance", "scallop" if kind in ["valanced", "timber"] else "none"))
+	if kind == "gable":
+		_gable(pm, st, x0, x1, h)
+	else:
+		kit.horiz(soffit, x0, x1, -zc, zc, h, false, 0.0)
+		# ribs under the soffit every 3.6 m (they also carry the strip lights)
+		var bx := x0 + 1.8
+		while bx < x1:
+			kit.box(soffit if kind == "timber" else "ceiling", Vector3(bx, h - 0.09, 0.0), Vector3(0.18, 0.18, zc * 2.0), 0.0)
+			bx += 3.6
 	match kind:
 		"valanced", "timber":
 			# a shallow gable on top and a scalloped valance hanging from each long edge
 			kit.horiz(top, x0, x1, -zc, zc, h + 0.05, true, 0.0)
-			for s in [1.0, -1.0]:
-				if not Station.debug_off("valance"):
-					_valance(kit, s * zc, x0, x1, h, s)
-				kit.box(fascia, Vector3((x0 + x1) * 0.5, h + 0.02, s * zc), Vector3(x1 - x0, 0.1, 0.06), 0.0)
+			for sd: float in [1.0, -1.0]:
+				kit.box(fascia, Vector3((x0 + x1) * 0.5, h + 0.02, sd * zc), Vector3(x1 - x0, 0.1, 0.06), 0.0)
+		"gable":
+			pass
 		_:
 			# a plain slab with a deep fascia all round
 			kit.horiz(top, x0, x1, -zc, zc, h + CANOPY_T, true, 0.0)
-			for s in [1.0, -1.0]:
-				kit.box(fascia, Vector3((x0 + x1) * 0.5, h + CANOPY_T * 0.5, s * zc), Vector3(x1 - x0, CANOPY_T, 0.06), 0.0)
+			for sd: float in [1.0, -1.0]:
+				kit.box(fascia, Vector3((x0 + x1) * 0.5, h + CANOPY_T * 0.5, sd * zc), Vector3(x1 - x0, CANOPY_T, 0.06), 0.0)
 			for ex in [x0, x1]:
 				kit.box(fascia, Vector3(ex, h + CANOPY_T * 0.5, 0.0), Vector3(0.06, CANOPY_T, zc * 2.0), 0.0)
-	_columns(pm, st, x0, x1, openings)
-	_strip_lights(pm, x0, x1, h)
+	if valance != "none" and not Station.debug_off("valance"):
+		for sd: float in [1.0, -1.0]:
+			_valance(kit, sd * zc, x0, x1, h, sd, valance)
 
 
-static func _valance(kit: MeshKit, z: float, x0: float, x1: float, h: float, s: float) -> void:
-	var key := "char:open/valance.png|2.000|0.310|1"
-	var vh := 0.31
+## a pitched roof over the island: ridge along the middle, two slopes with rafters, soffit and top, optional strips of rooflight glass
+static func _gable(pm: PlatformModule, st: Dictionary, x0: float, x1: float, h: float) -> void:
+	var kit := pm.kit
+	var zc := CANOPY_HALF
+	var rise := float(st.get("rise", 0.9))
+	var soffit := String(st.get("soffit", "timber_slab"))
+	var top := String(st.get("top", "concrete"))
+	var glass := bool(st.get("rooflights", false))
+	var thick := 0.14
+	var slope := atan2(rise, zc)
+	# the slopes are built as bands along x so rooflight strips can be left in them: [xa, xb, glazed?]
+	var bands: Array = []
+	var gx := x0
+	while gx < x1 - 0.01:
+		var seg := minf(2.4 if glass else 6.0, x1 - gx)
+		bands.append([gx, gx + seg, glass and (int((gx - x0) / 2.4) % 3 == 1)])
+		gx += seg
+	for sd: float in [1.0, -1.0]:
+		for b in bands:
+			var xa: float = b[0]
+			var xb: float = b[1]
+			# the slope runs from the ridge (t = 0) to the eaves (t = 1); a glazed band covers the middle of it
+			var pieces: Array = [[0.0, 1.0, false]]
+			if b[2]:
+				pieces = [[0.0, 0.30, false], [0.30, 0.74, true], [0.74, 1.0, false]]
+			for pc in pieces:
+				var ta: float = pc[0]
+				var tb: float = pc[1]
+				var za := sd * zc * ta
+				var zb := sd * zc * tb
+				var ya := h + rise * (1.0 - ta)
+				var yb := h + rise * (1.0 - tb)
+				var s_mat := "glass_roof" if pc[2] else soffit
+				var t_mat := "glass_roof" if pc[2] else top
+				# soffit faces down, top faces up (CCW from the front)
+				var p0 := Vector3(xa, ya, za)
+				var p1 := Vector3(xb, ya, za)
+				var p2 := Vector3(xb, yb, zb)
+				var p3 := Vector3(xa, yb, zb)
+				if sd > 0.0:
+					kit.quad(s_mat, p0, p1, p2, p3, 0.0)                        # normal: (p1-p0) x (p2-p0) = x cross (z,-y) -> down
+					kit.quad(t_mat, p3 + Vector3(0, thick, 0), p2 + Vector3(0, thick, 0), p1 + Vector3(0, thick, 0), p0 + Vector3(0, thick, 0), 0.0)
+				else:
+					kit.quad(s_mat, p3, p2, p1, p0, 0.0)
+					kit.quad(t_mat, p0 + Vector3(0, thick, 0), p1 + Vector3(0, thick, 0), p2 + Vector3(0, thick, 0), p3 + Vector3(0, thick, 0), 0.0)
+	# rafters under each slope every 2.4 m, a ridge beam, and an eaves plate; the gable ends are closed by a board
+	var bx := x0 + 1.2
+	while bx < x1:
+		for sd: float in [1.0, -1.0]:
+			var mid := Vector3(bx, h + rise * 0.5 - 0.05, sd * zc * 0.5)
+			var xf := Transform3D(Basis(Vector3.RIGHT, sd * slope), mid)
+			kit.box_xf(soffit, xf, Vector3(0.1, 0.16, sqrt(zc * zc + rise * rise)), 0.0)
+		bx += 2.4
+	kit.box(soffit, Vector3((x0 + x1) * 0.5, h + rise - 0.06, 0.0), Vector3(x1 - x0, 0.16, 0.2), 0.0)
+	for sd: float in [1.0, -1.0]:
+		kit.box("flat:" + (st.get("fascia", Color(0.85, 0.85, 0.82)) as Color).to_html(false), Vector3((x0 + x1) * 0.5, h + 0.08, sd * zc), Vector3(x1 - x0, 0.2, 0.06), 0.0)
+	# the end gables: a triangle of boarding at each end (seen from outside and from under the roof)
+	var fc := "flat:" + (st.get("fascia", Color(0.85, 0.85, 0.82)) as Color).to_html(false)
+	for ex in [x0, x1]:
+		var a := Vector3(ex, h, -zc)
+		var b := Vector3(ex, h + rise, 0.0)
+		var c := Vector3(ex, h, zc)
+		var m := Vector3(ex, h, 0.0)
+		kit.quad(fc, a, b, c, m, 0.0)
+		kit.quad(fc, m, c, b, a, 0.0)
+
+
+## a valance hung from the long edge at z (sd = +1 / -1): the texture says which kind ("scallop" 2.0 x 0.31 m, "saw" 2.0 x 0.39 m)
+static func _valance(kit: MeshKit, z: float, x0: float, x1: float, h: float, s: float, kindv := "scallop") -> void:
+	var vh := 0.31 if kindv == "scallop" else 0.39
+	var key := "char:open/%s.png|2.000|%.3f|1" % ["valance" if kindv == "scallop" else "valance_saw", vh]
 	var zf := z + s * 0.035
 	if s > 0.0:
 		kit.wall(key, Vector3(x0, 0, zf), Vector3(x1, 0, zf), h - vh + 0.05, h + 0.05, 0.0)
@@ -78,48 +216,234 @@ static func _valance(kit: MeshKit, z: float, x0: float, x1: float, h: float, s: 
 		kit.wall(key, Vector3(x0, 0, zf + 0.004), Vector3(x1, 0, zf + 0.004), h - vh + 0.05, h + 0.05, 0.0)
 
 
-## the columns stand exactly where the box hall's steel columns did (same collision boxes, every 7.2 m, clear of the cross-passages)
-static func _columns(pm: PlatformModule, st: Dictionary, x0: float, x1: float, openings: Array) -> void:
+## the columns stand where the box hall's steel columns did (same collision boxes, every `pitch` m, clear of the cross-passages); roofs with spans get a column near each end of every span
+static func _columns(pm: PlatformModule, st: Dictionary, spans: Array, x0: float, x1: float, openings: Array) -> void:
 	var kit := pm.kit
-	var h := PlatformModule.BOX_H
+	var h := roof_h(st)
 	var col_z := PlatformModule.GAP * 0.5 + 0.85
 	var shaft := "flat:" + (st.get("col_main", Color(0.88, 0.88, 0.85)) as Color).to_html(false)
 	var band := "flat:" + (st.get("col_band", Color(0.10, 0.20, 0.50)) as Color).to_html(false)
+	var ring: String = "flat:" + (st["col_ring"] as Color).to_html(false) if st.has("col_ring") else ""
 	var kind := String(st.get("col", "square"))
-	var cx := x0 + 5.0
+	var pitch := float(st.get("pitch", 7.2))
 	pm.column_xs = []
-	while cx < x1 - 3.0:
+	pm.column_zs = [-col_z, col_z]
+	var xs: Array = []
+	if not st.has("spans"):
+		var cx := x0 + 5.0
+		while cx < x1 - 3.0:
+			xs.append(cx)
+			cx += pitch
+	else:
+		for sp in spans:
+			var a: float = (sp as Vector2).x + 1.2
+			var b: float = (sp as Vector2).y - 1.2
+			var n := maxi(1, int(ceil((b - a) / pitch)))
+			for k in n + 1:
+				xs.append(lerpf(a, b, float(k) / n))
+	for cx in xs:
 		var at_opening := false
 		for ox in openings:
 			if absf(cx - ox) < 2.6:
 				at_opening = true
-		if not at_opening:
-			pm.column_xs.append(cx)
-			for zz in [-col_z, col_z]:
-				match kind:
-					"round":
-						# octagonal shaft with a flared capital that spreads into the slab
-						kit.box(shaft, Vector3(cx, h * 0.5, zz), Vector3(0.40, h, 0.40), 0.0)
-						kit.box_xf(shaft, Transform3D(Basis(Vector3.UP, PI * 0.25), Vector3(cx, h * 0.5, zz)), Vector3(0.40, h, 0.40), 0.0)
-						for k in 4:
-							var f := 1.0 + k * 0.9
-							kit.box(shaft, Vector3(cx, h - 0.14 - k * 0.1, zz), Vector3(0.4 * f, 0.1, 0.4 * f), 0.0)
-						kit.box(band, Vector3(cx, 0.5, zz), Vector3(0.44, 0.9, 0.44), 0.0)
-					"iron":
-						# slim cast-iron post on a plinth, with a collar and a bracket cap
-						kit.box(shaft, Vector3(cx, h * 0.5, zz), Vector3(0.24, h, 0.24), 0.0)
-						kit.box(band, Vector3(cx, 0.45, zz), Vector3(0.34, 0.9, 0.34), 0.0)
-						kit.box(shaft, Vector3(cx, 1.0, zz), Vector3(0.30, 0.08, 0.30), 0.0)
-						kit.box(shaft, Vector3(cx, h - 0.2, zz), Vector3(0.40, 0.14, 0.40), 0.0)
-					_:
-						# a square concrete column, painted: a dark band at the foot, a thin one at head height
-						kit.box(shaft, Vector3(cx, h * 0.5, zz), Vector3(0.42, h, 0.42), 0.0)
-						kit.box(band, Vector3(cx, 0.5, zz), Vector3(0.44, 1.0, 0.44), 0.0)
-						kit.box(band, Vector3(cx, 2.25, zz), Vector3(0.435, 0.16, 0.435), 0.0)
-		cx += 7.2
+		if at_opening:
+			continue
+		pm.column_xs.append(cx)
+		for zz in pm.column_zs:
+			match kind:
+				"round":
+					# octagonal shaft with a flared capital that spreads into the slab
+					kit.box(shaft, Vector3(cx, h * 0.5, zz), Vector3(0.40, h, 0.40), 0.0)
+					kit.box_xf(shaft, Transform3D(Basis(Vector3.UP, PI * 0.25), Vector3(cx, h * 0.5, zz)), Vector3(0.40, h, 0.40), 0.0)
+					for k in 4:
+						var f := 1.0 + k * 0.9
+						kit.box(shaft, Vector3(cx, h - 0.14 - k * 0.1, zz), Vector3(0.4 * f, 0.1, 0.4 * f), 0.0)
+					kit.box(band, Vector3(cx, 0.5, zz), Vector3(0.44, 0.9, 0.44), 0.0)
+				"iron":
+					# slim cast-iron post on a plinth, with a collar and a bracket cap (and, where the style has them, painted rings)
+					kit.box(shaft, Vector3(cx, h * 0.5, zz), Vector3(0.24, h, 0.24), 0.0)
+					kit.box(band, Vector3(cx, 0.45, zz), Vector3(0.34, 0.9, 0.34), 0.0)
+					kit.box(shaft, Vector3(cx, 1.0, zz), Vector3(0.30, 0.08, 0.30), 0.0)
+					kit.box(shaft, Vector3(cx, h - 0.2, zz), Vector3(0.40, 0.14, 0.40), 0.0)
+					if ring != "":
+						for ry in [1.12, 1.26]:
+							kit.box(ring, Vector3(cx, ry, zz), Vector3(0.27, 0.05, 0.27), 0.0)
+				_:
+					# a square concrete column, painted: a dark band at the foot, a thin one at head height
+					kit.box(shaft, Vector3(cx, h * 0.5, zz), Vector3(0.42, h, 0.42), 0.0)
+					kit.box(band, Vector3(cx, 0.5, zz), Vector3(0.44, 1.0, 0.44), 0.0)
+					kit.box(band, Vector3(cx, h - 2.45, zz), Vector3(0.435, 0.16, 0.435), 0.0)
 
 
-static func _strip_lights(pm: PlatformModule, x0: float, x1: float, h: float) -> void:
+# -- umbrella roofs (Loughton): a round column flaring into a broad dished cap with a thick rounded rim, one every `pitch` m along the middle of the island --------------------------
+
+static func _cap_profile(h: float, r: float) -> PackedVector2Array:
+	var k := r / 5.0
+	var p := PackedVector2Array()
+	# the top, from the crown outward, over the thick rolled rim, then the underside back in to the column (a gentle flare, as in the photographs), then down the shaft
+	for q in [[0.0, 0.50], [1.5, 0.49], [3.0, 0.45], [4.2, 0.40], [4.8, 0.36]]:
+		p.append(Vector2(q[0] * k, h + q[1]))
+	for q in [[5.0, 0.28], [5.04, 0.14], [4.98, 0.02], [4.84, -0.08]]:
+		p.append(Vector2(q[0] * k, h + q[1]))
+	for q in [[4.2, -0.12], [3.2, -0.20], [2.2, -0.36], [1.5, -0.52], [1.05, -0.72], [0.75, -0.95], [0.52, -1.25]]:
+		p.append(Vector2(q[0] * k, h + q[1]))
+	p.append(Vector2(0.48, 0.0))
+	return p
+
+
+static func _mushrooms(pm: PlatformModule, st: Dictionary, x0: float, x1: float, openings: Array, entry_end: float) -> void:
+	var kit := pm.kit
+	var h := roof_h(st)
+	var r := float(st.get("cap_r", 5.0))
+	var pitch := float(st.get("pitch", 12.0))
+	var mat := "matt:" + (st.get("col_main", Color(0.9, 0.89, 0.84)) as Color).to_html(false)
+	pm.column_xs = []
+	pm.column_zs = [0.0]
+	pm.column_w = 0.92
+	pm.roof_spans = []
+	var caps: Array = []
+	var cx := entry_end + r + 1.0
+	while cx < x1 - r + 1.0:
+		caps.append(cx)
+		cx += pitch
+	var prof := _cap_profile(h, r)
+	for c in caps:
+		kit.lathe(mat, prof, c, 0.0, 1.0, 1.0, 32, 0.0)
+		pm.column_xs.append(c)
+		pm.roof_spans.append(Vector2(c - r * 0.55, c + r * 0.55))
+		# four downlights in the dish
+		for k in 4:
+			var a := TAU * (k + 0.5) / 4.0
+			kit.box("light_emissive", Vector3(c + cos(a) * 2.3, h - 0.30, sin(a) * 2.3), Vector3(0.5, 0.05, 0.28), 0.0)
+	pm.roof_info["caps"] = caps
+	pm.roof_info["cap_r"] = r
+	pm.roof_info["cap_profile"] = prof
+
+
+# -- a footbridge over the tracks (Kew Gardens): white-painted concrete, a shallow arch with a deep girder along each side carrying a row of blind panels ------------------------------
+
+static func _bridge(pm: PlatformModule, b: Dictionary, bx: float) -> void:
+	var kit := pm.kit
+	var zspan := float(b.get("half_span", 13.0))
+	var y0 := float(b.get("clear", 5.6))                # underside of the deck at the abutments
+	var rise := float(b.get("rise", 1.1))
+	var depth := float(b.get("depth", 2.4))             # girder depth
+	var gap := float(b.get("width", 2.7))               # clear width between the girders
+	var gt := 0.34                                      # girder thickness
+	var key := "char:open/bridge_panel.png|2.000|%.3f|0" % depth
+	var paint := "matt:e4e4de"
+	var n := 28
+	var xs := [bx - gap * 0.5 - gt, bx - gap * 0.5, bx + gap * 0.5, bx + gap * 0.5 + gt]
+	var yb := func(z: float) -> float:
+		var u := clampf(z / zspan, -1.0, 1.0)
+		return y0 + rise * (1.0 - u * u)
+	for i in n:
+		var za := -zspan + 2.0 * zspan * float(i) / n
+		var zb := -zspan + 2.0 * zspan * float(i + 1) / n
+		var ya0: float = yb.call(za)
+		var yb0: float = yb.call(zb)
+		# the four faces of each girder: the outer face (towards +/- x, panelled), the inner face, the top and the underside; then the deck
+		for side: float in [-1.0, 1.0]:
+			var xo: float = bx + side * (gap * 0.5 + gt)
+			var xi: float = bx + side * gap * 0.5
+			var uvz := Vector2(za, 0.0)
+			# outer face: normal along `side` (x); corners a1 (top, za), a0 (bottom, za), b0, b1 (the wall() order: front is the right of travel)
+			var a1 := Vector3(xo, ya0 + depth, za)
+			var a0 := Vector3(xo, ya0, za)
+			var b0 := Vector3(xo, yb0, zb)
+			var b1 := Vector3(xo, yb0 + depth, zb)
+			if side > 0.0:
+				kit.quad(key, b1, b0, a0, a1, 0.0, Vector2(-zb, 0.0), 0.0, true)
+			else:
+				kit.quad(key, a1, a0, b0, b1, 0.0, uvz, 0.0, true)
+			var c1 := Vector3(xi, ya0 + depth, za)
+			var c0 := Vector3(xi, ya0, za)
+			var d0 := Vector3(xi, yb0, zb)
+			var d1 := Vector3(xi, yb0 + depth, zb)
+			if side > 0.0:
+				kit.quad(paint, c1, c0, d0, d1, 0.0, Vector2.ZERO, 0.0, true)
+			else:
+				kit.quad(paint, d1, d0, c0, c1, 0.0, Vector2.ZERO, 0.0, true)
+			# top of the girder (faces up) and its underside (faces down)
+			kit.quad(paint, Vector3(xo, ya0 + depth, za), Vector3(xo, yb0 + depth, zb), Vector3(xi, yb0 + depth, zb), Vector3(xi, ya0 + depth, za), 0.0) if side > 0.0 else kit.quad(paint, Vector3(xi, ya0 + depth, za), Vector3(xi, yb0 + depth, zb), Vector3(xo, yb0 + depth, zb), Vector3(xo, ya0 + depth, za), 0.0)
+		# the deck: its top (walkway) and underside between the girders
+		kit.quad("matt:8d8e8e", Vector3(xs[1], ya0 + 0.45, za), Vector3(xs[1], yb0 + 0.45, zb), Vector3(xs[2], yb0 + 0.45, zb), Vector3(xs[2], ya0 + 0.45, za), 0.0)
+		kit.quad(paint, Vector3(xs[1], ya0, za), Vector3(xs[2], ya0, za), Vector3(xs[2], yb0, zb), Vector3(xs[1], yb0, zb), 0.0)
+	# abutments: a concrete pier under each end, reaching down to the ground beyond the retaining wall
+	for sd: float in [-1.0, 1.0]:
+		var pz := sd * (zspan + 0.9)
+		kit.box(paint, Vector3(bx, (y0 + PlatformModule.BED_Y) * 0.5, pz), Vector3(gap + 2.0 * gt + 0.5, y0 - PlatformModule.BED_Y + depth * 0.6, 1.8), 0.0)
+
+
+# -- what is overhead (signs and fittings that hang from the roof ask) ---------------------------------------------------------------------
+
+## y of the underside of the roof at (x, z) in the module frame, NAN where there is none
+static func soffit_y(pm: PlatformModule, x: float, z: float) -> float:
+	var info: Dictionary = pm.roof_info
+	if info.is_empty():
+		return NAN
+	var covered := false
+	for sp in pm.roof_spans:
+		if x >= (sp as Vector2).x and x <= (sp as Vector2).y:
+			covered = true
+	if not covered:
+		return NAN
+	var h: float = info["h"]
+	if info.has("entry") and x <= (info["entry"] as Vector2).y:
+		return h
+	match String(info["kind"]):
+		"gable":
+			return h + float(info["rise"]) * (1.0 - clampf(absf(z) / float(info["zc"]), 0.0, 1.0))
+		"mushroom":
+			var best := NAN
+			var r: float = info["cap_r"]
+			for c in info["caps"]:
+				var d := Vector2(x - float(c), z).length()
+				if d <= r:
+					# the underside: profile points from the rim in to the column
+					var prof: PackedVector2Array = info["cap_profile"]
+					var y := NAN
+					for i in range(prof.size() - 1):
+						var a := prof[i]
+						var b := prof[i + 1]
+						if a.y <= h + 0.1 and a.x >= d and b.x <= d and a.x > b.x:
+							y = lerpf(a.y, b.y, (a.x - d) / maxf(a.x - b.x, 0.001))
+							break
+					best = y
+			return best
+		_:
+			return h
+
+
+## x moved sideways, if need be, to where a board `half_w` wide hung there has roof over it (the full-length roofs return x itself)
+static func snap_x(pm: PlatformModule, x: float, half_w: float) -> float:
+	if pm.roof_spans.is_empty():
+		return x
+	var best := x
+	var best_d := 1e9
+	for sp in pm.roof_spans:
+		var a: float = (sp as Vector2).x + half_w
+		var b: float = (sp as Vector2).y - half_w
+		if b < a:
+			a = ((sp as Vector2).x + (sp as Vector2).y) * 0.5
+			b = a
+		var c := clampf(x, a, b)
+		if absf(c - x) < best_d:
+			best_d = absf(c - x)
+			best = c
+	return best
+
+
+static func covered(pm: PlatformModule, x: float) -> bool:
+	if pm.roof_spans.is_empty():
+		return true
+	for sp in pm.roof_spans:
+		if x >= (sp as Vector2).x and x <= (sp as Vector2).y:
+			return true
+	return false
+
+
+static func _strip_lights(pm: PlatformModule, x0: float, x1: float, h: float, pendant := false) -> void:
 	var kit := pm.kit
 	var lx := x0 + 3.0
 	while lx < x1:

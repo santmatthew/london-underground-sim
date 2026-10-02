@@ -739,33 +739,58 @@ func _platform_furniture(holder: Node3D, pm: PlatformModule, s: float, zwall: fl
 		var bench := PropKit.bench_toro() if deep else PropKit.bench_timber()
 		if kit_prop(holder, bench, Vector3(x, 0, s * (zwall + 0.36)), Vector3(0, 0, s), 0.45, off):
 			placed_b += 1
+	if pm.open:
+		_open_extras(holder, pm, s, zwall, zedge, L, off)
 	# a clear-sack bin by the exit end of the platform (green = recycling) and another mid-platform
 	kit_prop(holder, PropKit.bin_hoop(false), Vector3(-L * 0.5 + 11.0, 0, s * (zwall + 0.45)), Vector3(0, 0, s), 0.4, off)
 	if L > 60.0:
 		kit_prop(holder, PropKit.bin_hoop(true), Vector3(L * 0.5 - 12.0, 0, s * (zwall + 0.45)), Vector3(0, 0, s), 0.4, off)
-	# help points at both ends, on the platform wall
+	# help points at both ends, on the platform wall (an open-air island has no wall: on the nearest column, facing the platform edge)
 	for ex in [-L * 0.5 + 3.0, L * 0.5 - 3.0]:
 		var hp := PropKit.help_point_disc()
+		if pm.open and is_nan(_column_mount(pm, s, ex, 0.004).x):
+			hp.free()
+			continue
 		holder.add_child(hp)
-		hp.position = Vector3(ex, 1.3, s * (zwall + 0.004))
-		hp.rotation.y = atan2(0.0, -s)
+		if pm.open:
+			var oc := _column_mount(pm, s, ex, 0.004)
+			hp.position = Vector3(oc.x, 1.3, oc.z)
+			hp.rotation.y = atan2(0.0, s)
+		else:
+			hp.position = Vector3(ex, 1.3, s * (zwall + 0.004))
+			hp.rotation.y = atan2(0.0, -s)
 		stats["placed"] += 1
 	for ex2 in [-L * 0.5 + 1.0, L * 0.5 - 1.0]:
 		StationProps.put(holder, "platform_edge_marker", Vector3(ex2, 0, s * (zedge - 0.3)), Vector3(0, 0, s))
 	# ceiling-hung bracket clusters (two black ball loudspeakers + cameras) every ~18 m over the platform centre line
 	var pz := s * (zwall + (zedge - zwall) * 0.5)
-	var ceil_y := pm.ceiling_at(pz)
 	var cx := -L * 0.5 + 10.0
-	while cx < L * 0.5 - 6.0:
+	var cluster_xs: Array = []
+	if pm.open and not pm.roof_spans.is_empty() and pm.roof_spans.size() > 1:
+		# separate roofs (umbrellas, short shelters): a cluster under the middle of each
+		for sp in pm.roof_spans:
+			cluster_xs.append(((sp as Vector2).x + (sp as Vector2).y) * 0.5)
+	else:
+		while cx < L * 0.5 - 6.0:
+			cluster_xs.append(cx)
+			cx += 18.0
+	for cxx in cluster_xs:
+		var ceil_y := pm.ceiling_at(pz, cxx)
+		if pm.open and is_nan(PlatformOpen.soffit_y(pm, cxx, pz)):
+			continue
 		var cc := PropKit.crown_cluster()
 		holder.add_child(cc)
-		cc.position = Vector3(cx, ceil_y, pz)
+		cc.position = Vector3(cxx, ceil_y, pz)
 		cc.rotation.y = 0.0 if s > 0.0 else PI
-		cx += 18.0
 		stats["placed"] += 1
-	# clocks on the platform wall
+	# clocks on the platform wall (open air: on a column)
 	for cx2 in [-L * 0.25, L * 0.25]:
 		if StationProps._near(cx2, pm.recesses, 1.8):
+			continue
+		if pm.open:
+			var oc2 := _column_mount(pm, s, cx2, 0.03)
+			if not is_nan(oc2.x):
+				StationClocks.register(station, StationProps.put(holder, "clock", Vector3(oc2.x, minf(2.5, PlatformOpen.roof_h(pm.open_style) - 1.0), oc2.z), Vector3(0, 0, s)))
 			continue
 		StationClocks.register(station, StationProps.put(holder, "clock", Vector3(cx2, 1.78, s * (zwall + 0.03)), Vector3(0, 0, s)))
 	if Station.debug_off("labels"):
@@ -791,6 +816,51 @@ func _platform_furniture(holder: Node3D, pm: PlatformModule, s: float, zwall: fl
 	var ztrack := zedge + PlatformModule.TRACK_TO_EDGE
 	StationProps.put(holder, "signal_lamp", Vector3(L * 0.5 + 18.0, PlatformModule.BED_Y, s * (ztrack + 1.35)), Vector3(0, 0, -s))
 	StationProps.put(holder, "signal_lamp", Vector3(-L * 0.5 - 18.0, PlatformModule.BED_Y, s * (ztrack + 1.35)), Vector3(0, 0, -s))
+
+
+## the furniture that gives an open-air station its own look (style keys "lamps", "planters", "roundel_post"): lamp standards in the gaps between the roofs, planters at the
+## edges of the gaps, the name board on a post by the first roof
+func _open_extras(holder: Node3D, pm: PlatformModule, s: float, zwall: float, zedge: float, L: float, off: Vector3) -> void:
+	var st: Dictionary = pm.open_style
+	if st.is_empty() or pm.roof_spans.is_empty():
+		return
+	var spans: Array = pm.roof_spans.duplicate()
+	spans.sort_custom(func(a, b): return (a as Vector2).x < (b as Vector2).x)
+	# the uncovered stretches: before the first roof, between roofs, after the last
+	var gaps: Array = []
+	var cur := -L * 0.5
+	for sp in spans:
+		if (sp as Vector2).x - cur >= 6.0:
+			gaps.append(Vector2(cur, (sp as Vector2).x))
+		cur = maxf(cur, (sp as Vector2).y)
+	if L * 0.5 - cur >= 6.0:
+		gaps.append(Vector2(cur, L * 0.5))
+	var lamp_kind := String(st.get("lamps", ""))
+	var planter_kind := String(st.get("planters", ""))
+	for g in gaps:
+		var a: float = (g as Vector2).x
+		var b: float = (g as Vector2).y
+		if lamp_kind != "" and s > 0.0:
+			kit_prop(holder, PropKit.lamp_post(lamp_kind), Vector3((a + b) * 0.5, 0, 0), Vector3(0, 0, 1), 0.3, off)
+		if planter_kind != "":
+			for x in [a + 1.4, b - 1.4]:
+				var pn := PropKit.planter_brick() if planter_kind == "brick" else PropKit.planter_box()
+				kit_prop(holder, pn, Vector3(x, 0, s * (zwall + 0.5)), Vector3(0, 0, s), 0.3, off)
+	if st.get("roundel_post", false):
+		var rp := PropKit.roundel_post(StationCharacter.short_name(plan.name))
+		kit_prop(holder, rp, Vector3(clampf((spans[0] as Vector2).x - 2.5, -L * 0.5 + 2.0, L * 0.5 - 2.0), 0, s * (zedge - 1.3)), Vector3(1, 0, 0), 0.3, off)
+
+
+## where to mount something on the column of an open-air platform nearest to x, on its platform-edge side for face sign s: (x, NAN, z); x is NAN when the platform has no columns
+func _column_mount(pm: PlatformModule, s: float, x: float, gap: float) -> Vector3:
+	if pm.column_xs.is_empty() or pm.column_zs.is_empty():
+		return Vector3(NAN, 0, 0)
+	var best := float(pm.column_xs[0])
+	for c in pm.column_xs:
+		if absf(float(c) - x) < absf(best - x):
+			best = float(c)
+	var row: float = float(pm.column_zs[0]) if pm.column_zs.size() == 1 else s * absf(float(pm.column_zs[0]))
+	return Vector3(best, 0.0, row + s * (pm.column_w * 0.5 + gap))
 
 
 ## place a PropKit node (footprint from its "fp" meta)

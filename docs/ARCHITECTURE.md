@@ -111,6 +111,15 @@ Northern grey dado, Central black/blue, Victoria 150 mm grey tile, Jubilee Line 
   house backs) that follow the simulated clock, with daylight omni lights. Styles (`open_styles`, `surface_lines`, `surface_overrides` in the data file) are by line and era; Station.build adds
   `spec.nb` (sides that have another module close by, whose backdrop would cut through it). Textures: `tools/gen_open_textures.py`. Reference photos of 70-odd surface stations are fetched to
   the private `build/refs_dress/surface` by `tools/fetch_surface_refs.py`; `tools/ref_sheet.py` makes contact sheets. `UG_OFF=scenery,openwall,valance` isolate parts.
+* Photo-authored surface stations (2026-10-02): a station may have an `open_styles` entry named after it (mapped in `surface_overrides`), authored from private reference photos (notes in
+  `build/refs_dress/surface/SPEC_four.md`; only what the photos show). Style keys are listed at the top of `PlatformOpen.gd`: `canopy` slab / valanced / timber / `gable` (pitched, rafters, rooflight
+  strips, `valance` scallop / saw / none) / `mushroom` (concrete umbrellas on a column row down the centre line, a smooth `MeshKit.lathe`), `roof_h`, `spans` (fractions of the length the roof covers),
+  `col` / `col_main` / `col_band` / `col_ring`, `pitch`, `front`, and extras: `bridge` (the Kew Gardens footbridge: arched white concrete girders with blind panels), `lamps`, `planters`, `roundel_post`
+  (`PropKit`, placed by `StationDressing._open_extras` in the gaps between roofs). Done: Loughton (umbrellas), Kew Gardens (separate white canopy sections, footbridge, planters, lamps),
+  Boston Manor (long pitched roof, saw-tooth valance, rooflights, black columns with yellow rings), Northwick Park (two short dark shelters on maroon posts, brick planters, CCTV poles, name board on a post).
+  Everything that hangs from a roof asks `PlatformOpen.soffit_y` / `snap_x` / `covered` (what is overhead where): hung boards, crown clusters, lights, the occluder (`StationOcclusion`); clocks and help
+  points are mounted on columns (an open island has no wall); roofs that do not reach the way in get a flat entry roof over the cross-passages (the centre line is the walkway: no column on it there).
+  Test: `open_style_test`; route / sign audits pass on all four. `station_test --mcam=x,y,z --mlook=x,y,z --mi=<module>` places the camera in a module's frame.
 * `tools/char_sheet.sh out.png <view> "Station" ...` renders a contact sheet; `station_test --view=pwall --x= --dx= --fov=` looks across the platform at its wall.
 
 ## Branch junctions

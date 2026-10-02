@@ -137,7 +137,7 @@ static func open_style_name(station_name: String, line_id: String, kind: String)
 
 static func _resolve_style(d: Dictionary) -> Dictionary:
 	var out := d.duplicate()
-	for k in ["col_main", "col_band", "fascia"]:
+	for k in ["col_main", "col_band", "col_ring", "fascia"]:
 		if out.has(k):
 			var a: Array = out[k]
 			out[k] = Color(a[0], a[1], a[2])

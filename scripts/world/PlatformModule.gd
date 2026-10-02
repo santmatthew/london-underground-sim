@@ -39,6 +39,11 @@ var recesses: Array = []           # x centres (module frame) of the seat recess
 var open := false                  # an open-air (surface) platform: canopy, retaining wall, sky (PlatformOpen)
 var open_style: Dictionary = {}
 var column_xs: Array = []          # x of the canopy columns (open platforms)
+var column_zs: Array = []          # z of each column row (open platforms: two rows beside the median, or one on the centre line)
+var column_w := 0.44               # collision width of a column
+var column_extra: Array = []       # Vector2(x, z) of further columns that are not in the main rows (the entry roof)
+var roof_spans: Array = []         # Vector2 x ranges the open-air roof covers (empty: all of it)
+var roof_info: Dictionary = {}     # the roof's kind and measures, see PlatformOpen
 var ped_doors: Dictionary = {}     # face sign -> [{x, l, r, open}]: the platform edge door leaves (PlatformDoors)
 var ped_xs: Array = []             # door x positions when this module has platform edge doors
 var box := false
@@ -108,6 +113,8 @@ func build(p_spec: Dictionary) -> void:
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
 			mats[k] = Mats.flat(Color.html(k.substr(5)), 0.4)
+		elif k.begins_with("matt:"):
+			mats[k] = Mats.flat(Color.html(k.substr(5)), 0.92)
 		elif k.begins_with("dado:"):
 			mats[k] = Mats.dado(Color.html(k.substr(5)))
 		elif k.begins_with("char:"):
@@ -340,15 +347,23 @@ func _build_box_hall(x0: float, x1: float, zwall: float, zedge: float, ztrack: f
 ## the open-air variant of the box hall: canopy + columns (PlatformOpen) instead of the closed roof; lights, end walls and collision are the same
 func _build_open_hall(x0: float, x1: float, zwall: float, ztrack: float, zfar: float, wall_mat: String, openings: Array) -> void:
 	PlatformOpen.canopy(self, open_style, x0, x1, openings)
-	var lx2 := x0 + 4.0
-	while lx2 < x1:
-		_lights.append([Vector3(lx2, BOX_H - 0.9, 3.2), 2.2, 13.0])
-		_lights.append([Vector3(lx2, BOX_H - 0.9, -3.2), 2.2, 13.0])
-		lx2 += 8.0
-	var col_z := zwall + 0.85
+	var ly := PlatformOpen.roof_h(open_style) - 0.9          # (lights must hang below the roof's underside to light it)
+	if String(roof_info.get("kind", "")) == "mushroom":
+		for c in roof_info["caps"]:
+			_lights.append([Vector3(float(c), ly, 2.6), 2.2, 13.0])
+			_lights.append([Vector3(float(c), ly, -2.6), 2.2, 13.0])
+	else:
+		var lx2 := x0 + 4.0
+		while lx2 < x1:
+			if PlatformOpen.covered(self, lx2):
+				_lights.append([Vector3(lx2, ly, 3.2), 2.2, 13.0])
+				_lights.append([Vector3(lx2, ly, -3.2), 2.2, 13.0])
+			lx2 += 8.0
 	for cx in column_xs:
-		for zz in [-col_z, col_z]:
-			_cols.append([Vector3(cx, BOX_H * 0.5, zz), Vector3(0.44, BOX_H, 0.44)])
+		for zz in column_zs:
+			_cols.append([Vector3(cx, BOX_H * 0.5, zz), Vector3(column_w, BOX_H, column_w)])
+	for ce in column_extra:
+		_cols.append([Vector3((ce as Vector2).x, BOX_H * 0.5, (ce as Vector2).y), Vector3(0.44, BOX_H, 0.44)])
 	_box_end_wall(x0, true, zwall, ztrack, zfar, wall_mat, true)
 	_box_end_wall(x1, false, zwall, ztrack, zfar, wall_mat, false)
 
@@ -713,8 +728,12 @@ func _arch() -> Dictionary:
 
 
 ## Roof height above the platform at module-local z (arch tunnels: circular arch over each tunnel, flat spine between; box halls: flat)
-func ceiling_at(z: float) -> float:
+func ceiling_at(z: float, x := NAN) -> float:
 	if box:
+		if open and not is_nan(x):
+			var y := PlatformOpen.soffit_y(self, x, z)
+			if not is_nan(y):
+				return y
 		return BOX_H
 	var a := _arch()
 	var az := absf(z)
@@ -729,6 +748,17 @@ func ceiling_at(z: float) -> float:
 ## Box halls: move x sideways so a board hung at x clears the steel columns (every 7.2 m from x0 + 5)
 func clear_of_columns(x: float, half_w := 0.4) -> float:
 	if not box:
+		return x
+	if open:
+		# open-air columns: wherever PlatformOpen put them
+		var wcol := column_w * 0.5 + half_w + 0.3
+		for cxo in column_xs:
+			if absf(x - float(cxo)) < wcol:
+				return float(cxo) + wcol if x >= float(cxo) else float(cxo) - wcol
+		for ce in column_extra:
+			var cxe: float = (ce as Vector2).x
+			if absf(x - cxe) < 0.22 + half_w + 0.3:
+				return cxe + 0.22 + half_w + 0.3 if x >= cxe else cxe - 0.22 - half_w - 0.3
 		return x
 	var x0 := -float(meta["length"]) * 0.5
 	var k := roundf((x - (x0 + 5.0)) / 7.2)

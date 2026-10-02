@@ -121,6 +121,14 @@ func _ready() -> void:
 		st.trains._process(0.6)
 		st.trains._process(0.1)
 		pos = Vector3(fc["x0"] + 20, fc["y"] + 1.65, fc["edge_z"] - fc["side"] * 1.2); look = Vector3(fc["x0"] + 60, fc["y"] + 1.2, fc["edge_z"] + fc["side"] * 3.0)
+	# --mcam=x,y,z --mlook=x,y,z : camera and target in a module's frame (--mi=module index; x along the track, z across it, y = platform level)
+	var mcam := sys_arg("mcam", "")
+	if mcam != "":
+		var mpos: Vector3 = plan.modules[int(sys_arg("mi", "0"))]["pos"]
+		var a1 := mcam.split(",")
+		var a2 := sys_arg("mlook", "0,1.5,0").split(",")
+		pos = mpos + Vector3(float(a1[0]), float(a1[1]), float(a1[2]))
+		look = mpos + Vector3(float(a2[0]), float(a2[1]), float(a2[2]))
 	if cam_a != "" and look_a != "":
 		var cp := cam_a.split(",")
 		var lp := look_a.split(",")

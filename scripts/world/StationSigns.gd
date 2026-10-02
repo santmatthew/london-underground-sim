@@ -155,7 +155,14 @@ static func hang_blade(pm: PlatformModule, s: float, x: float, z_want: float, y_
 	var h := size.y * k
 	var zc: float = fit["z"]
 	var y_top: float = fit["y_top"]
-	x = pm.clear_of_columns(x)
+	if pm.open:
+		# open-air roofs may be short or round: hang the board where there is roof over it, no lower than the roof's underside
+		x = PlatformOpen.snap_x(pm, x, w * 0.5)
+	x = pm.clear_of_columns(x, w * 0.5 if pm.open else 0.4)
+	if pm.open:
+		var roof := PlatformOpen.soffit_y(pm, x, zc)
+		if not is_nan(roof):
+			y_top = minf(y_top, roof - 0.12)
 	var holder := Node3D.new()
 	holder.position = Vector3(x, y_top - h * 0.5, zc)
 	holder.rotation.y = atan2(face_x, 0.0)
@@ -169,7 +176,7 @@ static func hang_blade(pm: PlatformModule, s: float, x: float, z_want: float, y_
 	pm.add_child(holder)
 	for sz in [-1.0, 1.0]:
 		var zs: float = zc + sz * maxf(w * 0.5 - 0.15, 0.1)
-		_stem(pm, x, zs, y_top, pm.ceiling_at(zs) + 0.02)
+		_stem(pm, x, zs, y_top, pm.ceiling_at(zs, x) + 0.02)
 
 
 static func _arrow_for(viewer_dir: Vector3, target_dir: Vector3) -> int:
@@ -389,7 +396,15 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 	else:
 		hang_room(root, Signs.board(rows, 3.0, 0.32), Vector3(mp.x - L * 0.5 + 4.5, mp.y + PlatformModule.BOX_H - 1.5, m["lane_z"]), Vector3(-1, 0, 0), mp.y, mp.y + PlatformModule.BOX_H, 3.4)
 		for wx in [-L * 0.25, L * 0.05, L * 0.3]:
-			hang_room(root, Signs.board([{"text": "Way out", "bold": true, "arrow": 1}], 1.9, 0.4), Vector3(mp.x + wx, mp.y + PlatformModule.BOX_H - 1.3, mp.z), Vector3(1, 0, 0), mp.y, mp.y + PlatformModule.BOX_H, 2.4)
+			var wxx: float = wx
+			var roof_y := PlatformModule.BOX_H
+			if pm.open:
+				# open-air roofs may be short or round: hang the board where there is roof over the middle of the island, clear of the columns
+				wxx = pm.clear_of_columns(PlatformOpen.snap_x(pm, wx, 0.3), 0.3)
+				roof_y = PlatformOpen.soffit_y(pm, wxx, 0.0)
+				if is_nan(roof_y):
+					continue
+			hang_room(root, Signs.board([{"text": "Way out", "bold": true, "arrow": 1}], 1.9, 0.4), Vector3(mp.x + wxx, mp.y + minf(roof_y - 1.3, PlatformModule.BOX_H - 1.3), mp.z), Vector3(1, 0, 0), mp.y, mp.y + roof_y, 2.4)
 	# --- per face: roundels, indicators, boards
 	for fi in faces.size():
 		var f2: Dictionary = faces[fi]
@@ -405,14 +420,17 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 		if pm.open:
 			seps = []
 			# open-air platforms: the name on a roundel plate flagged out from every other column, readable along the platform
-			var cz := PlatformModule.GAP * 0.5 + 0.85
+			var cz: float = float(pm.column_zs[0]) * s if pm.column_zs.size() == 1 else PlatformModule.GAP * 0.5 + 0.85
+			if pm.column_zs.size() == 1:
+				cz = float(pm.column_zs[0])
+			var half_c := pm.column_w * 0.5 + 0.015 if pm.column_zs.size() == 1 else 0.235
 			for ci in pm.column_xs.size():
 				if ci % 2 != fi:
 					continue
 				var cxx: float = pm.column_xs[ci]
 				for dxs in [-1.0, 1.0]:
 					var rdc := Signs.roundel(short_name, 0.62, false)
-					rdc.position = Vector3(cxx + dxs * 0.235, 1.85, s * cz)
+					rdc.position = Vector3(cxx + dxs * half_c, 1.85, s * cz if pm.column_zs.size() != 1 else cz)
 					rdc.rotation.y = -PI * 0.5 * dxs
 					pm.add_child(rdc)
 		for k in seps.size():
