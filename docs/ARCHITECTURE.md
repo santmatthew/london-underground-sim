@@ -149,6 +149,11 @@ loaded its car model synchronously (about 0.8 s each): `Train.preload_async` at 
 the empty scene already costs 4.3 ms at 1080p (the full-screen passes of the Balanced tier at the GPU's throttled clock). The laptop's GPU spends the runs in "software power cap" / "software thermal
 slowdown" (SM clock mean about 740 MHz of 2100) and its CPU package idles near 100 C with the fans at maximum while a VM, k3s and Chrome run in the background.
 
+### Explore mode (2026-10-02)
+`ExplorePanel` (setup screen: station search / random, start spot labelled by `ExplorePanel.spot_label`, day, time slider) -> `Game.start_explore(cfg)` (tears the world down with `_teardown_world`, rebuilds the timetable for the chosen day, builds the station, puts the player on the chosen start spot and goes straight to play, no briefing).
+`journey["mode"] == "explore"` (`Game._exploring()`): no destination, par, score or result panel; the street exit only turns the player back, the end of service does not fail the session (a toast says the network has closed), the HUD shows "Exploring", the hint (H) explains there is no destination, the pause panel offers "Start somewhere else"
+(the setup screen over the pause panel). Riding, arrival and boarding work as in a journey. Test: `explore_test` (CLI start `--explore=...`, search, restart elsewhere, a ride to the next station); viewer `explore_shot_test`.
+
 ### Starting a journey (loading hitches, 2026-10-02)
 Measured with `UG_ON=loadtime` (a line per stage of start-up and per stretch of the station build over 60 ms) and `--fps-log`; `--menu-secs=N` makes the autopilot wait at the menu like a person. Before, choosing
 a journey froze the window for up to 9 s in stretches of 1 to 2 s; now nothing after "Start" is longer than about 0.3 s. What moved where: the 36 characters' files (and shaders, textures, animations) load on

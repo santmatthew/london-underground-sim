@@ -43,6 +43,9 @@ var _scores_label: Label
 var _par_task := -1
 var par_result: Dictionary = {}
 var _settings: SettingsPanel
+var _explore: ExplorePanel              # the setup screen of explore mode
+var _explore_back: Control              # the panel that opened it (the main menu or the pause panel), shown again by Back
+var _explore_late_warned := false
 var _btn_start: Button                  # (focused when the menu opens, so a gamepad can navigate it)
 var autopilot: Autopilot
 var announcer := PlatformAnnouncer.new()          # what the station says and does around the player (platform PA, tunnel wind ...)
@@ -92,7 +95,9 @@ func _ready() -> void:
 	_load_display_settings()
 	if cli.has("fps-log"):
 		_start_fps_log(String(cli["fps-log"]), float(cli.get("fps-secs", "0")), cli.has("fps-quit"))
-	if cli.has("autopilot") or cli.has("auto-start"):
+	if cli.has("explore"):
+		_auto_explore.call_deferred()
+	elif cli.has("autopilot") or cli.has("auto-start"):
 		_auto_start.call_deferred()
 
 
@@ -418,11 +423,125 @@ func _build_menu() -> void:
 	grid.add_child(ob_c)
 	_btn_start = _mk_button("Start journey", func(): start_journey())
 	vb.add_child(_btn_start)
+	vb.add_child(_mk_button("Explore: roam freely, choose where to start", func(): _open_explore(_menu)))
 	vb.add_child(_mk_button("Settings (sound, accessibility, controls)", func(): _open_settings(_menu)))
 	vb.add_child(_mk_button("Quit", func(): get_tree().quit()))
 	_scores_label = _mk_label("", 15, Color(0.75, 0.8, 0.95))
 	vb.add_child(_scores_label)
 	_menu.visible = false
+
+
+## the explore setup screen over whatever panel opened it (the main menu, or the pause panel of an explore session), which comes back when the player goes back
+func _open_explore(back_to: Control) -> void:
+	if _explore == null:
+		_explore = ExplorePanel.new(font_b, font_r)
+		_ui.add_child(_explore)
+		_explore.start_requested.connect(func(cfg): start_explore(cfg))
+		_explore.closed.connect(func():
+			if _explore_back != null and is_instance_valid(_explore_back):
+				_explore_back.visible = true
+				if _explore_back == _menu and _btn_start != null:
+					_btn_start.grab_focus.call_deferred())
+	_explore_back = back_to
+	back_to.visible = false
+	_explore.open()
+
+
+## Explore mode: no destination, no par, no scoring. The player chooses the station, where in it to start, the day and the time (ExplorePanel; `--explore=Station_name` with --spot --hour --day
+## starts one from the command line) and then roams: the whole station, any train, any station along the line. Esc opens the pause panel, which can move the player to another start.
+func start_explore(cfg: Dictionary) -> void:
+	_teardown_world()
+	_hide_all_panels()
+	if _explore != null:
+		_explore.visible = false
+	announcer.greeted = false
+	StationPlan.lifts_enabled = true
+	StationPlan.spiral_mode = cli.has("spiral")
+	StationPlan.step_free_mode = bool(Settings.get_v("access", "step_free"))
+	StepFree.ensure_loaded()
+	state = State.LOADING
+	_loading = _mk_label("Building the timetable...", 30, Color.WHITE, true)
+	_loading.set_anchors_preset(Control.PRESET_CENTER)
+	_loading.position = Vector2(-200, 0)
+	_ui.add_child(_loading)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var seed := int(cli["seed"]) if cli.has("seed") else (int(Time.get_unix_time_from_system()) ^ randi())
+	var day := str(cfg.get("day", "weekday"))
+	Clock.weekend = day != "weekday"
+	await Timetable.build_async(seed)
+	while not StationPlan.warm_ready():
+		await get_tree().process_frame
+	StationPlan.warm_all()
+	var idx := int(cfg["station"])
+	var plan := StationPlan.for_station(idx)
+	var spot: Dictionary = plan.start_spots[clampi(int(cfg.get("spot", 0)), 0, plan.start_spots.size() - 1)]
+	var t0 := float(cfg.get("hour", 10.0)) * 3600.0
+	journey = {"mode": "explore", "start": idx, "spot": spot, "t0": t0, "seed": seed, "day": {"weekday": "Weekday", "saturday": "Saturday", "sunday": "Sunday"}.get(day, "Weekday")}
+	par_result = {}
+	_explore_late_warned = false
+	_loading.text = "Building %s station..." % Net.station_name(idx)
+	await get_tree().process_frame
+	Clock.set_time(t0)
+	Clock.running = false
+	Clock.time_scale = 1.0
+	await _enter_station(idx)
+	player.cancel_sit()
+	player.global_position = spot["pos"] + Vector3(0, 0.05, 0)
+	player.velocity = Vector3.ZERO
+	var yaw: float = spot.get("yaw", 0.0)
+	player.face(Vector3(sin(yaw), 0, cos(yaw)))
+	_loading.queue_free()
+	_loading = null
+	map.here = idx
+	map.dest = -1
+	map.stops = []
+	_begin_play()
+
+
+## `--explore=Station_name` (with --spot=ticket_hall|platform|street_entrance|concourse, --hour=10, --day=weekday): straight into explore mode
+func _auto_explore() -> void:
+	var nm := str(cli["explore"]).replace("_", " ")
+	var idx: int = Net.name_to_idx.get(nm, -1)
+	if idx < 0:
+		push_warning("--explore: no station called %s" % nm)
+		return
+	var plan := StationPlan.for_station(idx)
+	var want := str(cli.get("spot", "ticket hall")).replace("_", " ")
+	var si := 0
+	for i in plan.start_spots.size():
+		if plan.start_spots[i]["name"] == want:
+			si = i
+			break
+	await start_explore({"station": idx, "spot": si, "hour": float(cli.get("hour", "10")), "day": str(cli.get("day", "weekday"))})
+
+
+## everything of a session that is running goes: the ride, the trains and scenery, the station, the panels (the world is rebuilt by the next start)
+func _teardown_world() -> void:
+	riding = false
+	paused = false
+	if ride:
+		ride.queue_free()
+		ride = null
+	for c in get_children():
+		if c is Train or c is TunnelRun:
+			c.queue_free()
+	player.cancel_sit()
+	player.enabled = false            # (nothing under the player until the next station is built: it must not fall)
+	player.velocity = Vector3.ZERO
+	player.frozen = false
+	hud.set_prompt("")
+	hud.hint_panel.visible = false
+	if _pause:
+		_pause.queue_free()
+		_pause = null
+	if map_open:
+		map_open = false
+		map.visible = false
+	if station:
+		station.queue_free()
+		station = null
+	Clock.running = true
 
 
 ## the settings screen (sound, accessibility, controls) over whatever panel opened it, which comes back when the player leaves it
@@ -686,7 +805,9 @@ func _begin_play() -> void:
 	_refresh_dest_label()
 	_last_pos = player.global_position
 	_apply_settings()
-	if journey["mode"] == "multi":
+	if _exploring():
+		hud.toast("Explore: walk anywhere, ride any train. %s for the Tube map, Esc for the menu." % InputBindings.prompt("map"), 6.0)
+	elif journey["mode"] == "multi":
 		hud.toast("Visit all %d stations — any order" % journey["targets"].size(), 5.0)
 	else:
 		hud.toast("Find the way to %s" % Net.station_name(journey["dest"]), 5.0)
@@ -829,7 +950,7 @@ func _process(delta: float) -> void:
 		return
 	_update_seat_prompt()
 	hud.clock_label.text = Clock.fmt(Clock.now, true)
-	hud.elapsed_label.text = "elapsed  " + Clock.fmt_dur(Clock.now - t_play0)
+	hud.elapsed_label.text = "explore mode" if _exploring() else "elapsed  " + Clock.fmt_dur(Clock.now - t_play0)
 	hud.stamina.value = player.stamina
 	if hud.perf_on and station and station.crowd:
 		hud.extra_perf = "\ncrowd %d agents · %d awake · %d riders" % [station.crowd.stats["agents"], station.crowd.stats["awake"], station.crowd.stats["riders"]] \
@@ -867,14 +988,21 @@ func _process(delta: float) -> void:
 		_audio_t = 0.5
 		_update_audio_zone()
 	if Clock.now > Timetable.SERVICE_END + 1200.0 and state == State.PLAYING:
-		_fail_journey("The last trains have gone. You didn't make it before the network closed for the night.")
-		return
+		if _exploring():
+			if not _explore_late_warned:
+				_explore_late_warned = true
+				hud.toast("The network has closed for the night. Press Esc to start somewhere else, at another time.", 8.0)
+		else:
+			_fail_journey("The last trains have gone. You didn't make it before the network closed for the night.")
+			return
 	var skip := Input.is_action_pressed("skip_time") and (riding or player.last_speed < 0.3)
 	Clock.time_scale = 8.0 if (skip or bot_skip or _lift_busy) else 1.0
 
 
 func _refresh_dest_label() -> void:
-	if journey["mode"] == "multi":
+	if _exploring():
+		hud.dest_label.text = "Exploring"
+	elif journey["mode"] == "multi":
 		var parts: Array = []
 		for t in journey["targets"]:
 			parts.append(("✔ " if t in journey["visited"] else "○ ") + Net.station_name(t))
@@ -1015,8 +1143,10 @@ func _toggle_pause() -> void:
 		var vb: VBoxContainer = _pause.get_meta("vb")
 		vb.add_child(_mk_label("PAUSED", 40, Color(1, 0.85, 0.2), true))
 		vb.add_child(_mk_button("Resume", func(): _toggle_pause()))
+		if _exploring():
+			vb.add_child(_mk_button("Start somewhere else", func(): _open_explore(_pause)))
 		vb.add_child(_mk_button("Settings", func(): _open_settings(_pause)))
-		vb.add_child(_mk_button("Give up (main menu)", func(): paused = false; _end_to_menu()))
+		vb.add_child(_mk_button("Main menu" if _exploring() else "Give up (main menu)", func(): paused = false; _end_to_menu()))
 	else:
 		if _pause:
 			_pause.queue_free()
@@ -1038,6 +1168,10 @@ func _end_to_menu() -> void:
 	_show_menu()
 
 
+func _exploring() -> bool:
+	return journey.get("mode", "") == "explore"
+
+
 func _toggle_hint() -> void:
 	if not opts.get("hints", true):
 		hud.toast("Hints are off (enable them in the menu)")
@@ -1052,6 +1186,8 @@ func _toggle_hint() -> void:
 
 
 func _hint_text() -> String:
+	if _exploring():
+		return "Explore mode: there is no destination.\nOpen the Tube map (%s) to see the network; trains stop at every station on their line, so just stay aboard for the next one or step off.\nEsc: the menu, where you can start somewhere else." % InputBindings.prompt("map")
 	if journey["mode"] == "multi":
 		return _hint_multi()
 	var dest: int = journey["dest"]
@@ -1259,6 +1395,10 @@ func _on_street_exit(_door: String) -> void:
 	if state != State.PLAYING or station == null:
 		return
 	var idx: int = station.plan.idx
+	if _exploring():
+		hud.toast("The street is outside this model: head back down, or press Esc to start somewhere else.", 4.0)
+		player.global_position = station.to_global(station.to_local(player.global_position) + Vector3(0, 0, 3.0))
+		return
 	if journey["mode"] == "multi":
 		if idx in journey["targets"] and not (idx in journey["visited"]):
 			journey["visited"].append(idx)

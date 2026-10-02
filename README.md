@@ -20,7 +20,7 @@ as you can. Time of day (crowds and train frequency), the real train timetable, 
   the planner uses (gates, escalators — standing on the right — platforms, boarding and alighting), scaled by time of day; riders fill the carriages.
 - **Audio**: 1300+ generated clips: station/line announcements in a British voice (keyed by station and line/destination), ambience layers
   that crossfade by location, door/gate/escalator/train sounds, footsteps.
-- **Game modes**: single destination and multi-stop (visit 3–5 stations in any order), route hints, tube map with Thames, scoring against par.
+- **Game modes**: single destination and multi-stop (visit 3–5 stations in any order), route hints, tube map with Thames, scoring against par; and **Explore**, where there is no destination, timer or score: pick any station (search or random), where in it to start (a street entrance, the ticket hall, the concourse or a platform), the day and the time, then roam it and ride any train. Esc in explore mode offers "Start somewhere else" (`--explore=Station_name --spot=platform --hour=10` starts one from the command line).
 - **Tooling**: an autopilot bot that plays whole journeys (used for testing and for recording videos), walkability audits, video recorder.
 
 ## Run
