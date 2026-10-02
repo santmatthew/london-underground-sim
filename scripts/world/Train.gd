@@ -31,6 +31,12 @@ var _busy_tween: Tween
 var front_light: SpotLight3D
 
 
+## Start loading the four car models in the background (about 0.8 s each if loaded on the spot, which is what a station's first train used to cost in one frame)
+static func preload_async() -> void:
+	for k in CAR_SCENES:
+		ResourceLoader.load_threaded_request(CAR_SCENES[k])
+
+
 static func scene_for(key: String) -> PackedScene:
 	if not _packed.has(key):
 		_packed[key] = load(CAR_SCENES[key])

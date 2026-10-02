@@ -57,12 +57,14 @@ func _ready() -> void:
 			_empty_scene()
 		_:
 			_station(sname)
+	if level >= 4 and arg("warm", "1") == "1":
+		Train.preload_async()
 	if level >= 5 and arg("warm", "1") == "1":
 		await CrowdWarmup.run(self)
 	log = FrameLog.new()
 	add_child(log)
 	log.on_done = func(_s): get_tree().quit()
-	await get_tree().create_timer(1.0).timeout
+	await get_tree().create_timer(4.0 if level >= 4 else 1.0).timeout          # (4 s: the background loading of the car models, as behind the menu)
 	log.start(out, secs)
 	await get_tree().create_timer(4.0).timeout
 	var mons := {}

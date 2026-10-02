@@ -127,6 +127,19 @@ depths use the part before the dot). Euston's layout was edited by hand, Kenning
   platform data (`tools/fetch_platform_dests.py` -> `data/platform_destinations.json`) show shared or mixed platforms there, so a split would invent structure.
 * Which platforms form an island is the simulator's choice; the sources give numbers and branches only.
 
+## Frame rate
+`tools/fps_experiment.sh [secs] [WxH]` runs a ladder of progressively heavier scenes (`tests/fps_experiment.tscn`: empty scene, architecture, + dressing, + signs, + trains, + crowd, an open-air
+station, the whole game on autopilot), each for `secs` seconds (default 300) on a REAL display with a scripted walk, logging every frame (`FrameLog`: frame ms, GPU ms, render CPU ms, draws, VRAM ...)
+beside a once-a-second system sampler (`tools/sys_sampler.py`: GPU clocks / power / temperature / throttle bits, CPU frequency / temperature / load); `tools/fps_report.py` makes the report and plots.
+In game, F4 starts / stops the same log (user://fps_<time>.csv) and `--fps-log=<file> [--fps-secs=N] [--fps-quit]` does it from the command line. `UG_HITCH=1` prints every frame over 100 ms with the
+node count and crowd stats. A virtual display (xvfb) has no real present path (about 55 ms per 1080p frame), so measure on the real one; with vsync on and the session locked the window is throttled to 1 Hz.
+What it found (2026-10-02): (1) every station with a wall map re-recorded the whole 2000 x 1600 Tube diagram each frame (`TubeMap._process` queued a redraw while visible): about 22 ms of main-thread
+time per frame, 42 fps in any dressed station, fixed; (2) the first appearance of each of the 36 characters cost about 130 ms and filling a train with riders in one frame 150 ms to 1 s: `CrowdWarmup`
+draws every character once off screen behind the menu, riders appear 5 per frame (`CrowdManager._fill_pending`, flushed by `finish_riders` before a ride hand-over); (3) the first train of each kind
+loaded its car model synchronously (about 0.8 s each): `Train.preload_async` at start-up. After the fixes a static station is GPU-bound (7.5 ms at 1080p, about 131 fps, 1% lows within 15 % of the median);
+the empty scene already costs 4.3 ms at 1080p (the full-screen passes of the Balanced tier at the GPU's throttled clock). The laptop's GPU spends the runs in "software power cap" / "software thermal
+slowdown" (SM clock mean about 740 MHz of 2100) and its CPU package idles near 100 C with the fans at maximum while a VM, k3s and Chrome run in the background.
+
 ## Display
 F11 / Alt+Enter / the menu toggle borderless full screen (`Game.set_fullscreen`, remembered in `user://settings.cfg`; `--fullscreen` / `--windowed` override). `tools/upscale_shots.sh` renders 4K comparisons of native,
 FSR 1 and FSR 2 for `tools/upscale_sheet.py`; Godot has no DLSS (it needs NVIDIA's proprietary SDK linked into the renderer), so FSR 2 at the DLSS-equivalent scales is only a stand-in.

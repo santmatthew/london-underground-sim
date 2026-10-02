@@ -220,6 +220,7 @@ func _apply_settings() -> void:
 
 ## Draw every character once, off screen, while the menu is up: otherwise the first appearance of each of the 36 characters in a station costs about 130 ms
 func _warm_up_people() -> void:
+	Train.preload_async()            # the car models load in the background while the menu is up
 	await get_tree().process_frame
 	await get_tree().process_frame
 	await CrowdWarmup.run(self)

@@ -15,9 +15,9 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 run = sys.argv[1] if len(sys.argv) > 1 else open(os.path.join(ROOT, "build", "fps", "latest")).read().strip()
 if not os.path.isabs(run):
     run = os.path.join(ROOT, run)
-ORDER = ["L0", "L1", "L2", "L3", "L4", "L5", "L5_open", "L3_bug", "L5_bug", "L6_game"]
-TITLES = {"L0": "L0 empty scene", "L1": "L1 architecture only", "L2": "L2 + dressing", "L3": "L3 + signs (static station)", "L4": "L4 + trains", "L5": "L5 + crowd (Oxford Circus)",
-          "L5_open": "L5 open-air (Acton Town)", "L3_bug": "L3 with the old map redraw", "L5_bug": "L5 with the old map redraw", "L6_game": "L6 whole game (autopilot, vsync off)"}
+ORDER = ["L0", "L1", "L2", "L3", "L4", "L5_before", "L5", "L5_open_before", "L5_open", "L3_bug", "L5_bug", "L6_game"]
+TITLES = {"L0": "L0 empty scene", "L1": "L1 architecture only", "L2": "L2 + dressing", "L3": "L3 + signs (static station)", "L4": "L4 + trains", "L5_before": "L5 crowd, before the crowd fixes", "L5": "L5 + crowd (Oxford Circus), after the fixes", "L5_open_before": "L5 open-air, before the crowd fixes",
+          "L5_open": "L5 open-air (Acton Town), after the fixes", "L3_bug": "L3 with the old map redraw", "L5_bug": "L5 with the old map redraw", "L6_game": "L6 whole game (autopilot, vsync off)"}
 
 
 def num(x):
