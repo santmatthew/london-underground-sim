@@ -51,4 +51,20 @@ func run():
 	g.set_upscaler("fsr1")
 	g.opts["scale"] = 0.0
 	g._apply_settings()
+	# anti-aliasing option and the Fast tier
+	check(g._ob_aa != null, "the menu has an Anti-aliasing option")
+	g.set_aa("fxaa")
+	check(get_viewport().screen_space_aa == Viewport.SCREEN_SPACE_AA_FXAA and not get_viewport().use_taa, "FXAA selected: FXAA on, TAA off")
+	g.set_aa("off")
+	check(get_viewport().screen_space_aa == Viewport.SCREEN_SPACE_AA_DISABLED and not get_viewport().use_taa, "AA off: both off")
+	g.set_aa("taa")
+	check(get_viewport().use_taa and get_viewport().screen_space_aa == Viewport.SCREEN_SPACE_AA_DISABLED, "TAA selected: TAA on")
+	var cf3 := ConfigFile.new()
+	check(cf3.load(Game.SETTINGS_PATH) == OK and String(cf3.get_value("display", "aa", "")) == "taa", "the AA choice is saved")
+	g.opts["quality"] = 0
+	g._apply_settings()
+	check(not g.env.environment.ssao_enabled and not g.env.environment.glow_enabled, "Fast tier: no ambient occlusion, no glow")
+	g.opts["quality"] = 1
+	g._apply_settings()
+	check(g.env.environment.ssao_enabled and g.env.environment.glow_enabled, "Balanced tier: both on")
 	print("OK" if ok else "FAILED")

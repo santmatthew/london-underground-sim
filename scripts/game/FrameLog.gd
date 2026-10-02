@@ -16,11 +16,12 @@ var _rows := PackedFloat32Array()
 var _vp: RID
 
 
-func start(p_path: String, p_secs := 0.0) -> void:
+## `vp` = the viewport whose GPU / CPU render time is measured (default: this node's own); the frame time itself is always the wall clock
+func start(p_path: String, p_secs := 0.0, vp := RID()) -> void:
 	path = p_path
 	secs = p_secs
 	_rows = PackedFloat32Array()
-	_vp = get_viewport().get_viewport_rid()
+	_vp = vp if vp.is_valid() else get_viewport().get_viewport_rid()
 	RenderingServer.viewport_set_measure_render_time(_vp, true)
 	_t0_us = Time.get_ticks_usec()
 	_last_us = _t0_us

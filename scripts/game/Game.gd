@@ -15,8 +15,10 @@ var journey: Dictionary = {}
 const SETTINGS_PATH := "user://settings.cfg"
 var _cb_fullscreen: CheckButton
 var _ob_upscaler: OptionButton
+var _ob_aa: OptionButton
+var _adaptive: AdaptiveScale
 
-var opts := {"mode": "single", "stops": 3, "time": "random", "length": "medium", "hints": true, "day": "random", "quality": 1, "scale": 0.0, "upscaler": "fsr1", "crowd": 1.0, "volume": 0.8, "sens": 0.0022}
+var opts := {"mode": "single", "stops": 3, "time": "random", "length": "medium", "hints": true, "day": "random", "quality": 1, "scale": 0.0, "upscaler": "fsr1", "aa": "taa", "crowd": 1.0, "volume": 0.8, "sens": 0.0022}
 var t_play0 := 0.0
 var riding := false
 var paused := false
@@ -70,7 +72,11 @@ func _ready() -> void:
 	Sfx.subtitle.connect(func(t, secs): if hud: hud.say(t, secs))
 	_build_menu()
 	_show_menu()
-	get_tree().root.size_changed.connect(_apply_settings)        # "Auto" render scale follows the window size
+	get_tree().root.size_changed.connect(func():
+		opts.erase("_auto_now")                                  # "Auto" render scale follows the window size (and restarts its adaptation)
+		if _adaptive != null and _adaptive.enabled:
+			_adaptive.stop()
+		_apply_settings())
 	_apply_settings()
 	_preload()
 	_warm_up_people.call_deferred()
@@ -122,6 +128,38 @@ func set_upscaler(kind: String, save := true) -> void:
 	_apply_settings()
 
 
+## "Auto" render scale adapts to the GPU time (AdaptiveScale); a fixed scale or `--no-adaptive` switches it off
+func _update_adaptive() -> void:
+	var want := float(opts.get("scale", 0.0)) <= 0.0 and not cli.has("no-adaptive") and DisplayServer.get_name() != "headless"
+	if want and _adaptive == null:
+		_adaptive = AdaptiveScale.new()
+		add_child(_adaptive)
+		_adaptive.changed.connect(func(s):
+			opts["_auto_now"] = s
+			RenderSettings.apply(env.environment, get_viewport(), opts, DisplayServer.window_get_size()))
+	if want and _adaptive != null and not _adaptive.enabled:
+		_adaptive.start(get_viewport(), RenderSettings.auto_scale(DisplayServer.window_get_size()))
+		opts["_auto_now"] = _adaptive.scale
+	elif not want and _adaptive != null and _adaptive.enabled:
+		_adaptive.stop()
+		opts.erase("_auto_now")
+
+
+## Anti-aliasing: TAA, FXAA (nearly free) or off (remembered like the upscaler; `--aa=taa|fxaa|off`)
+func set_aa(kind: String, save := true) -> void:
+	opts["aa"] = kind
+	if _ob_aa != null:
+		var i := ["taa", "fxaa", "off"].find(kind)
+		if i >= 0 and _ob_aa.selected != i:
+			_ob_aa.select(i)
+	if save:
+		var cf := ConfigFile.new()
+		cf.load(SETTINGS_PATH)
+		cf.set_value("display", "aa", kind)
+		cf.save(SETTINGS_PATH)
+	_apply_settings()
+
+
 func _load_display_settings() -> void:
 	var on := false
 	var cf := ConfigFile.new()
@@ -139,6 +177,10 @@ func _load_display_settings() -> void:
 	if cli.has("upscaler"):
 		up = String(cli["upscaler"])
 	set_upscaler("fsr2" if up == "fsr2" else "fsr1", false)
+	var aa := String(cf.get_value("display", "aa", "taa")) if cf.get_sections().size() > 0 else "taa"
+	if cli.has("aa"):
+		aa = String(cli["aa"])
+	set_aa(aa if aa in ["taa", "fxaa", "off"] else "taa", false)
 
 
 ## Frame-time log (FrameLog): `--fps-log=<file.csv> [--fps-secs=300] [--fps-quit]` from the command line, F4 in game (writes user://fps_<time>.csv and says where)
@@ -179,37 +221,14 @@ func _parse_cli() -> void:
 		opts["length"] = cli["length"]
 
 
-## Render scale for "Auto": the 3D scene is drawn at about 2.4 million pixels (a bit over 1080p) and upscaled, so a 4K screen costs the same as a 1080p one.
-## (Measured on an RTX 3050 Ti laptop: the cost is almost linear in pixels, about 9 ms per 2 MP at the Balanced tier.)
+## Render scale for "Auto" (see RenderSettings)
 static func auto_scale(size: Vector2i) -> float:
-	var px := float(maxi(size.x, 1)) * float(maxi(size.y, 1))
-	var sc := clampf(sqrt(2.4e6 / px), 0.5, 1.0)
-	return 1.0 if sc > 0.93 else snappedf(sc, 0.01)
+	return RenderSettings.auto_scale(size)
 
 
 func _apply_settings() -> void:
-	var q: int = opts["quality"]
-	var e := env.environment
-	e.ssao_enabled = q >= 1
-	e.ssil_enabled = q >= 2
-	e.ssr_enabled = q >= 2
-	e.sdfgi_enabled = q >= 3
-	e.volumetric_fog_enabled = q >= 3
-	# render scale: below 100 % the 3D scene is drawn smaller and upscaled with FSR 2 (sharp, and it reuses the temporal data TAA already needs)
-	var sc: float = opts.get("scale", 0.0)
-	if sc <= 0.0:
-		sc = auto_scale(DisplayServer.window_get_size())
-	var vp := get_viewport()
-	# FSR 1: spatial, about 1 ms; FSR 2: temporal, sharper on small text and fences (about 3 ms more at the Auto scale on an RTX 3050 Ti at 4K, much more at higher scales)
-	var up_mode := Viewport.SCALING_3D_MODE_FSR2 if String(opts.get("upscaler", "fsr1")) == "fsr2" else Viewport.SCALING_3D_MODE_FSR
-	# FSR 2 does its own temporal anti-aliasing (Godot warns when TAA is on with it): TAA goes off before FSR 2 comes on, and on after it has gone
-	var want_taa := not (up_mode == Viewport.SCALING_3D_MODE_FSR2 and sc < 0.99)
-	if not want_taa:
-		vp.use_taa = false
-	vp.scaling_3d_mode = up_mode if sc < 0.99 else Viewport.SCALING_3D_MODE_BILINEAR
-	vp.scaling_3d_scale = sc
-	if want_taa:
-		vp.use_taa = true
+	RenderSettings.apply(env.environment, get_viewport(), opts, DisplayServer.window_get_size())
+	_update_adaptive()
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(opts["volume"]), 0.0001)))
 	if player:
 		player.mouse_sens = opts["sens"]
@@ -343,7 +362,7 @@ func _build_menu() -> void:
 	grid.add_child(ob_q)
 	grid.add_child(_mk_label("Render scale", 18, Color.WHITE, false, false))
 	var ob_s := OptionButton.new()
-	for t in [["Auto (recommended)", 0.0], ["100% (native)", 1.0], ["85% (upscaled)", 0.85], ["70% (upscaled, faster)", 0.7], ["55% (upscaled, fastest)", 0.55]]:
+	for t in [["Auto (adapts to keep about 60 fps)", 0.0], ["100% (native)", 1.0], ["85% (upscaled)", 0.85], ["70% (upscaled, faster)", 0.7], ["55% (upscaled, fastest)", 0.55]]:
 		ob_s.add_item(t[0])
 		ob_s.set_item_metadata(ob_s.item_count - 1, t[1])
 	ob_s.select(0)
@@ -357,6 +376,14 @@ func _build_menu() -> void:
 	_ob_upscaler.select(1 if String(opts.get("upscaler", "fsr1")) == "fsr2" else 0)
 	_ob_upscaler.item_selected.connect(func(i): set_upscaler(String(_ob_upscaler.get_item_metadata(i))))
 	grid.add_child(_ob_upscaler)
+	grid.add_child(_mk_label("Anti-aliasing", 18, Color.WHITE, false, false))
+	_ob_aa = OptionButton.new()
+	for t in [["TAA (smoothest)", "taa"], ["FXAA (about 2 ms faster at 4K, a little softer)", "fxaa"], ["Off", "off"]]:
+		_ob_aa.add_item(t[0])
+		_ob_aa.set_item_metadata(_ob_aa.item_count - 1, t[1])
+	_ob_aa.select(["taa", "fxaa", "off"].find(String(opts.get("aa", "taa"))))
+	_ob_aa.item_selected.connect(func(i): set_aa(String(_ob_aa.get_item_metadata(i))))
+	grid.add_child(_ob_aa)
 	grid.add_child(_mk_label("Full screen (F11)", 18, Color.WHITE, false, false))
 	_cb_fullscreen = CheckButton.new()
 	_cb_fullscreen.button_pressed = is_fullscreen()
@@ -622,7 +649,8 @@ func _process(delta: float) -> void:
 	hud.elapsed_label.text = "elapsed  " + Clock.fmt_dur(Clock.now - t_play0)
 	hud.stamina.value = player.stamina
 	if hud.perf_on and station and station.crowd:
-		hud.extra_perf = "\ncrowd %d agents · %d awake · %d riders" % [station.crowd.stats["agents"], station.crowd.stats["awake"], station.crowd.stats["riders"]]
+		hud.extra_perf = "\ncrowd %d agents · %d awake · %d riders" % [station.crowd.stats["agents"], station.crowd.stats["awake"], station.crowd.stats["riders"]] \
+				+ "\nrender scale %d%%%s" % [int(round(get_viewport().scaling_3d_scale * 100.0)), " (adaptive)" if (_adaptive != null and _adaptive.enabled) else ""]
 	if riding:
 		hud.where_label.text = "On the %s line to %s — next: %s" % [Net.line_name(_ride_line), _ride_dest, Net.station_name(_next_stop_idx) if _next_stop_idx >= 0 else "?"]
 		stats["ride"] += delta * Clock.time_scale

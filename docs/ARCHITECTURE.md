@@ -140,6 +140,15 @@ loaded its car model synchronously (about 0.8 s each): `Train.preload_async` at 
 the empty scene already costs 4.3 ms at 1080p (the full-screen passes of the Balanced tier at the GPU's throttled clock). The laptop's GPU spends the runs in "software power cap" / "software thermal
 slowdown" (SM clock mean about 740 MHz of 2100) and its CPU package idles near 100 C with the fans at maximum while a VM, k3s and Chrome run in the background.
 
+### GPU cost at a 4K target (2026-10-02, RTX 3050 Ti Mobile, static hall, Auto scale = FSR 1 at 54 %)
+Measured with `tests/fps_experiment.gd --vp=3840x2160 --cycle=<json>` (configs rotated inside one process in a shuffled order, a 60 s warm-up and 8 rounds, because the GPU's clock drifts
+with temperature and one-after-another runs are not comparable). Floor (empty scene) 4.2 ms; the static station adds about 3.5 ms (lighting and materials; the lights cost about 1.7 ms *as soon as there
+are any*: shorter ranges or distance fade did not help); ambient occlusion +2.6 ms (its quality knob changes nothing), TAA +2.4 ms, glow +1.3 ms (bilinear upscale / fewer levels change nothing),
+colour adjustment and fog about 0, FXAA about 0. Balanced + TAA 13.3 ms, + FXAA 11.7, Fast + TAA 9.3, Fast + FXAA 7.8, High (light bounce + reflections) 19.0, FSR 2 24 (vs FSR 1 11).
+`RenderSettings.apply` holds the settings (tier, AA, upscaler, scale) for both the game and the experiment; `AdaptiveScale` moves the Auto scale along a ladder (ceiling = the size-based Auto value,
+floor 0.40, steps of 12 %) from one-second medians of the GPU time: two slow seconds step down, four fast seconds step up if the next step is predicted to fit; a crowd run at the 4K target went from
+13.5 ms / 45 fps fixed to 11.8 ms / 50 fps adaptive. `--no-adaptive` switches it off; a fixed scale in the menu does too.
+
 ## Display
 F11 / Alt+Enter / the menu toggle borderless full screen (`Game.set_fullscreen`, remembered in `user://settings.cfg`; `--fullscreen` / `--windowed` override). `tools/upscale_shots.sh` renders 4K comparisons of native,
 FSR 1 and FSR 2 for `tools/upscale_sheet.py`; Godot has no DLSS (it needs NVIDIA's proprietary SDK linked into the renderer), so FSR 2 at the DLSS-equivalent scales is only a stand-in.

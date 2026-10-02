@@ -31,7 +31,7 @@ godot --path .             # or open the project in Godot 4.7 and press F5
 Jump straight to a journey (handy for the authored stations): `godot --path . -- --start=Victoria --dest=Bank --spot=street_entrance --hour=8.5 --auto-start`
 (station names with underscores for spaces; `--spot=platform` or `street_entrance`; `--seed=N`).
 Controls: **WASD** move · **Shift** hurry (stamina) · **E** sit down on a free seat (train seat or platform bench; move or press E again to stand) · **M** tube map (**G** switches between the classic diagram and the geographic map) · **H** route hint · **Tab** skip time (when standing still or riding) ·
-**F3** performance overlay · **F11** (or Alt+Enter) full screen · **Esc** pause/menu. Settings (graphics quality, render scale and upscaler, full screen, crowd density, volume, mouse sensitivity) are on the main menu.
+**F3** performance overlay · **F11** (or Alt+Enter) full screen · **Esc** pause/menu. Settings (graphics quality, render scale (Auto adapts to the GPU to keep about 60 fps), upscaler, anti-aliasing, full screen, crowd density, volume, mouse sensitivity) are on the main menu; **F4** records a frame-time log.
 
 Tests: `tools/run_tests.sh` (quick) or `tools/run_tests.sh --full`. Video: `tools/record_video.sh out.mp4 [seed]` (not committed to git).
 
