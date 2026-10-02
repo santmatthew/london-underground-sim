@@ -4,6 +4,8 @@ extends Node
 
 signal doors_opened(visit: Dictionary)
 signal doors_closing(visit: Dictionary)
+signal doors_warning(visit: Dictionary)          # WARN_S before the doors start to close: the warning beeps
+const WARN_S := 1.7                              # (the length of the door_chime_close clip: its last beep ends as the doors start to move)
 signal train_spawned(train: Train, visit: Dictionary)
 
 const APPROACH_S := 26.0
@@ -103,6 +105,9 @@ func _process(delta: float) -> void:
 		var want_open: bool = now >= info["arr"] + (3.0 if not v["origin"] else 0.0) and now < info["dep"] - 6.0 and dwell >= 15.0 and absf(x) < 0.5
 		if v["origin"]:
 			want_open = now >= info["dep"] - 42.0 and now < info["dep"] - 6.0 and absf(x) < 0.5
+		if v["doors"] and not v.get("warned", false) and now >= info["dep"] - 6.0 - WARN_S and now < info["dep"] - 6.0:
+			v["warned"] = true
+			doors_warning.emit(v)
 		if want_open != v["doors"]:
 			v["doors"] = want_open
 			train.set_doors(want_open)

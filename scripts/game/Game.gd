@@ -628,6 +628,7 @@ func _hook_station(st: Station) -> void:
 	st.street_exit_reached.connect(_on_street_exit)
 	st.trains.setup(st, player)
 	st.trains.doors_closing.connect(_on_doors_closing)
+	st.trains.doors_warning.connect(_on_doors_warning)
 	st.trains.doors_opened.connect(_on_doors_opened)
 	_stage("  trains.setup")
 	st.attach_crowd(player)
@@ -1122,11 +1123,13 @@ func _on_doors_opened(v: Dictionary) -> void:
 		var info: Dictionary = v["info"]
 		Sfx.say_station_this(station.plan.idx, info["line"])
 		Sfx.say(["mind_the_gap"], false, true)
-		Sfx.play_at("door_chime_open", train, Vector3(0, 1.8, 0), 0.0, 30.0)
+		Sfx.play_at("door_chime_open", train, Vector3(float(_nearest_door_x(train)[0]), 1.8, 0), 0.0, 30.0)
 		if info["final"]:
 			Sfx.say(["this_train_terminates_here_all_change"])
-	elif station and train.global_position.distance_to(player.global_position) < 40.0:
-		Sfx.play_at("door_slide_open", train, Vector3(0, 1.5, 0), -6.0, 30.0)
+	elif station:
+		var d := _nearest_door_x(train)
+		if float(d[1]) < 40.0:
+			Sfx.play_at("door_slide_open", train, Vector3(float(d[0]), 1.5, 0), -6.0, 30.0)
 
 
 func _change_text(idx: int, line: String) -> String:
@@ -1139,14 +1142,40 @@ func _change_text(idx: int, line: String) -> String:
 	return "  Change here for the %s line%s." % [", ".join(others), "s" if others.size() > 1 else ""]
 
 
+## the door of a train (train-local x) nearest to the player, and how far along the train that is: sounds of the doors are heard from there (a train is 100 m long, its middle is far from the platform end)
+func _nearest_door_x(train: Train) -> Array:
+	var lx: float = train.to_local(player.global_position).x
+	var best := 0.0
+	var bd := 1e9
+	for dx in train.door_positions():
+		if absf(float(dx) - lx) < bd:
+			bd = absf(float(dx) - lx)
+			best = float(dx)
+	return [best, bd]
+
+
+## The closing warning (TrainService.WARN_S before the doors move): the beeps sound at the door nearest to the player, so they are heard on the platform as well as aboard
+func _on_doors_warning(v: Dictionary) -> void:
+	if station == null:
+		return
+	var train: Train = v["train"]
+	var d := _nearest_door_x(train)
+	if float(d[1]) > 70.0:
+		return
+	Sfx.play_at("door_chime_close", train, Vector3(float(d[0]), 1.8, 0), 0.0 if train.contains_world_point(player.global_position) else -2.0, 60.0)
+
+
 func _on_doors_closing(v: Dictionary) -> void:
+	if station != null and not (v["train"] as Train).contains_world_point(player.global_position):
+		var d := _nearest_door_x(v["train"])
+		if float(d[1]) < 40.0:
+			Sfx.play_at("door_slide_close", v["train"], Vector3(float(d[0]), 1.5, 0), -6.0, 30.0)
 	if state != State.PLAYING or riding or station == null:
 		return
 	var train: Train = v["train"]
 	if not train.contains_world_point(player.global_position):
 		return
 	var info: Dictionary = v["info"]
-	Sfx.play_at("door_chime_close", train, Vector3(0, 1.8, 0), 0.0, 30.0)
 	if info["final"]:
 		var pos := station.to_global(station.platform_point(v["key"], 0.5, 1.2))
 		player.cancel_sit()
