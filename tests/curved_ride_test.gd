@@ -78,7 +78,7 @@ func run():
 			finish_err = r.finish_error
 			# the player's car and its neighbours stay a car length apart, whatever the bends
 			var d01 := (train.cars[3] as Node3D).global_position.distance_to((train.cars[4] as Node3D).global_position)
-			worst_axis = maxf(worst_axis, absf(d01 - 16.7))
+			worst_axis = maxf(worst_axis, absf(d01 - float(Train.PITCH[train.kind][0])))
 			if shots:
 				var tau := Clock.now - r.t_dep
 				for m in [4, 9, 16, 30, 50]:

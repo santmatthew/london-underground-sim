@@ -80,7 +80,7 @@ func run():
 		var qw := PhysicsRayQueryParameters3D.create(e0 + Vector3(0, 0.3, 0), w1)
 		qw.collision_mask = 1
 		var wall_open := false
-		if x2 > float(plan.modules[f["module"]]["spec"]["spine_x1"]) + 4.0:
+		if not pm.box and x2 > float(plan.modules[f["module"]]["spec"]["spine_x1"]) + 4.0:       # (an island box hall has no wall behind its platforms)
 			wall_open = space.intersect_ray(qw).is_empty()
 		if wall_open:
 			bad_wall += 1

@@ -73,12 +73,15 @@ and rate limited: relations are fetched one at a time inside the London bounding
   Piccadilly / Metropolitan branches ride straight). `UG_CURVE=<class>` bends every ride (tests).
 - **Platforms bend.** A module is *designed* straight (plan, rooms, walking graph, crowd, dressing all live in "design space") and `Bend` wraps it round an arc afterwards: the part with the spine and the
   cross-passages stays straight, the platform beyond follows the curve, the running tunnel carries on straight at the final heading. `PlatformCurve.for_module` decides (average of both faces; >= 5 degrees across
-  the platform; radius not under 150 m; the mirror image if the real direction would hit another module or room at the same level, `_conflicts`; else straight). The mesh is cut into 3 m slabs and
+  the platform; radius not under 150 m; deep-tube arch modules, sub-surface box halls and open-air platforms alike - the canopy, columns and track wall are in the kit, the sky dome and daylight lights are
+  set down rigidly and the tree / house backdrops are rebuilt as strips along the curve (`PlatformOpen._backdrop`); the mirror image if the real direction would hit another module or room at the same level, `_conflicts`; else straight). The mesh is cut into 3 m slabs and
   bent (`MeshKit.bend`, on a worker thread), colliders become rotated pieces, lights/signs/props are set down on the curve (`PlatformModule.bend_children`), posters are bent where they are made
   (`PosterKit.finish`), the occluders follow (`StationOcclusion`). `UG_BEND=<radius>` bends every deep-tube module (tests).
 - **Two spaces.** Anything that reasons about the plan stays in design space; anything physical (the player, rays, node positions) is in the curved world. `Station.to_phys / to_design / phys_yaw`
   convert, `PlatformModule.design_local(world)` gives a module-local point, `Station.platform_point` is physical and `platform_point_design` is not. The crowd walks in design space and `_sync` puts
   the people on the curve; the autopilot's waypoints are mapped (with intermediate points, a chord would cut the corner); trains come from `Train.place(x)` (`design_x`), doors from `Train.slot_global`.
+- Wide cars (sub-surface S stock, 3.0 m) have only 5 cm to the platform edge on a straight, so on a bend `Train.place` moves a car away from the platform just enough to keep `MIN_GAP` (7 cm) at its middle and both ends
+  (`_clearance_deficit`; the shift is kept while the train rides on).
 - Gotchas: a straight line in design space is not a straight line in the world (audits sweep `to_phys` of each sample); shared statics read by plan-building worker threads need a mutex
   (`PlatformCurve`, `TrackPath.data`); `WorkerThreadPool` tasks must be waited for (`wait_for_task_completion`) or the engine corrupts memory at exit.
 - Tests: `bend_test` (maths), `ride_curve_test` (forced curve), `curved_platform_test` (Bank: floor, edge guard, walls, cars, gap, crowd), `curved_ride_test` (Bank -> Liverpool Street, real geometry),

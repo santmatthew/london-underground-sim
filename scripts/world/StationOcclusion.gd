@@ -41,7 +41,13 @@ static func build(st: Station) -> void:
 			for sp in spans:
 				var a: float = (sp as Vector2).x
 				var b: float = (sp as Vector2).y
-				_box(verts, idx, m.position + Vector3((a + b) * 0.5, rh + 0.2, 0), Vector3(b - a, 0.3, PlatformOpen.CANOPY_HALF * 2.0 - 0.4))
+				if m.bend != null:
+					var n := maxi(1, int(ceil((b - a) / 8.0)))
+					for k in n:
+						var xc := a + (float(k) + 0.5) * (b - a) / float(n)
+						_box_xf(verts, idx, Transform3D(m.bend.rot(xc), m.position + m.bend.map(Vector3(xc, rh + 0.2, 0.0))), Vector3((b - a) / float(n) + 0.4, 0.3, PlatformOpen.CANOPY_HALF * 2.0 - 0.4))
+				else:
+					_box(verts, idx, m.position + Vector3((a + b) * 0.5, rh + 0.2, 0), Vector3(b - a, 0.3, PlatformOpen.CANOPY_HALF * 2.0 - 0.4))
 		elif m.bend != null:
 			var n := int(ceil(L / 8.0))
 			for i in n:

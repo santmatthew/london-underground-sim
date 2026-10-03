@@ -326,6 +326,7 @@ func _finish() -> void:
 	train.setup_orientation(canon, -side)     # orientation is relative to the destination module, not the origin one
 	train.bend = module.bend
 	train.track_z = train.position.z
+	train.edge_z = signf(train.track_z) * (PlatformModule.GAP * 0.5 + float(module.meta["pw"]))
 	train.straighten()
 	train.place(0.0)
 	if dest_station.crowd != null:

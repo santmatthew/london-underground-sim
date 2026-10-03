@@ -123,7 +123,7 @@ func build(p_spec: Dictionary, p_async := false) -> void:
 			mats[k] = StationCharacter.material(k)
 	bend = null
 	var bd: Dictionary = spec.get("bend", {})
-	if not bd.is_empty() and not box:
+	if not bd.is_empty():
 		bend = Bend.new(float(bd["kappa"]), float(bd["x0"]), float(bd["x1"]), 0.0)
 		var tb := Time.get_ticks_usec()
 		if p_async and is_inside_tree():

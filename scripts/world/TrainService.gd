@@ -179,6 +179,7 @@ func _spawn(vkey: String, fkey: String, f: Dictionary, module: PlatformModule, i
 	train.setup_orientation(facing, -side)    # platform lies toward the tunnel centre (-side)
 	train.bend = module.bend                  # (a curved platform: the cars follow the arc, see Train.place)
 	train.track_z = train.position.z
+	train.edge_z = signf(train.track_z) * (PlatformModule.GAP * 0.5 + float(module.meta["pw"]))
 	var dest_txt: String = Net.station_name(info["dest"]).replace(" (H&C)", "").replace(" (D&P)", "").replace(" (Circle)", "")
 	if info["via"] != "":
 		dest_txt += " " + info["via"]

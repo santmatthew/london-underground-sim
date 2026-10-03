@@ -11,5 +11,5 @@ func run():
 			if b.is_empty():
 				continue
 			n += 1
-			print("%-28s %-14s style %-5s dh %6.1f  R %5.0f m  arc %3.0f..%3.0f%s" % [plan.name, plan.modules[mi]["group"], plan.modules[mi]["spec"]["style"], b["dh"], 1.0 / absf(float(b["kappa"])), b["x0"], b["x1"], "  (mirrored)" if b.has("mirrored") else ""])
+			print("%-28s %-14s style %-5s open %-5s dh %6.1f  R %5.0f m  arc %3.0f..%3.0f%s" % [plan.name, plan.modules[mi]["group"], plan.modules[mi]["spec"]["style"], str(bool(plan.modules[mi]["spec"].get("character", {}).get("open", false))), b["dh"], 1.0 / absf(float(b["kappa"])), b["x0"], b["x1"], "  (mirrored)" if b.has("mirrored") else ""])
 	print("%d of %d platform modules are curved" % [n, tot])

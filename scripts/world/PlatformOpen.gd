@@ -513,8 +513,8 @@ static func scenery(pm: PlatformModule, st: Dictionary, x0: float, x1: float, zf
 	for s in [1.0, -1.0]:
 		if s in nb:
 			continue         # another platform lies that way: the view across is its canopy, not a backdrop
-		_backdrop(holder, "trees", Vector3(cx, PlatformModule.BED_Y + 0.0, s * (zfar + 11.0)), s, length, 12.0, 40.0, warm)
-		_backdrop(holder, "houses", Vector3(cx, PlatformModule.BED_Y + 0.0, s * (zfar + 30.0)), s, length, 14.0, 56.0, warm.darkened(0.12))
+		_backdrop(holder, "trees", Vector3(cx, PlatformModule.BED_Y + 0.0, s * (zfar + 11.0)), s, length, 12.0, 40.0, warm, pm.bend)
+		_backdrop(holder, "houses", Vector3(cx, PlatformModule.BED_Y + 0.0, s * (zfar + 30.0)), s, length, 14.0, 56.0, warm.darkened(0.12), pm.bend)
 	# --- daylight: soft omni lights high above the island (none at night; the canopy lights take over)
 	if day > 0.04:
 		var lx := x0 + 6.0
@@ -533,13 +533,39 @@ static func scenery(pm: PlatformModule, st: Dictionary, x0: float, x1: float, zf
 			lx += 13.0
 
 
-static func _backdrop(holder: Node3D, tex: String, at: Vector3, s: float, length: float, height: float, tile_w: float, tint: Color) -> void:
+static func _backdrop(holder: Node3D, tex: String, at: Vector3, s: float, length: float, height: float, tile_w: float, tint: Color, bend: Bend = null) -> void:
 	var mi := MeshInstance3D.new()
-	var q := QuadMesh.new()
-	q.size = Vector2(length, height)
-	mi.mesh = q
-	mi.position = at + Vector3(0, height * 0.5, 0)
-	mi.rotation.y = atan2(0.0, -s)           # the quad's front (+z) faces the island
+	if bend != null:
+		# a curved platform: the strip follows the curve, a chain of quads one metre-ish wide in a mesh of its own (in module space)
+		var n := maxi(1, int(ceil(length / 5.0)))
+		var verts := PackedVector3Array()
+		var uvs := PackedVector2Array()
+		var idx := PackedInt32Array()
+		for i in n + 1:
+			var x := at.x - length * 0.5 + length * float(i) / float(n)
+			verts.append(bend.map(Vector3(x, at.y + height, at.z)))
+			verts.append(bend.map(Vector3(x, at.y, at.z)))
+			var u := float(i) / float(n)
+			uvs.append(Vector2(u, 0.0))
+			uvs.append(Vector2(u, 1.0))
+			if i > 0:
+				var b := (i - 1) * 2
+				idx.append_array([b, b + 1, b + 2, b + 1, b + 3, b + 2])
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		arrays[Mesh.ARRAY_TEX_UV] = uvs
+		arrays[Mesh.ARRAY_INDEX] = idx
+		var am := ArrayMesh.new()
+		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		mi.mesh = am
+		mi.set_meta("bent", true)
+	else:
+		var q := QuadMesh.new()
+		q.size = Vector2(length, height)
+		mi.mesh = q
+		mi.position = at + Vector3(0, height * 0.5, 0)
+		mi.rotation.y = atan2(0.0, -s)           # the quad's front (+z) faces the island
 	var key := "%s|%.2f|%.1f" % [tex, tint.r, length]
 	var m: StandardMaterial3D = _backdrop_mats.get(key)
 	if m == null:

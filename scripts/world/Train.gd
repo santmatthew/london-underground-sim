@@ -37,6 +37,9 @@ var _busy_tween: Tween
 var front_light: SpotLight3D
 var bend: Bend = null            # the platform the train stands on is curved: the cars follow the arc (place)
 var track_z := 0.0               # module frame, design space: z of the track the train runs on (curved platforms)
+var edge_z := 0.0                # ... and of the platform edge beside it (0: unknown)
+var _shift := PackedFloat32Array()      # per car: how far it was moved away from the platform to keep a gap on a curve (place), kept while the train rides on
+const MIN_GAP := 0.07            # the least gap a car's side may have to the platform edge on a curve (m)
 var design_x := 0.0              # module frame, design space: x of the middle of the train
 var _placed_bent := false        # place() has put the cars on the curve at design_x
 var _articulated := false        # the cars have been placed along a curve (place / follow_path): they are not in a straight line
@@ -125,6 +128,7 @@ func place(x: float) -> void:
 		return                                    # (standing at the platform: nothing to do)
 	design_x = x
 	_placed_bent = true
+	_shift.resize(cars.size())
 	var base := 0.0 if facing > 0 else PI
 	transform = bend.pose(x, position.y, track_z) * Transform3D(Basis(Vector3.UP, base), Vector3.ZERO)
 	var inv := transform.affine_inverse()
@@ -133,10 +137,34 @@ func place(x: float) -> void:
 		var xi := float(car_x[i])
 		var f := bend.map(Vector3(bend.advance_x(x, float(facing) * (xi + half), track_z), position.y, track_z))
 		var r := bend.map(Vector3(bend.advance_x(x, float(facing) * (xi - half), track_z), position.y, track_z))
-		var t := inv * _bogie_pose(f, r)
+		var p := _bogie_pose(f, r)
+		var d := _clearance_deficit(p, i)
+		_shift[i] = d
+		if d > 0.0:
+			p.origin += p.basis * Vector3(0.0, 0.0, -_local_side() * d)          # (a car whose end would swing into the platform edge stands a little off the rail centre)
+		var t := inv * p
 		if i == cars.size() - 1:
 			t.basis = t.basis * Basis(Vector3.UP, PI)
 		(cars[i] as Node3D).transform = t
+
+
+func _local_side() -> float:
+	return platform_side * (1.0 if facing > 0 else -1.0)
+
+
+## how much a car at pose p (module frame) must move away from the platform to keep MIN_GAP at its middle and at both ends: a wide car on a tight curve swings into the edge on the outside of the bend
+func _clearance_deficit(p: Transform3D, i: int) -> float:
+	if edge_z == 0.0 or bend == null:
+		return 0.0
+	var key := kind + ("_cab" if (i == 0 or i == cars.size() - 1) else "_mid")
+	var half_len := float(CAR_LEN[key]) * 0.5
+	var half_w := 1.31 if kind == "deep" else 1.5
+	var sg := signf(track_z)
+	var worst := 9.0
+	for ex in [-half_len, 0.0, half_len]:
+		var d := bend.unmap(p * Vector3(ex, 0.0, _local_side() * half_w))
+		worst = minf(worst, sg * (d.z - edge_z))
+	return maxf(0.0, MIN_GAP - worst)
 
 
 ## half the distance between the bogie centres of car i: a car's bogies sit on the rails, so its middle lies inside the curve and its ends swing outside it
@@ -160,6 +188,8 @@ func follow_path(path: TrackPath, s_c: float, s_ref: float, co: float) -> void:
 		var f := path.pose(s_c + float(car_x[i]) + half).origin
 		var r := path.pose(s_c + float(car_x[i]) - half).origin
 		var rel := inv * _bogie_pose(f, r)
+		if i < _shift.size() and _shift[i] > 0.0:
+			rel.origin += rel.basis * Vector3(0.0, 0.0, -_local_side() * _shift[i])
 		var t := Transform3D(Basis.IDENTITY, Vector3(co, 0.0, 0.0)) * rel
 		if i == cars.size() - 1:
 			t.basis = t.basis * Basis(Vector3.UP, PI)
