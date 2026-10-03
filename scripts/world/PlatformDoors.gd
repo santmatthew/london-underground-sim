@@ -13,6 +13,7 @@ const SLIDE := 1.0             # each leaf slides this far (a leaf is OPEN_W / 2
 const OPEN_S := 1.4            # seconds
 
 static var _leaf_mesh: ArrayMesh
+static var _leaf_mesh_el: ArrayMesh
 
 
 ## x positions of the doors along the platform (module frame): the train stops centred on the module origin
@@ -21,7 +22,21 @@ static func door_xs(line_id: String) -> Array:
 	return Train.door_positions_for(Train.kind_of_line(line_id) if Net.lines.has(line_id) else "deep", int(cars[0]))
 
 
-static func _leaf() -> ArrayMesh:
+static func _leaf(el := false) -> ArrayMesh:
+	if el:
+		if _leaf_mesh_el != null:
+			return _leaf_mesh_el
+		# the Elizabeth line: smoked glass with a black and white striped band, no yellow
+		var k2 := MeshKit.new()
+		var w2 := OPEN_W * 0.5
+		k2.box("ped_glass_dark", Vector3(0, GLASS_H * 0.5 + 0.04, 0), Vector3(w2 - 0.02, GLASS_H - 0.08, 0.012), 0.0)
+		for sx in [-1.0, 1.0]:
+			k2.box("stainless", Vector3(sx * (w2 * 0.5 - 0.02), GLASS_H * 0.5, 0), Vector3(0.04, GLASS_H, 0.03), 0.0)
+		k2.box("stainless", Vector3(0, 0.03, 0), Vector3(w2, 0.06, 0.03), 0.0)
+		k2.box("stainless", Vector3(0, GLASS_H - 0.02, 0), Vector3(w2, 0.05, 0.03), 0.0)
+		k2.box("el_stripe", Vector3(0, 1.16, 0.0), Vector3(w2 - 0.04, 0.12, 0.016), 0.0)
+		_leaf_mesh_el = k2.build({"ped_glass_dark": Mats.get_mat("ped_glass_dark"), "stainless": Mats.get_mat("stainless"), "el_stripe": Mats.get_mat("el_stripe")})
+		return _leaf_mesh_el
 	if _leaf_mesh != null:
 		return _leaf_mesh
 	var kit := MeshKit.new()
@@ -38,7 +53,7 @@ static func _leaf() -> ArrayMesh:
 
 
 ## fixed parts into the module's MeshKit and the sliding leaves as child nodes of the module; s = +1 for the +z face
-static func build(pm: PlatformModule, kit: MeshKit, s: float, zedge: float, xs: Array, x0: float, x1: float) -> void:
+static func build(pm: PlatformModule, kit: MeshKit, s: float, zedge: float, xs: Array, x0: float, x1: float, el := false) -> void:
 	if xs.is_empty():
 		return
 	var zf := s * (zedge - 0.03)            # fixed glass
@@ -48,7 +63,7 @@ static func build(pm: PlatformModule, kit: MeshKit, s: float, zedge: float, xs: 
 	xa = maxf(xa, x0 + 0.5)
 	xb = minf(xb, x1 - 0.5)
 	# head casing: a stainless box along the whole row of doors, with a slim lip below
-	kit.box("stainless", Vector3((xa + xb) * 0.5, (HEAD_Y0 + HEAD_Y1) * 0.5, s * (zedge - HEAD_D * 0.5 + 0.03)), Vector3(xb - xa, HEAD_Y1 - HEAD_Y0, HEAD_D), 0.0)
+	kit.box("el_dark" if el else "stainless", Vector3((xa + xb) * 0.5, (HEAD_Y0 + HEAD_Y1) * 0.5, s * (zedge - HEAD_D * 0.5 + 0.03)), Vector3(xb - xa, HEAD_Y1 - HEAD_Y0, HEAD_D), 0.0)
 	# fixed glass between the doors, and posts at every door edge and at the two ends
 	var edges: Array = [xa]
 	for xd in xs:
@@ -62,12 +77,16 @@ static func build(pm: PlatformModule, kit: MeshKit, s: float, zedge: float, xs: 
 			continue
 		var a := Vector3(ga, 0, zf)
 		var b := Vector3(gb, 0, zf)
+		var glass := "ped_glass_dark" if el else "ped_glass"
 		if s > 0.0:
-			kit.wall("ped_glass", a, b, 0.04, GLASS_H, 0.0)
+			kit.wall(glass, a, b, 0.04, GLASS_H, 0.0)
 		else:
-			kit.wall("ped_glass", b, a, 0.04, GLASS_H, 0.0)
-		kit.box("yellow_paint", Vector3((ga + gb) * 0.5, 1.16, zf), Vector3(gb - ga, 0.09, 0.012), 0.0)
-		kit.box("yellow_paint", Vector3((ga + gb) * 0.5, 0.98, zf), Vector3(gb - ga, 0.02, 0.012), 0.0)
+			kit.wall(glass, b, a, 0.04, GLASS_H, 0.0)
+		if el:
+			kit.box("el_stripe", Vector3((ga + gb) * 0.5, 1.16, zf), Vector3(gb - ga, 0.12, 0.012), 0.0)
+		else:
+			kit.box("yellow_paint", Vector3((ga + gb) * 0.5, 1.16, zf), Vector3(gb - ga, 0.09, 0.012), 0.0)
+			kit.box("yellow_paint", Vector3((ga + gb) * 0.5, 0.98, zf), Vector3(gb - ga, 0.02, 0.012), 0.0)
 	for ex in edges:
 		kit.box("stainless", Vector3(ex, GLASS_H * 0.5, zf), Vector3(0.12, GLASS_H, 0.07), 0.0)
 	kit.box("stainless", Vector3((xa + xb) * 0.5, 0.03, zf), Vector3(xb - xa, 0.06, 0.07), 0.0)       # sill
@@ -82,7 +101,7 @@ static func build(pm: PlatformModule, kit: MeshKit, s: float, zedge: float, xs: 
 		var pair: Dictionary = {"x": float(xd), "open": false}
 		for side in [-1.0, 1.0]:
 			var mi := MeshInstance3D.new()
-			mi.mesh = _leaf()
+			mi.mesh = _leaf(el)
 			mi.position = Vector3(float(xd) + side * OPEN_W * 0.25, 0.0, zl)
 			mi.name = "PED_%d_%s" % [int(float(xd) * 10.0), "L" if side < 0.0 else "R"]
 			mi.visibility_range_end = 70.0

@@ -134,6 +134,25 @@ static func get_mat(name: String) -> Material:
 			pg.metallic = 0.0
 			pg.cull_mode = BaseMaterial3D.CULL_DISABLED
 			m = pg
+		"ped_glass_dark":
+			# smoked glass of the Elizabeth line's edge doors
+			var pd := StandardMaterial3D.new()
+			pd.albedo_color = Color(0.10, 0.12, 0.13, 0.55)
+			pd.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			pd.roughness = 0.05
+			pd.cull_mode = BaseMaterial3D.CULL_DISABLED
+			m = pd
+		"el_stripe":
+			# the black and white striped band across those doors (2.5 cm stripes)
+			var img := Image.create(2, 1, false, Image.FORMAT_RGB8)
+			img.set_pixel(0, 0, Color(0.02, 0.02, 0.02))
+			img.set_pixel(1, 0, Color(0.95, 0.95, 0.95))
+			var st := StandardMaterial3D.new()
+			st.albedo_texture = ImageTexture.create_from_image(img)
+			st.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			st.uv1_scale = Vector3(1.0 / 0.05, 1.0, 1.0)
+			st.roughness = 0.4
+			m = st
 		"timber_slab":
 			var tm := StandardMaterial3D.new()
 			tm.albedo_color = Color(0.40, 0.26, 0.15)
@@ -156,6 +175,11 @@ static func get_mat(name: String) -> Material:
 			s2.albedo_color = Color(0.03, 0.03, 0.035)
 			s2.roughness = 0.6
 			m = s2
+		"el_panel":
+			# the Elizabeth line's cream perforated platform panels (tools/gen_el_textures.py)
+			m = _surface("gen/el_panel", "png", 1.0 / 2.4, Color(1, 1, 1), {"dirt": 0.15, "ceiling_soot": 0.1})
+		"el_dark":
+			m = _surface("gen/el_dark", "png", 1.0 / 2.4, Color(1, 1, 1), {"dirt": 0.12})
 		"tunnel_lining":
 			# the bore between stations: dark cast-iron segmental rings (tools/gen_tunnel_textures.py), 2.44 m a tile
 			m = _surface("gen/tunnel_lining", "png", 1.0 / 2.44, Color(1, 1, 1), {"dirt": 0.5, "ceiling_soot": 0.35})

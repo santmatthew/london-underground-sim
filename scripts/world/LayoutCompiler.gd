@@ -175,7 +175,7 @@ static func compile(p: StationPlan, spec: Dictionary) -> bool:
 		var L: float = cars[0] * cars[1] + 10.0
 		var pw := PlatformModule.PW_RUN
 		var corr_len: float = maxf(md.get("corr_len", 14.0), PlatformModule.TUNNEL_MIN + 6.0)      # see StationPlan: the tunnel must stop before the landing
-		var is_box: bool = p.kind != "deep" or line_id == "elizabeth"
+		var is_box: bool = StationCharacter.platform_is_box(p.name, line_id, p.kind)
 		var spine_x0 := -L * 0.5 if is_box else -L * 0.5 - 6.0
 		var mx: float = rect[1] + corr_len - spine_x0
 		var mpos := Vector3(mx, room["y"], lane_z)

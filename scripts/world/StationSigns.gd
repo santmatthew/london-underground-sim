@@ -437,13 +437,13 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 					continue
 				var cxx: float = pm.column_xs[ci]
 				for dxs in [-1.0, 1.0]:
-					var rdc := Signs.roundel(short_name, 0.62, false)
+					var rdc := Signs.roundel(short_name, 0.62, false, Signs.ring_color(f2["line"]))
 					rdc.position = Vector3(cxx + dxs * half_c, 1.85, s * cz if pm.column_zs.size() != 1 else cz)
 					rdc.rotation.y = -PI * 0.5 * dxs
 					pm.add_child(rdc)
 		for k in seps.size():
 			var x: float = seps[k]
-			var rd := Signs.roundel(short_name, 0.62, false)
+			var rd := Signs.roundel(short_name, 0.62, false, Signs.ring_color(f2["line"]))
 			rd.position = Vector3(x, 1.72, s * (zfar - 0.05))
 			rd.rotation.y = atan2(0.0, -s)
 			pm.add_child(rd)
@@ -460,7 +460,7 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 				if absf(x + 1.5 - rx) < 3.2:
 					near_open = true
 			if not near_open and not box and k % 2 == 1:
-				var rd2 := Signs.roundel(short_name, 0.8, false)
+				var rd2 := Signs.roundel(short_name, 0.8, false, Signs.ring_color(f2["line"]))
 				rd2.position = Vector3(x + 1.5, 1.5, s * (zwall + 0.03))
 				rd2.rotation.y = atan2(0.0, s)
 				pm.add_child(rd2)

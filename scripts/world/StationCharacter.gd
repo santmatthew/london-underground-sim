@@ -65,6 +65,15 @@ static func _stripes(arr: Array) -> Array:
 	return out
 
 
+## true when the platforms of `line_id` at this station are in a box (flat roof) rather than a curved tunnel: all sub-surface and surface stations, and of the Elizabeth line's core stations
+## the ones whose platforms are boxes (Paddington, Canary Wharf, Custom House, Woolwich); Bond Street, Tottenham Court Road, Farringdon, Liverpool Street and Whitechapel are vaulted
+static func platform_is_box(station_name: String, line_id: String, kind: String) -> bool:
+	_load()
+	if line_id == "elizabeth":
+		return not (short_name(station_name) in _data.get("elizabeth_vault", []))
+	return kind != "deep"
+
+
 ## Finishes for one platform module (authored scheme, line default, or the generic one). Keys: wall, stripes, frieze, giant, ribs, pilasters, frame, recess.
 static func platform(station_name: String, line_id: String, kind: String) -> Dictionary:
 	_load()
@@ -75,8 +84,12 @@ static func platform(station_name: String, line_id: String, kind: String) -> Dic
 		if short_name(station_name) in _data.get("elizabeth_core", []):
 			var el: Dictionary = (_data.get("lines", {}) as Dictionary).get("elizabeth", {})
 			var lc: Array = el.get("light", [1, 1, 1])
-			return {"wall": String(el.get("wall", "panel_white")), "stripes": _stripes(el.get("stripes", [])), "frieze": false, "station_slug": slug(station_name), "peds": true,
-				"floor": String(el.get("floor", "floor_stone")), "light_color": Color(lc[0], lc[1], lc[2])}
+			var vault: bool = short_name(station_name) in _data.get("elizabeth_vault", [])
+			var out := {"wall": "el_panel" if vault else "el_dark", "stripes": _stripes(el.get("stripes", [])), "frieze": false, "station_slug": slug(station_name), "peds": true,
+				"floor": String(el.get("floor", "floor_stone")), "light_color": Color(lc[0], lc[1], lc[2]), "el": true}
+			if not vault:
+				out["ceil"] = "concrete"                 # (the box stations: bare concrete soffit, dark bronze wall panels)
+			return out
 		return _generic(station_name, line_id, "surface" if kind == "deep" else kind)
 	if kind != "deep":
 		return _generic(station_name, line_id, kind)

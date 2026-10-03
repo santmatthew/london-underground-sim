@@ -248,7 +248,15 @@ static func font_serif() -> Font:
 
 
 ## Roundel name plate for platform walls: white plate, thick red ring, name bar (blue for modern, black for older). Faces +z.
-static func roundel(station_name: String, scale_m := 1.0, black_bar := false) -> Node3D:
+const EL_PURPLE := Color(0.412, 0.314, 0.631)
+
+
+## the colour of the ring of the station-name roundel on a line's platforms: red, purple for the Elizabeth line
+static func ring_color(line_id: String) -> Color:
+	return EL_PURPLE if line_id == "elizabeth" else RED
+
+
+static func roundel(station_name: String, scale_m := 1.0, black_bar := false, ring_col := RED) -> Node3D:
 	var root := Node3D.new()
 	var bar_w := maxf(1.7, 0.10 * station_name.length() + 0.55) * scale_m
 	var bar_h := 0.32 * scale_m
@@ -263,7 +271,7 @@ static func roundel(station_name: String, scale_m := 1.0, black_bar := false) ->
 	tm.rings = 48
 	tm.ring_segments = 8
 	ring.mesh = tm
-	ring.material_override = _mat(RED, 0.0, 0.3)
+	ring.material_override = _mat(ring_col, 0.0, 0.3)
 	ring.rotation.x = deg_to_rad(90.0)
 	ring.scale = Vector3(1, 0.06, 1)
 	ring.position = Vector3(0, 0, 0.02)

@@ -261,7 +261,7 @@ func generate(station_idx: int) -> void:
 			var L: float = cars[0] * cars[1] + 10.0
 			var pw := PlatformModule.PW_RUN
 			var corr_len := PlatformModule.TUNNEL_MIN + 6.0 + rng.randf() * 10.0      # the platform tunnel stops before the landing, so the passage is at least as long as the tunnel we keep
-			var is_box: bool = kind != "deep" or line_id == "elizabeth"          # (the Elizabeth line has box platforms, with edge doors, in every kind of station)
+			var is_box: bool = StationCharacter.platform_is_box(name, line_id, kind)
 			var spine_x0 := -L * 0.5 if is_box else -L * 0.5 - 6.0
 			var mx: float = rect[1] + corr_len - spine_x0
 			var mpos := Vector3(mx, -lvl[li]["depth"], lane_z)

@@ -112,6 +112,7 @@
     "waterloo-city": {"wall": "tile_white", "stripes": [[0.0, 0.30, "green_dk", 1], [1.10, 1.18, "green_dk", 1]]},
     "elizabeth": {"peds": true, "light": [0.95, 0.97, 1.0], "floor": "floor_stone", "wall": "panel_white", "stripes": [[0.0, 0.14, "grey_dk", 0]]}
   },
+  "elizabeth_vault": ["Bond Street", "Tottenham Court Road", "Farringdon", "Liverpool Street", "Whitechapel"],
   "elizabeth_core": ["Paddington", "Bond Street", "Tottenham Court Road", "Farringdon", "Liverpool Street", "Whitechapel", "Canary Wharf", "Custom House", "Woolwich"],
   "jubilee_ext": ["Westminster", "Waterloo", "Southwark", "London Bridge", "Bermondsey", "Canada Water", "Canary Wharf", "North Greenwich"],
   "hall_types": {

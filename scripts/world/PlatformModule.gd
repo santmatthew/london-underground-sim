@@ -109,7 +109,7 @@ func build(p_spec: Dictionary) -> void:
 		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 
 	var mats := {}
-	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "ped_glass", "stainless", "floor_cream", "brick_stock", "brick_red", "brick_blue", "ballast", "tactile_buff", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab", "tunnel_lining", "cable_black", "cable_grey", "cable_red"]:
+	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "ped_glass", "stainless", "floor_cream", "brick_stock", "brick_red", "brick_blue", "ballast", "tactile_buff", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab", "tunnel_lining", "cable_black", "cable_grey", "cable_red", "el_panel", "el_dark", "ped_glass_dark", "el_stripe"]:
 		mats[n] = Mats.get_mat(n)
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
@@ -188,7 +188,7 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	if ped_xs.is_empty():
 		kit.horiz("yellow_paint", x0, x1, lz0, lz1, 0.006, true, 0.0)      # (the doors are the boundary where there are PEDs)
 	else:
-		PlatformDoors.build(self, kit, s, zedge, ped_xs, x0, x1)
+		PlatformDoors.build(self, kit, s, zedge, ped_xs, x0, x1, bool(character.get("el", false)))
 	# platform front face toward the track (from y=0 down to bed)
 	var front_mat := "brick_stock" if open else "concrete"
 	if open:
@@ -341,7 +341,7 @@ func _build_box_hall(x0: float, x1: float, zwall: float, zedge: float, ztrack: f
 		for zz in [-zfar * 0.5, 0.0, zfar * 0.5]:
 			kit.box("black", Vector3((x0 + x1) * 0.5, BOX_H - 0.1, zz), Vector3(x1 - x0, 0.2, 0.2), 0.0)
 	else:
-		kit.horiz("ceiling", x0, x1, -zfar, zfar, BOX_H, false, 0.0)
+		kit.horiz(String(character.get("ceil", "ceiling")), x0, x1, -zfar, zfar, BOX_H, false, 0.0)
 		# steel beams across the ceiling
 		var bx := x0 + 2.0
 		while bx < x1:
