@@ -5,7 +5,8 @@ Stations start at their real positions, warped so the centre is magnified and th
 towards a multiple of 45 degrees (while keeping the geometry roughly where it was), the result is snapped to a grid, edges are drawn as
 octilinear polylines, and labels are placed round each station.  Rendered to build/diagram/*.png for inspection; the game draws the JSON.
 
-usage: python3 tools/build_diagram.py [--png]
+usage: python3 tools/build_diagram.py [--png]          (a full relayout; the saved grid in build/diagram/G.npy is reused unless --relayout)
+       python3 tools/build_diagram.py --add [--png]    (stations of data/network.json that data/tube_diagram.json lacks are placed next to the existing ones, which stay put)
 """
 import json, math, os, sys, collections
 import numpy as np
@@ -135,12 +136,15 @@ def octilinear(dx, dy):
     return dx == 0 or dy == 0 or abs(dx) == abs(dy)
 
 
-def grid_refine(Xopt, g=0.4, sweeps=60, seed=1, verbose=True):
+def grid_refine(Xopt, g=0.4, sweeps=60, seed=1, verbose=True, G0=None, movable=None):
     """stations on an integer grid; simulated annealing over 24 candidate moves per station.
     cost = non-octilinear edges + crossings + edge-length drift + drift from the optimised layout + stations too close + sharp turns along a line"""
     rng = np.random.default_rng(seed)
     T = Xopt / g
     G = np.round(T).astype(int)
+    if G0 is not None:
+        G = np.array(G0, dtype=int)             # (incremental layout: the stations already on the diagram stay where they are, only `movable` ones are placed)
+        T = G.astype(float)
     n = len(G)
     a_idx = np.array([e[0] for e in E])
     b_idx = np.array([e[1] for e in E])
@@ -211,7 +215,7 @@ def grid_refine(Xopt, g=0.4, sweeps=60, seed=1, verbose=True):
     for sw in range(sweeps):
         temp = 0.7 * (1 - sw / sweeps) ** 2 + 0.01
         moved = 0
-        for i in rng.permutation(n):
+        for i in rng.permutation(n if movable is None else np.nonzero(movable)[0]):
             cur = node_cost(G, i)
             best = None
             for (dx, dy) in cand:
@@ -486,7 +490,42 @@ def export(G, P1, sc, c_geo):
     print("wrote", path, os.path.getsize(path), "bytes")
 
 
+def add_stations():
+    """Incremental layout: keep every station that is already on data/tube_diagram.json where it is and place only the new ones (the Elizabeth line's own stations) on the grid,
+    starting from their warped geographic position moved with the displacement of the nearest old stations. The scale is the old one (median edge length of the old lines' edges)."""
+    old = json.load(open(os.path.join(ROOT, "data", "tube_diagram.json")))
+    G = np.zeros((N, 2))
+    known = np.zeros(N, dtype=bool)
+    for k, st in old["stations"].items():
+        if k in ix:
+            G[ix[k]] = (st["p"][0], -st["p"][1])
+            known[ix[k]] = True
+    P1, c = warp(P_GEO)
+    old_edges = [(a, b) for (a, b), lns in zip(E, E_LINES) if lns != ["elizabeth"]]
+    sc = 1.0 / np.median([np.linalg.norm(P1[b] - P1[a]) for a, b in old_edges])
+    P1 = (P1 - c) * sc
+    disp = G[known] - P1[known] / 0.4
+    base = P1[known] / 0.4
+    for i in np.nonzero(~known)[0]:
+        q = P1[i] / 0.4
+        d = np.linalg.norm(base - q, axis=1)
+        nn = np.argsort(d)[:4]
+        w = 1.0 / (d[nn] + 0.6)
+        G[i] = np.round(q + (disp[nn] * w[:, None]).sum(0) / w.sum())
+    print("placing %d new stations next to %d old ones" % ((~known).sum(), known.sum()))
+    G = grid_refine(G * 0.4, sweeps=90, G0=G, movable=~known)
+    X = G * 0.4
+    print("grid:     ", measure(X))
+    np.save(os.path.join(ROOT, "build", "diagram", "G.npy"), G)
+    np.save(os.path.join(ROOT, "build", "diagram", "X.npy"), X)
+    export(G, P1, sc, c)
+    if "--png" in sys.argv:
+        render_png(X, os.path.join(ROOT, "build", "diagram", "layout.png"))
+
+
 def main():
+    if "--add" in sys.argv:
+        return add_stations()
     P1, c = warp(P_GEO)
     # scale so the median edge length is about 1 unit
     lens = np.array([np.linalg.norm(P1[b] - P1[a]) for a, b in E])

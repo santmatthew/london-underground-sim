@@ -74,6 +74,11 @@ def apply_pron(text: str, pron: dict) -> str:
     return "".join(out)
 
 
+def art(word: str) -> str:
+    """"a Central line train", "an Elizabeth line train" """
+    return "an" if word[:1].lower() in "aeiou" else "a"
+
+
 def join_names(names):
     if len(names) == 1:
         return names[0]
@@ -379,16 +384,16 @@ def build_jobs(net, pron):
         shown_via = f" via {via}" if via else ""
         k = f"{lid}/{dest}" + (f"/via_{slug(via)}" if via else "")
         add(f"terminates/{k}", f"speech/terminates/{lid}_{dest}{vslug}_to.ogg", "female_pa", "train_pa",
-            f"This is a {lns} line train to {dn}{vtxt}.", "speech_train_dest",
-            f"This is a {ln} line train to {plain[dest]}{shown_via}.", line=lid, dest=dest, via=via)
+            f"This is {art(lns)} {lns} line train to {dn}{vtxt}.", "speech_train_dest",
+            f"This is {art(ln)} {ln} line train to {plain[dest]}{shown_via}.", line=lid, dest=dest, via=via)
         add(f"platform_approach/{k}", f"speech/platform/{lid}_{dest}{vslug}_approach.ogg", "female_pa", "platform_pa",
-            f"The next train approaching is a {lns} line train to {dn}{vtxt}. Please stand back from the platform edge.",
+            f"The next train approaching is {art(lns)} {lns} line train to {dn}{vtxt}. Please stand back from the platform edge.",
             "speech_platform",
-            f"The next train approaching is a {ln} line train to {plain[dest]}{shown_via}. "
+            f"The next train approaching is {art(ln)} {ln} line train to {plain[dest]}{shown_via}. "
             f"Please stand back from the platform edge.", line=lid, dest=dest, via=via)
         add(f"platform_next/{k}", f"speech/platform/{lid}_{dest}{vslug}_next.ogg", "female_pa", "platform_pa",
-            f"The next train is a {lns} line train to {dn}{vtxt}.", "speech_platform",
-            f"The next train is a {ln} line train to {plain[dest]}{shown_via}.", line=lid, dest=dest, via=via)
+            f"The next train is {art(lns)} {lns} line train to {dn}{vtxt}.", "speech_platform",
+            f"The next train is {art(ln)} {ln} line train to {plain[dest]}{shown_via}.", line=lid, dest=dest, via=via)
     for name, voice, style, text in GENERIC + numbers():
         cat = "speech_driver" if voice == "male_driver" else "speech_pa"
         add(name, f"speech/generic/{name}.ogg", voice, style, apply_pron(text, pron), cat, text)
