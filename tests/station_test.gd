@@ -13,6 +13,13 @@ func _ready() -> void:
 	var idx: int = Net.name_to_idx[sname]
 	var t0 := Time.get_ticks_msec()
 	var plan := StationPlan.for_station(idx)
+	var want_face := sys_arg("face", "")            # --face=elizabeth: the first platform face whose key contains this
+	if want_face != "":
+		var ks: Array = plan.faces.keys()
+		for ki in ks.size():
+			if String(ks[ki]).contains(want_face):
+				_face_index = ki
+				break
 	var t1 := Time.get_ticks_msec()
 	add_child(Env.make())
 	var st := Station.new()
@@ -179,6 +186,11 @@ func gz_hall(plan: StationPlan) -> float:
 
 
 func sys_arg(name: String, def: String) -> String:
+	if name == "fi" and _face_index >= 0:
+		return str(_face_index)
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--%s=" % name): return a.substr(name.length() + 3)
 	return def
+
+
+var _face_index := -1
