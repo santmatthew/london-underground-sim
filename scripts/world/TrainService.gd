@@ -161,7 +161,7 @@ func _spawn_pass(now: float) -> void:
 
 func _spawn(vkey: String, fkey: String, f: Dictionary, module: PlatformModule, info: Dictionary) -> void:
 	var plan := station.plan
-	var canon := 1 if f["face"] == 0 else -1
+	var canon := plan.canon_of(f)
 	var origin: bool = info["origin"]
 	var dir_arr := canon
 	var dir_dep := -canon if origin else canon

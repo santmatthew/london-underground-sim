@@ -37,7 +37,7 @@ func run():
 				var len := a.distance_to(b)
 				var steps := maxi(1, int(len / 0.4))
 				for s in steps + 1:
-					var p := a.lerp(b, float(s) / steps)
+					var p := st.to_phys(a.lerp(b, float(s) / steps))          # (the route is in design space: a curved platform is somewhere else in the world)
 					var q := PhysicsRayQueryParameters3D.create(p + Vector3(0, 1.2, 0), p + Vector3(0, -2.5, 0))
 					q.collision_mask = 1
 					var hit := space.intersect_ray(q)

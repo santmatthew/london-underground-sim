@@ -94,7 +94,7 @@ func start(p_game: Node3D, p_train: Train, p_run: int, p_k: int, p_origin: Stati
 	var dbend: Dictionary = dest_plan.modules[df["module"]].get("bend", {})
 	if not dbend.is_empty():
 		var db := Bend.new(float(dbend["kappa"]), float(dbend["x0"]), float(dbend["x1"]), 0.0)
-		tail = db.arrival_segments(0.0, 1 if df["face"] == 0 else -1, float(df["side"]) * (PlatformModule.GAP * 0.5 + float(df["pw"]) + PlatformModule.TRACK_TO_EDGE))
+		tail = db.arrival_segments(0.0, dest_plan.canon_of(df), float(df["side"]) * (PlatformModule.GAP * 0.5 + float(df["pw"]) + PlatformModule.TRACK_TO_EDGE))
 	var head_end := 0.0
 	for g in head:
 		head_end += float(g[0])
@@ -221,7 +221,7 @@ func _start_tunnel(travelled: float) -> void:
 	phase = Phase.TUNNEL
 	tunnel = TunnelRun.new()
 	game.add_child(tunnel)
-	tunnel.setup(path)
+	tunnel.setup(path, train.door_side == "R")
 	tunnel.global_transform = _world(travelled + car_offset)
 	tunnel.place(travelled + car_offset)
 	if origin.crowd != null:
@@ -287,7 +287,7 @@ func _start_arrive(remaining: float) -> void:
 	var f: Dictionary = dest_plan.faces[dest_face_key]
 	var module: PlatformModule = dest_station.modules[f["module"]]
 	# where the train stands inside the module for this face (canonical arrival direction); on a curved platform the pose the track has at the stop
-	var canon := 1 if f["face"] == 0 else -1
+	var canon := dest_plan.canon_of(f)
 	var tz: float = f["track_z"] - dest_plan.modules[f["module"]]["pos"].z
 	var turn := Transform3D(Basis(Vector3.UP, 0.0 if canon > 0 else PI), Vector3.ZERO)
 	var slot := Transform3D(Basis.IDENTITY, Vector3(0, PlatformModule.RAIL_Y, tz)) * turn
@@ -320,7 +320,7 @@ func _finish() -> void:
 	# adopt the train into the destination module at its slot
 	var side: float = f["side"]
 	train.reparent(module, true)
-	var canon := 1 if f["face"] == 0 else -1
+	var canon := dest_plan.canon_of(f)
 	train.position = Vector3(0, PlatformModule.RAIL_Y, side * (PlatformModule.GAP * 0.5 + module.meta["pw"] + PlatformModule.TRACK_TO_EDGE))
 	train.rotation = Vector3(0, 0.0 if canon > 0 else PI, 0)
 	train.setup_orientation(canon, -side)     # orientation is relative to the destination module, not the origin one

@@ -5,12 +5,14 @@ func _ready() -> void:
 	var view := "ahead"
 	var at := 0.0
 	var cls := 0
+	var mirror := false
 	var out := "res://build/tunnel_view.png"
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--view="): view = a.substr(7)
 		if a.begins_with("--at="): at = float(a.substr(5))
 		if a.begins_with("--curve="): cls = int(a.substr(8))
 		if a.begins_with("--out="): out = a.substr(6)
+		if a == "--mirror": mirror = true             # the platform on the right of the train
 	add_child(Env.make(0))
 	var ks := PackedFloat32Array()
 	for k in 60:
@@ -19,7 +21,7 @@ func _ready() -> void:
 	path._build(ks, 600.0)
 	var t := TunnelRun.new()
 	add_child(t)
-	t.setup(path)
+	t.setup(path, mirror)
 	while t.busy():
 		await get_tree().process_frame
 	t.place(at)

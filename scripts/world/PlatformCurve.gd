@@ -42,12 +42,13 @@ static func for_module(plan: StationPlan, mi: int) -> Dictionary:
 		var sid: String = Net.station_ids[plan.idx]
 		var sum := 0.0
 		var n := 0
+		var dsign: int = int(m.get("dir_sign", 1))
 		for fi in (m["faces"] as Array).size():
 			var fd: Dictionary = m["faces"][fi]
 			var d := face_dh(sid, String(fd["pid"]))
 			if is_nan(d):
 				continue
-			sum += d if fi == 0 else -d              # (face B's trains run toward -x: a left turn for them is a right turn along +x)
+			sum += d * float(dsign if fi == 0 else -dsign)          # (a face whose trains run toward -x: a left turn for them is a right turn along +x)
 			n += 1
 		if n == 0:
 			return {}
@@ -132,6 +133,31 @@ static func _conflicts(plan: StationPlan, mi: int, bd: Dictionary) -> bool:
 	return false
 
 
+## which way the trains of a module run along it: +1 when face 0's trains run toward +x with the platform on their LEFT (the doors open on the left), -1 when they run toward -x and the
+## platform is on their RIGHT. The sides come from where the platform outlines lie beside the track in OpenStreetMap (data/line_geometry.json); where there are none the platform stays on the left.
+static func dir_sign_for(plan: StationPlan, mi: int) -> int:
+	var sid: String = Net.station_ids[plan.idx]
+	var votes := 0
+	for fd in plan.modules[mi]["faces"]:
+		var sd := face_side(sid, String(fd["pid"]))
+		if sd == "R":
+			votes -= 1
+		elif sd == "L":
+			votes += 1
+	return -1 if votes < 0 else 1
+
+
+## "L", "R" or "B" (both sides) / "" (unknown): on which side of the train, looking the way it goes, the platform at `pid` of station `sid` lies
+static func face_side(sid: String, pid: String) -> String:
+	var plats: Dictionary = TrackPath.data().get("platforms", {})
+	if not plats.has(sid):
+		return ""
+	var nx := _next_station(sid, pid)
+	if nx == "" or not (plats[sid] as Dictionary).has(nx):
+		return ""
+	return String(plats[sid][nx].get("side", ""))
+
+
 ## the heading change (degrees across the platform, + = left) of the track at platform `pid` of station `sid` in the direction the trains leave it; NAN when the data has none
 static func face_dh(sid: String, pid: String) -> float:
 	var plats: Dictionary = TrackPath.data().get("platforms", {})
@@ -140,7 +166,7 @@ static func face_dh(sid: String, pid: String) -> float:
 	var nx := _next_station(sid, pid)
 	if nx == "" or not (plats[sid] as Dictionary).has(nx):
 		return NAN
-	return float(plats[sid][nx]["dh"])
+	return float(plats[sid][nx].get("dh", NAN))
 
 
 ## the station the trains leave platform `pid` of station `sid` for (a service that calls there and uses it, going forward or back)

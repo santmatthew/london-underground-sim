@@ -82,6 +82,10 @@ and rate limited: relations are fetched one at a time inside the London bounding
   the people on the curve; the autopilot's waypoints are mapped (with intermediate points, a chord would cut the corner); trains come from `Train.place(x)` (`design_x`), doors from `Train.slot_global`.
 - Wide cars (sub-surface S stock, 3.0 m) have only 5 cm to the platform edge on a straight, so on a bend `Train.place` moves a car away from the platform just enough to keep `MIN_GAP` (7 cm) at its middle and both ends
   (`_clearance_deficit`; the shift is kept while the train rides on).
+- **Which side the doors open on.** `PlatformCurve.face_side` reads, from `data/line_geometry.json`, whether the platform outline in OpenStreetMap lies left or right of the track (`tools/build_line_geometry.py`, `door_side`);
+  `dir_sign_for` turns that into the module's `dir_sign` and `StationPlan.canon_of(face)` gives the direction along the module a face's trains run: with the platform on the RIGHT (island platforms ...) the trains run the other way
+  round, so `Train.door_side` is "R", the passengers and the autopilot use the right-hand doors and `TunnelRun` mirrors its cross-section. Data covers about half of the 385 modules; the rest keep the platform on the left. A module whose two
+  platforms are on different sides (one outer, one inner) cannot be drawn: it follows the majority. `door_side_test` checks it.
 - Gotchas: a straight line in design space is not a straight line in the world (audits sweep `to_phys` of each sample); shared statics read by plan-building worker threads need a mutex
   (`PlatformCurve`, `TrackPath.data`); `WorkerThreadPool` tasks must be waited for (`wait_for_task_completion`) or the engine corrupts memory at exit.
 - Tests: `bend_test` (maths), `ride_curve_test` (forced curve), `curved_platform_test` (Bank: floor, edge guard, walls, cars, gap, crowd), `curved_ride_test` (Bank -> Liverpool Street, real geometry),

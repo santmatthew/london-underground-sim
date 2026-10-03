@@ -522,7 +522,7 @@ func _wait_train(delta: float) -> void:
 	var lg: Dictionary = legs[leg_i]
 	# look along the platform towards where the train will come from
 	var f: Dictionary = st.plan.faces[target_face]
-	var from_dir := -1.0 if f["face"] == 0 else 1.0
+	var from_dir := -float(st.plan.canon_of(f))
 	var dirv: Vector3 = st.global_transform.basis * Vector3(from_dir, 0, 0.0)
 	player.bot_yaw_target = atan2(-dirv.x, -dirv.z)
 	player.bot_pitch_target = 0.04

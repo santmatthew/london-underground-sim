@@ -138,6 +138,43 @@ def sub(poly, s0, s1):
     return pts
 
 
+def nearest_on(poly, p):
+    best = (1e18, None)
+    for a, b in zip(poly, poly[1:]):
+        ab = (b[0] - a[0], b[1] - a[1])
+        l2 = ab[0] ** 2 + ab[1] ** 2
+        t = 0.0 if l2 == 0 else max(0.0, min(1.0, ((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1]) / l2))
+        q = (a[0] + ab[0] * t, a[1] + ab[1] * t)
+        d = math.dist(p, q)
+        if d < best[0]:
+            best = (d, q)
+    return best
+
+
+def door_side(stop, path, plat_ways, reach=30.0):
+    """on which side of the track (looking the way the train goes) the platform(s) at `stop` lie: 'L', 'R', 'B' (both) or '' (no platform outline near)"""
+    if path is None or len(path) < 2:
+        return ""
+    cs = cum(path)
+    a, b = at(path, cs, 0.0), at(path, cs, min(15.0, cs[-1]))
+    d = (b[0] - a[0], b[1] - a[1])
+    if d == (0.0, 0.0):
+        return ""
+    left = right = False
+    for pw in plat_ways:
+        dist, q = nearest_on(pw, stop)
+        if q is None or dist > reach:
+            continue
+        cross = d[0] * (q[1] - stop[1]) - d[1] * (q[0] - stop[0])
+        if dist < 0.8:
+            continue
+        if cross > 0:
+            left = True
+        else:
+            right = True
+    return "B" if left and right else ("L" if left else ("R" if right else ""))
+
+
 def main():
     net = json.load(open(os.path.join(ROOT, "data", "network.json")))
     stations = net["stations"]
@@ -157,7 +194,13 @@ def main():
             continue
         g = Graph()
         stops = []
+        plat_ways = []            # the platform outlines of the relation (to see on which side of the track each platform lies)
         for m in rel["members"]:
+            if m["type"] == "way" and m.get("role", "").startswith("platform") and m.get("geometry"):
+                pw = [xy(p["lat"], p["lon"]) for p in m["geometry"] if p]
+                if len(pw) >= 2:
+                    plat_ways.append(pw)
+                continue
             if m["type"] == "way" and m.get("role", "") in ("", "forward", "backward") and m.get("geometry"):
                 # (a relation fetched with a bounding box has no coordinates for what lies outside it: the way is cut there)
                 piece = []
@@ -218,6 +261,9 @@ def main():
             nxt = seq[i + 1] if i + 1 < len(seq) else None
             if nxt is None or paths[i] is None:
                 continue
+            side = door_side(stops[i], paths[i], plat_ways)
+            if side:
+                plats.setdefault(sid, {}).setdefault(nxt, {"line": line})["side"] = side
             half = PLAT_SPAN * 0.5
             ahead = sub(paths[i], 0.0, half)
             behind = None
@@ -231,7 +277,8 @@ def main():
             ha = math.atan2(*(lambda p, q: (q[1] - p[1], q[0] - p[0]))(at(poly, c2, 0.0), at(poly, c2, SMOOTH)))
             hb = math.atan2(*(lambda p, q: (q[1] - p[1], q[0] - p[0]))(at(poly, c2, c2[-1] - SMOOTH), at(poly, c2, c2[-1])))
             dh = (hb - ha + math.pi) % (2 * math.pi) - math.pi
-            plats.setdefault(sid, {})[nxt] = {"dh": round(math.degrees(dh), 1), "line": line}
+            ent = plats.setdefault(sid, {}).setdefault(nxt, {"line": line})
+            ent["dh"] = round(math.degrees(dh), 1)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     json.dump({"step": STEP, "span": PLAT_SPAN, "pairs": pairs, "platforms": plats}, open(OUT, "w"), separators=(",", ":"))
     print(stats, "pairs:", len(pairs), "platform entries:", sum(len(v) for v in plats.values()), "bytes:", os.path.getsize(OUT))

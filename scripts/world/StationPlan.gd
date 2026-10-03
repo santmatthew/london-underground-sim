@@ -447,9 +447,18 @@ func finish_common(rng: RandomNumberGenerator = null) -> void:
 	if real_no.size() == platform_no.size():
 		platform_no = real_no
 	for mi in modules.size():
+		modules[mi]["dir_sign"] = PlatformCurve.dir_sign_for(self, mi)    # which side of the train the platform is on (doors left / right)
+	for mi in modules.size():
 		modules[mi]["bend"] = PlatformCurve.for_module(self, mi)         # curved platforms (Bank, Liverpool Street ...): {} for a straight one
 	_add_start_spots(rng)
 	_add_lifts()
+
+
+## the direction along its module (+1 / -1 in x) in which the trains of platform face `f` (a `faces` entry) travel: face 0 runs one way, face 1 the other, and a module whose platforms are on the right
+## of the trains (island platforms) has them the other way round
+func canon_of(f: Dictionary) -> int:
+	var ds: int = int(modules[f["module"]].get("dir_sign", 1))
+	return ds if f["face"] == 0 else -ds
 
 
 func _reset_plan() -> void:
@@ -905,7 +914,7 @@ func _access_node(ei: int, top: bool) -> String:
 ## bottom door front (portal); only the player's and the planner's graph (adj_lift) has them. Needs a free stretch of wall in both rooms.
 const SPIRAL_DOOR_W := 1.4
 const SPIRAL_DOOR_D := 0.5
-const SPIRAL_S_PER_STEP := 0.5        # seconds a step takes on average (Player: about 0.6 up, 0.4 down on the helix)
+const SPIRAL_S_PER_STEP := 0.43       # seconds a step takes on average (Player at 1.8 m/s: about 0.52 up, 0.35 down on the helix)
 
 
 func _add_spirals(taken: Array) -> void:

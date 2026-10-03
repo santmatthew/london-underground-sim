@@ -10,6 +10,7 @@ const N_SEG := 22
 const N_VAR := 3
 
 var path: TrackPath
+var mirror := false                  # the platform is on the RIGHT of the train (the cross-section is built with it on the left): the scenery is mirrored across the track
 var segs: Array = []                 # the MeshInstance3D of cell k at index posmod(k, N_SEG)
 var _lamps: Array = []               # the OmniLight3D of each instance
 var _cells: PackedInt32Array = PackedInt32Array()
@@ -23,8 +24,9 @@ static var _pending: Dictionary = {}        # key -> true while a worker builds 
 static var _jobs: Array = []                # [task id, key, [MeshKit]] of the workers that are building them
 
 
-func setup(p_path: TrackPath = null) -> void:
+func setup(p_path: TrackPath = null, p_mirror := false) -> void:
 	path = p_path if p_path != null else TrackPath.new()
+	mirror = p_mirror
 	_zfar = PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE + PlatformModule.TRACK_TO_WALL
 	_ztrack = _zfar - PlatformModule.TRACK_TO_WALL
 	_zwall_run = _zfar - (PlatformModule.TRACK_TO_WALL + PlatformModule.TRACK_TO_EDGE + PlatformModule.PW_RUN)
@@ -182,7 +184,8 @@ func place(s: float) -> void:
 		var s0 := float(k) * SEG_LEN - SEG_LEN * 0.5
 		var pe := path.pose(s0)
 		var fwd := pe.basis.x
-		mi.transform = Transform3D(pe.basis, pe.origin + fwd * (SEG_LEN * 0.5)) * Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, -_ztrack))
+		var flip := Transform3D(Basis.from_scale(Vector3(1.0, 1.0, -1.0 if mirror else 1.0)), Vector3.ZERO)
+		mi.transform = Transform3D(pe.basis, pe.origin + fwd * (SEG_LEN * 0.5)) * flip * Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, -_ztrack))
 		# the lamp hangs at the middle of the cell: where the bend puts it
 		var lp := Vector3(0, TunnelDetail.LAMP_Y - 0.1, _zfar - 0.7)
 		if cls != 0:
