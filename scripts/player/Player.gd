@@ -7,10 +7,10 @@ signal sat_down
 signal stood_up
 signal fell(from_pos: Vector3, safe: Vector3)     # emitted just before the fall-safety respawn (diagnostics)
 
-const WALK_SPEED := 1.55        # m/s, ordinary commuter pace
-const HURRY_SPEED := 2.6        # brisk walk (Shift), drains stamina
+const WALK_SPEED := 1.8         # m/s, a purposeful commuter pace (the planner's par assumes PLAN_WALK in StationPlan, a hair below)
+const HURRY_SPEED := 2.8        # brisk walk (Shift), drains stamina
 const RUN_SPEED := 3.6          # jog/run while stamina lasts (Shift + Ctrl)
-const EYE_HEIGHT := 1.66
+const EYE_HEIGHT := 1.58         # eyes of a 1.70 m adult (the crowd averages 1.70 m, so you no longer look over their heads)
 const SEATED_EYE := 1.12         # eye height above the floor when sitting (seat cushion 0.45 m)
 const SIT_TIME := 0.5
 const GRAVITY := 18.0
@@ -61,9 +61,9 @@ func _ready() -> void:
 	var cs := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
 	cap.radius = 0.27
-	cap.height = 1.76
+	cap.height = 1.72
 	cs.shape = cap
-	cs.position.y = 0.88
+	cs.position.y = 0.86
 	add_child(cs)
 	_body_shape = cs
 	head = Node3D.new()

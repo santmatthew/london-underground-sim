@@ -103,7 +103,11 @@ func _node(n: String, pos: Vector3) -> int:
 	return nodes.size() - 1
 
 
-func _edge(a: String, b: String, cost_override := -1.0, speed := 1.5) -> void:
+## the walking pace the par assumes (m/s): a hair below the player's default (Player.WALK_SPEED)
+const PLAN_WALK := 1.75
+
+
+func _edge(a: String, b: String, cost_override := -1.0, speed := PLAN_WALK) -> void:
 	var ia: int = node_idx[a]
 	var ib: int = node_idx[b]
 	var d: float = (nodes[ia]["pos"] as Vector3).distance_to(nodes[ib]["pos"])
@@ -996,7 +1000,7 @@ func _edge_spiral(a: String, b: String, cost: float) -> void:
 func _edge_lift_only(a: String, b: String, cost_override := -1.0) -> void:
 	var ia: int = node_idx[a]
 	var ib: int = node_idx[b]
-	var c := cost_override if cost_override >= 0.0 else (nodes[ia]["pos"] as Vector3).distance_to(nodes[ib]["pos"]) / 1.5
+	var c := cost_override if cost_override >= 0.0 else (nodes[ia]["pos"] as Vector3).distance_to(nodes[ib]["pos"]) / PLAN_WALK
 	adj_lift[ia].append([ib, c, -1])
 	adj_lift[ib].append([ia, c, -1])
 
@@ -1179,7 +1183,7 @@ func _apply_lift_only() -> void:
 func _edge_plain(a: String, b: String, cost_override := -1.0) -> void:
 	var ia: int = node_idx[a]
 	var ib: int = node_idx[b]
-	var c := cost_override if cost_override >= 0.0 else (nodes[ia]["pos"] as Vector3).distance_to(nodes[ib]["pos"]) / 1.5
+	var c := cost_override if cost_override >= 0.0 else (nodes[ia]["pos"] as Vector3).distance_to(nodes[ib]["pos"]) / PLAN_WALK
 	adj[ia].append([ib, c, -1])
 	adj[ib].append([ia, c, -1])
 
@@ -1187,7 +1191,7 @@ func _edge_plain(a: String, b: String, cost_override := -1.0) -> void:
 func _edge_sf(a: String, b: String, cost_override := -1.0) -> void:
 	var ia: int = node_idx[a]
 	var ib: int = node_idx[b]
-	var c := cost_override if cost_override >= 0.0 else (nodes[ia]["pos"] as Vector3).distance_to(nodes[ib]["pos"]) / 1.5
+	var c := cost_override if cost_override >= 0.0 else (nodes[ia]["pos"] as Vector3).distance_to(nodes[ib]["pos"]) / PLAN_WALK
 	adj_sf[ia].append([ib, c, -1])
 	adj_sf[ib].append([ia, c, -1])
 	adj_lift[ia].append([ib, c, -1])

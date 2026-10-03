@@ -12,7 +12,7 @@ const R_OUT := 1.70            # the wall
 const WALK_R := 1.05           # the line people walk along
 const WALL_H := 3.2            # the wall above the top landing
 const LANDING_ARC := 2.4       # the landings extend this many steps' worth of angle either side
-const PACE_UP := 0.40          # walking pace on the helix as a fraction of the flat pace (Player.WALK_SPEED 1.55 m/s): 0.39 m of arc a step at about 0.65 s a step
+const PACE_UP := 0.40          # walking pace on the helix as a fraction of the flat pace (Player.WALK_SPEED 1.8 m/s): 0.39 m of arc a step at about 0.65 s a step
 const PACE_DOWN := 0.52        # ... and down, about 0.38 s a step
 
 var steps := 100
