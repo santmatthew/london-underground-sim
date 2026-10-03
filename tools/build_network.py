@@ -67,11 +67,7 @@ OPP = {"Northbound": "Southbound", "Southbound": "Northbound", "Eastbound": "Wes
 # ---- stations -------------------------------------------------------------------------------
 # The Elizabeth line's stops are rail-station ids (910G...). Where the line shares a station complex with the Underground, its platforms join the Underground station's node
 # (one station, one plan, interchange inside it); the other stops become stations of their own.
-EL_MERGE = {
-    "910GPADTLL": "940GZZLUPAC", "910GPADTON": "940GZZLUPAC", "910GBONDST": "940GZZLUBND", "910GTOTCTRD": "940GZZLUTCR", "910GFRNDXR": "940GZZLUFCN",
-    "910GLIVSTLL": "940GZZLULVT", "910GWCHAPXR": "940GZZLUWPL", "910GSTFD": "940GZZLUSTD", "910GCANWHRF": "940GZZLUCYF", "910GEALINGB": "940GZZLUEBY",
-    "910GHTRWAPT": "940GZZLUHRC", "910GHTRWTM4": "940GZZLUHR4", "910GHTRWTM5": "940GZZLUHR5",
-}
+from elizabeth_ids import EL_MERGE
 # the stub Shenfield - Liverpool Street (main line) is not an Elizabeth line service
 EL_SKIP_ROUTES = ("Shenfield &harr; London Liverpool Street",)
 # how an Elizabeth-line-only station is built: Woolwich is a deep box under the Royal Arsenal, the rest are rail stations at ground level
@@ -143,6 +139,9 @@ for lid, ln in lines.items():
                 if lid not in pl["lines"]: pl["lines"].append(lid)
                 if terminal: pl["terminal"] = True
         svc["plat_fwd"], svc["plat_bwd"] = plat_fwd, plat_bwd
+
+# stops that appear in a line's stop sequences but that none of its services calls at (the Elizabeth line's API lists the main-line Liverpool Street) are not stations of this network
+stations = {sid: s for sid, s in stations.items() if s["lines"]}
 
 # ---- classification -----------------------------------------------------------------------------
 for sid, s in stations.items():

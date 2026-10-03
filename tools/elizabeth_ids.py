@@ -1,0 +1,8 @@
+"""Which Elizabeth line stops are platforms of an Underground station in the network (one station node, one plan, interchange inside it)."""
+EL_MERGE = {
+    "910GPADTLL": "940GZZLUPAC", "910GPADTON": "940GZZLUPAC", "910GBONDST": "940GZZLUBND", "910GTOTCTRD": "940GZZLUTCR", "910GFRNDXR": "940GZZLUFCN",
+    "910GLIVSTLL": "940GZZLULVT", "910GWCHAPXR": "940GZZLUWPL", "910GSTFD": "940GZZLUSTD", "910GCANWHRF": "940GZZLUCYF", "910GEALINGB": "940GZZLUEBY",
+    "910GHTRWAPT": "940GZZLUHRC", "910GHTRWTM4": "940GZZLUHR4", "910GHTRWTM5": "940GZZLUHR5",
+    # other ids the arrivals feed uses for the same stations
+    "910GFRNDNLT": "940GZZLUFCN", "910GWCHAPEL": "940GZZLUWPL", "910GLIVST": "940GZZLULVT",
+}

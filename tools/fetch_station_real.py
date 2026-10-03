@@ -7,7 +7,9 @@ Sources (both open data, attribution in CREDITS.md):
   * OpenStreetMap via Overpass (ODbL): subway entrances (real exit numbers and names), platforms (ref, level, geometry), stairs and
     escalators (level/layer), running-tunnel ways (line, depth layer).
 
-usage: fetch_station_real.py [--only "Oxford Circus"] [--refresh]
+usage: fetch_station_real.py [--only "Oxford Circus"] [--refresh] [--missing]
+  --missing  only the stations of data/network.json that data/stations_real.json does not have yet (the Elizabeth line's rail stations); their OSM features come from Overpass
+             (the bulk extract covers Greater London's Underground stations only), and the file's other entries are kept
 Raw responses are cached in build/real_raw/ (git-ignored); the digest goes to data/stations_real.json (committed, small).
 """
 import json, math, os, sys, time, urllib.request, urllib.parse
@@ -53,12 +55,13 @@ def osm_query(lat, lon, radius):
     a = "around:%d,%.6f,%.6f" % (radius, lat, lon)
     return ('[out:json][timeout:120];('
             'node["railway"="subway_entrance"](%s);'
+            'node["railway"="train_station_entrance"](%s);'
             'way["railway"="platform"](%s);'
             'way["public_transport"="platform"]["subway"="yes"](%s);'
             'way["highway"="steps"](%s);'
             'way["conveying"](%s);'
             'way["railway"="subway"](%s);'
-            ');out tags geom 700;') % (a, a, a, a, a, a)
+            ');out tags geom 700;') % (a, a, a, a, a, a, a)
 
 
 def m_per_deg(lat):
@@ -97,17 +100,20 @@ def digest(naptan, st, tj, oj):
             return 0
     facility = {"gates": num("Gates"), "escalators": num("Escalators"), "lifts": num("Lifts"), "ticket_halls": num("Ticket Halls"),
                 "zone": props.get("Zone", ""), "bridge": props.get("Bridge", "") == "yes"}
+    if naptan.startswith(("910G", "HUB")) and facility["lifts"] == 0:
+        # the TfL record of a rail station has no counts, but every Elizabeth line station is step-free from street to platform (Wikipedia, "Elizabeth line"): lifts, count unknown
+        facility["lifts"] = 2
     tfl_ent, tfl_plat = [], []
     for c in tj.get("children", []):
         e, n = to_xy(lat0, lon0, c["lat"], c["lon"])
-        if c.get("stopType") == "NaptanMetroEntrance":
+        if c.get("stopType") in ("NaptanMetroEntrance", "NaptanRailEntrance"):
             tfl_ent.append({"id": c["id"], "e": round(e, 1), "n": round(n, 1)})
         elif c.get("stopType") == "NaptanMetroPlatform":
             tfl_plat.append({"id": c["id"], "e": round(e, 1), "n": round(n, 1)})
     ent, plat, steps, tunnels, ways = [], [], {"count": 0, "levels": {}}, [], []
     for el in (oj or {}).get("elements", []):
         t = el.get("tags", {})
-        if el["type"] == "node" and t.get("railway") == "subway_entrance":
+        if el["type"] == "node" and t.get("railway") in ("subway_entrance", "train_station_entrance"):
             e, n = to_xy(lat0, lon0, el["lat"], el["lon"])
             ent.append({"ref": t.get("ref", ""), "name": t.get("name", ""), "exit_only": t.get("entrance") == "exit", "e": round(e, 1), "n": round(n, 1)})
             continue
@@ -186,11 +192,12 @@ def main():
         only = sys.argv[sys.argv.index("--only") + 1]
     os.makedirs(RAW, exist_ok=True)
     net = json.load(open(os.path.join(ROOT, "data", "network.json")))
-    result = json.load(open(OUT)) if os.path.exists(OUT) else {}
-    todo = [(k, v) for k, v in net["stations"].items() if (only is None or v["name"] == only)]
-    bulk = load_bulk()
+    existing = json.load(open(OUT)) if os.path.exists(OUT) else {}
+    missing = "--missing" in sys.argv
+    todo = [(k, v) for k, v in net["stations"].items() if (only is None or v["name"] == only) and (not missing or k not in existing)]
+    bulk = load_bulk() if not missing else []
     print("bulk OSM elements:", len(bulk))
-    result = {}
+    result = dict(existing) if (missing or only is not None) else {}
     for i, (naptan, st) in enumerate(todo):
         if naptan in result and not refresh and only is None:
             continue
@@ -206,7 +213,20 @@ def main():
                 tj = {"additionalProperties": [], "children": []}
             time.sleep(0.6)
         rad = 260 if len(st["lines"]) >= 3 else 190
-        oj = near(bulk, st["lat"], st["lon"], rad)
+        if missing:
+            ocache = os.path.join(RAW, naptan + ".osm.json")
+            if os.path.exists(ocache) and not refresh:
+                oj = json.load(open(ocache))
+            else:
+                try:
+                    oj = overpass(osm_query(st["lat"], st["lon"], 220))
+                    json.dump(oj, open(ocache, "w"))
+                except Exception as e:
+                    print("OSM fail", naptan, e)
+                    oj = {"elements": []}
+                time.sleep(2.0)
+        else:
+            oj = near(bulk, st["lat"], st["lon"], rad)
         result[naptan] = digest(naptan, st, tj, oj)
         d = result[naptan]
         print("%3d/%d %-32s ent osm %d tfl %d | plat osm %d tfl %d | esc %s gates %s halls %s | steps %d" % (

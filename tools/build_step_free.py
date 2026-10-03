@@ -10,6 +10,10 @@ import csv
 import json
 import os
 import re
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from elizabeth_ids import EL_MERGE
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 G = os.path.join(ROOT, "build", "tfl_topology", "gtfs")
@@ -27,16 +31,18 @@ def main():
     out = {}
     covered_gtfs = covered_hub = 0
     for nid, s in net.items():
-        parents = [nid] + ([s["hub"]] if s.get("hub") else [])
+        parents = [nid] + ([s["hub"]] if s.get("hub") else []) + [k for k, v in EL_MERGE.items() if v == nid]      # (the Elizabeth line's own station ids inside this one)
         outs = [k for k, v in stops.items() if v["parent_station"] in parents and v["location_type"] == "3" and v["stop_name"].startswith("Outside")]
         plats = [k for k, v in stops.items() if v["parent_station"] in parents and v["location_type"] == "0"]
         # at a hub keep the platforms of our lines (the hub also holds the rail platforms and the other Underground station's)
         lines = set(s["lines"])
         keep = []
         for p in plats:
-            m = re.match(r".*-Plat(\w+?)-(\w+)-([\w-]+)$", p)
-            if m and m.group(3) in lines and (p.startswith(nid) or not p.startswith("940G") or s.get("hub")):
-                keep.append((p, m.group(2), m.group(3)))
+            m = re.match(r".*-Plat(\w+?)-(\w+)-([\w|-]+)$", p)
+            # (a platform shared with another line, "district|circle", was never matched and still is not; only the Elizabeth line's "elizabeth|national-rail" are)
+            ml = (set(m.group(3).split("|")) & lines) if (m and ("|" not in m.group(3) or "elizabeth" in m.group(3))) else set()
+            if m and ml and (p.startswith(nid) or not p.startswith("940G") or s.get("hub")):
+                keep.append((p, m.group(2), "elizabeth" if "elizabeth" in ml else sorted(ml)[0]))
         if not keep or not outs:
             continue
         if keep[0][0].startswith(nid):

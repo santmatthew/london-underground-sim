@@ -1,4 +1,117 @@
 {
+"910GABWDXR": {
+"elizabeth|Westbound": true
+},
+"910GACTONML": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GBNHAM": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GBRTWOOD": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GCHDWLHT": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GCUSTMHS": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GFRSTGT": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GGIDEAPK": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GGODMAYS": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GHANWELL": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GHAYESAH": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GHRLDWOD": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GILFORD": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GIVER": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GLANGLEY": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GMANRPK": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GMDNHEAD": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GMRYLAND": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GRDNGSTN": {
+"elizabeth|Eastbound": true
+},
+"910GROMFORD": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GSHENFLD": {
+"elizabeth|Westbound": true
+},
+"910GSLOUGH": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GSTHALL": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GSVNKNGS": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GTAPLOW": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GTWYFORD": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GWDRYTON": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GWEALING": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
+"910GWOLWXR": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
+},
 "940GZZBPSUST": {
 "northern|Northbound": true
 },
@@ -66,6 +179,8 @@
 "940GZZLUBND": {
 "central|Eastbound": true,
 "central|Westbound": true,
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true,
 "jubilee|Northbound": true,
 "jubilee|Southbound": true
 },
@@ -193,6 +308,8 @@
 "metropolitan|Southbound": false
 },
 "940GZZLUCYF": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true,
 "jubilee|Eastbound": true,
 "jubilee|Westbound": true
 },
@@ -223,7 +340,9 @@
 },
 "940GZZLUEBY": {
 "central|Eastbound": true,
-"district|Eastbound": true
+"district|Eastbound": true,
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
 },
 "940GZZLUECT": {
 "district|Eastbound": true,
@@ -268,6 +387,10 @@
 "940GZZLUFBY": {
 "district|Eastbound": true,
 "district|Westbound": true
+},
+"940GZZLUFCN": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
 },
 "940GZZLUFLP": {
 "central|Eastbound": false,
@@ -372,12 +495,16 @@
 "central|Westbound": false
 },
 "940GZZLUHR4": {
+"elizabeth|Westbound": true,
 "piccadilly|Eastbound": true
 },
 "940GZZLUHR5": {
+"elizabeth|Eastbound": true,
 "piccadilly|Eastbound": true
 },
 "940GZZLUHRC": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true,
 "piccadilly|Eastbound": true,
 "piccadilly|Westbound": true
 },
@@ -468,7 +595,9 @@
 },
 "940GZZLULVT": {
 "central|Eastbound": false,
-"central|Westbound": false
+"central|Westbound": false,
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
 },
 "940GZZLULYN": {
 "central|Eastbound": false,
@@ -590,7 +719,9 @@
 },
 "940GZZLUPAC": {
 "bakerloo|Northbound": true,
-"bakerloo|Southbound": true
+"bakerloo|Southbound": true,
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
 },
 "940GZZLUPCC": {
 "bakerloo|Northbound": false,
@@ -718,6 +849,8 @@
 "940GZZLUSTD": {
 "central|Eastbound": true,
 "central|Westbound": true,
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true,
 "jubilee|Westbound": true
 },
 "940GZZLUSTM": {
@@ -766,6 +899,8 @@
 "940GZZLUTCR": {
 "central|Eastbound": true,
 "central|Westbound": true,
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true,
 "northern|Northbound": true,
 "northern|Southbound": true
 },
@@ -879,6 +1014,10 @@
 "940GZZLUWOP": {
 "northern|Northbound": true,
 "northern|Southbound": true
+},
+"940GZZLUWPL": {
+"elizabeth|Eastbound": true,
+"elizabeth|Westbound": true
 },
 "940GZZLUWRP": {
 "central|Eastbound": false
