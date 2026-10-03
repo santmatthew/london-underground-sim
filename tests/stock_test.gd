@@ -12,7 +12,7 @@ func check(c: bool, what: String) -> void:
 
 
 func run():
-	var want := {"bakerloo": "deep72", "piccadilly": "deep72", "central": "deep", "northern": "deep", "victoria": "deep", "jubilee": "deep", "waterloo-city": "deep",
+	var want := {"bakerloo": "deep72", "piccadilly": "deep72", "central": "deep92", "northern": "deep", "victoria": "deep", "jubilee": "deep", "waterloo-city": "deep92",
 		"district": "ss", "circle": "ss", "metropolitan": "ss", "hammersmith-city": "ss", "elizabeth": "ss"}
 	var space := get_world_3d().direct_space_state
 	var shape := CapsuleShape3D.new()

@@ -92,8 +92,8 @@ and rate limited: relations are fetched one at a time inside the London bounding
   `bend_list_test` (every curved platform of the network), `ride_speed_test` (real lengths vs timetable), `tunnel_view_test --curve=7 --at=100` (screenshot).
 
 ## Rolling stock per line
-`Train.stock_of_line(lid)` picks the car model family of a line: the Bakerloo (1972 stock) and the Piccadilly (1973 stock) run `deep72` - transverse seating bays at the car ends, longitudinal seats between the doors, red
-moquette (`make_train.py`, `seating='mixed'`) - the other tubes `deep` (longitudinal seats), the Circle, District, Hammersmith & City and Metropolitan lines and the Elizabeth line `ss` (S-stock-style, walk-through).
+`Train.stock_of_line(lid)` picks the car model family of a line: the Bakerloo (1972 stock) and the Piccadilly (1973 stock) run `deep72` - a boxy body, transverse seating bays at the car ends, longitudinal seats between the
+doors, red moquette (`make_train.py`, `seating='mixed'`) - the Central and Waterloo & City lines (1992 stock) `deep92` - a rounded body and a blunt rounded nose (`roof_n`, `front_round`) - the other tubes `deep`, the Circle, District, Hammersmith & City and Metropolitan lines and the Elizabeth line `ss` (S-stock-style, walk-through).
 `Train.kind` stays the size class (`deep` / `ss`: platform gaps, door positions, clearances), `Train.stock` is the model. `stock_test` checks the seats, their facing, the standing spots and the aisle of each line's cars.
 
 ## Signage

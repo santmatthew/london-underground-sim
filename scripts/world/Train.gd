@@ -8,15 +8,17 @@ const PITCH := {"deep": [16.64, 17.14], "ss": [18.5, 19.5]}       # mid-mid, cab
 const CAR_SCENES := {
 	"deep_mid": "res://assets/models/train/tube_car_deep_mid.glb", "deep_cab": "res://assets/models/train/tube_car_deep_cab.glb",
 	"ss_mid": "res://assets/models/train/tube_car_ss_mid.glb", "ss_cab": "res://assets/models/train/tube_car_ss_cab.glb",
-	"deep72_mid": "res://assets/models/train/tube_car_deep72_mid.glb", "deep72_cab": "res://assets/models/train/tube_car_deep72_cab.glb",     # the 1972 / 1973 stock: mixed seating
+	"deep72_mid": "res://assets/models/train/tube_car_deep72_mid.glb", "deep72_cab": "res://assets/models/train/tube_car_deep72_cab.glb",     # the 1972 / 1973 stock: mixed seating, boxy body
+	"deep92_mid": "res://assets/models/train/tube_car_deep92_mid.glb", "deep92_cab": "res://assets/models/train/tube_car_deep92_cab.glb",     # the 1992 stock: rounded body and nose
 }
 const CAR_LEN := {"deep_mid": 16.0, "deep_cab": 16.5, "ss_mid": 18.0, "ss_cab": 19.0}
 const DOOR_X := {  # door centre x per car type (README)
 	"deep_mid": [-5.0, 0.0, 5.0], "deep_cab": [-5.4, -0.9, 3.6], "ss_mid": [-6.6, -2.2, 2.2, 6.6], "ss_cab": [-6.9, -2.5, 1.9],
 }
 static var _packed: Dictionary = {}
-## the line's rolling stock where it is not the family's default: the Bakerloo's 1972 and the Piccadilly's 1973 stock have transverse seating bays at the car ends (their bodies are the other tubes' size)
-const STOCK_OF_LINE := {"bakerloo": "deep72", "piccadilly": "deep72"}
+## the line's rolling stock where it is not the family's default: the Bakerloo's 1972 and the Piccadilly's 1973 stock have transverse seating bays at the car ends and a boxy body, the Central's and the Waterloo & City's
+## 1992 stock a rounded one (all the size of the other tubes' cars)
+const STOCK_OF_LINE := {"bakerloo": "deep72", "piccadilly": "deep72", "central": "deep92", "waterloo-city": "deep92"}
 
 
 ## which car model family (a key prefix of CAR_SCENES) a line runs

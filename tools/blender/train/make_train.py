@@ -44,7 +44,11 @@ VARIANTS = {
 }
 # The 1972 (Bakerloo) and 1973 (Piccadilly) stock: the same bodyshell and doors as the other tubes here, but a MIXED seating layout (transverse bays at the car ends, longitudinal seats between the doors) and
 # an older interior (red moquette). The newer tube stock (Central, Northern, Jubilee, Victoria, Waterloo & City) and the sub-surface S stock keep their longitudinal seating.
-DEEP72 = dict(DEEP, stock='deep72', seating='mixed', moq_file='moquette_red_c.jpg')
+DEEP72 = dict(DEEP, stock='deep72', seating='mixed', moq_file='moquette_red_c.jpg', roof_n=3.7, cant=2.88, i_cant=2.84)         # (a boxy body: nearly flat roof, tight corners, flat front)
+# The 1992 stock (Central, Waterloo & City): a rounded body - the roof starts curving lower down and is much fuller (a near-elliptical section) - and a blunt, rounded nose in plan.
+DEEP92 = dict(DEEP, stock='deep92', roof_n=1.9, cant=2.60, door_top=2.58, i_cant=2.56, band=(2.34, 2.54), front_round=0.52)
+VARIANTS['deep92_mid'] = dict(DEEP92, name='tube_car_deep92_mid', L=16.0, cab=False, doors=[-5.0, 0.0, 5.0])
+VARIANTS['deep92_cab'] = dict(DEEP92, name='tube_car_deep92_cab', L=16.5, cab=True, doors=[-5.4, -0.9, 3.6])
 VARIANTS['deep72_mid'] = dict(DEEP72, name='tube_car_deep72_mid', L=16.0, cab=False, doors=[-5.0, 0.0, 5.0])
 VARIANTS['deep72_cab'] = dict(DEEP72, name='tube_car_deep72_cab', L=16.5, cab=True, doors=[-5.4, -0.9, 3.6])
 OPEN_OFFSET = 0.66     # door leaf slide distance (m)
@@ -1016,6 +1020,19 @@ class Car:
         # extrude body: main shell ends at xf-0.12 (rolled lip)
         lip = 0.14
         xl = xf - lip
+        fr = c.get('front_round', 0.0)
+        if fr > 0.0:
+            # a rounded nose: everything on the front plane (and what is proud of or just behind it) is pushed forward by a dome in plan (full at the middle, none at the sides) that is fullest at window height
+            a_f = a2
+            def bulge(p, fr=fr, xf=xf, a_f=a_f, top=cant2 + 0.1):
+                x, y, z = p
+                if x < xf - 0.12:
+                    return p
+                k = max(0.0, 1.0 - (z / a_f) ** 2)
+                r = 0.35 + 0.65 * sstep(0.5, 1.2, y) - 0.55 * sstep(2.1, top, y)
+                return (x + fr * k * r, y, z)
+            ext.xf = bulge
+            self.gl.xf = bulge
         # lip ring: outer profile at xl -> inset profile at xf
         ring_a = [(xl, c['ybot'], a)] + [(xl, y, z) for (z, y) in outer] + [(xl, c['ybot'], -a)]
         ring_b = [(xf, yb2, a2)] + [(xf, y, z) for (z, y) in inner2] + [(xf, yb2, -a2)]
@@ -1032,6 +1049,9 @@ class Car:
                  (-0.24, 0.24, fw[0] + 0.05, fw[1] - 0.15)]
         zs_ = sorted(set([-a2, a2] + [h[0] for h in holes] + [h[1] for h in holes] + [-0.34, 0.34]))
         ys_ = sorted(set([yb_face, cant2] + [h[2] for h in holes] + [h[3] for h in holes] + [1.1, 1.45, 1.6, 0.95]))
+        if fr > 0.0:
+            zs_ = sorted(set(zs_ + [round(-a2 + k * a2 / 8.0, 3) for k in range(17)]))
+            ys_ = sorted(set(ys_ + [round(yb_face + k * (cant2 - yb_face) / 8.0, 3) for k in range(9)]))
         face_h = (1, 0, 0)
 
         def fmat(ya, yb, za, zb):
@@ -1088,6 +1108,8 @@ class Car:
         ext.box('mat_trim', (xf, yd0 - 0.02, -0.56), (xf + 0.045, yd1 + 0.02, 0.56), bevel=0.01)
         ext.face('mat_dest_display', [(xf + 0.046, yd0, 0.52), (xf + 0.046, yd0, -0.52), (xf + 0.046, yd1, -0.52), (xf + 0.046, yd1, 0.52)], hint=(1, 0, 0),
                  uvs=[(0, 0), (1, 0), (1, 1), (0, 1)])
+        ext.xf = None
+        self.gl.xf = None
         # side window + cab door on each side
         # (skin holes were made in ext_holes; add door leaf + glass + reveals)
         for s in (1, -1):
