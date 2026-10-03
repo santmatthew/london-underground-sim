@@ -203,8 +203,8 @@ func _process(delta: float) -> void:
 		_perf_t -= delta
 		if _perf_t <= 0.0:
 			_perf_t = 0.4
-			var info := "%d fps  (%.1f ms)\ndraw calls %d · %.2fM tris · %d objects\nvideo mem %d MB" % [
-				Engine.get_frames_per_second(), 1000.0 / maxf(Engine.get_frames_per_second(), 1.0),
+			var info := "%d fps  (%.1f ms)  on %s\ndraw calls %d · %.2fM tris · %d objects\nvideo mem %d MB" % [
+				Engine.get_frames_per_second(), 1000.0 / maxf(Engine.get_frames_per_second(), 1.0), RenderingServer.get_video_adapter_name(),
 				RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
 				RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME) / 1e6,
 				RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),

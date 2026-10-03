@@ -39,12 +39,14 @@ static func add(kit: MeshKit, s: float, xa: float, xb: float, zwall: float, zfar
 		for ri in rows.size():
 			var y: float = rows[ri][0]
 			var n: int = rows[ri][1]
-			kit.box("metal", Vector3(xc, y, s * (zw + into * 0.15)), Vector3(len, 0.045, 0.30), fy)
+			# (the tray stands against the wall: its wall-side face is left out. On the far wall that face lies in the plane of the spine's wall, which faces the other way and would z-fight with it)
+			kit.box("metal", Vector3(xc, y, s * (zw + into * 0.15)), Vector3(len, 0.045, 0.30), fy, false, int(s) * (1 if wall == 0 else -1))
 			var zc0 := zw + into * 0.15 - 0.10
 			for c in n:
-				var th := 0.045 + 0.04 * _f(seed + wall * 7 + ri, c)
-				var mat: String = ["cable_black", "cable_black", "cable_grey", "cable_black", "cable_black", "cable_grey", "cable_black", "cable_red", "cable_black", "cable_blue", "cable_black", "cable_orange"][_h(seed + wall * 11 + ri, c) % 12]
-				kit.box(mat, Vector3(xc, y + 0.025 + th * 0.5, s * (zc0 + c * (0.20 / maxf(n - 1, 1)))), Vector3(len, th, th), fy)
+				# (each cable has its own height, and they are spaced wider than they are thick: two tops at the same height that overlap would flicker)
+				var th := 0.040 + 0.006 * c + 0.012 * _f(seed + wall * 7 + ri, c)
+				var mat: String = ["cable_black", "cable_black", "cable_grey", "cable_black", "cable_black", "cable_grey", "cable_black", "cable_red"][_h(seed + wall * 11 + ri, c) % 8]
+				kit.box(mat, Vector3(xc, y + 0.025 + th * 0.5, s * (zc0 + c * 0.07)), Vector3(len, th, th), fy)
 	# a heavy power cable high on the track-side wall
 	kit.box("cable_black", Vector3(xc, 2.65, s * (zfar - 0.12)), Vector3(len, 0.13, 0.13), fy)
 	kit.box("cable_black", Vector3(xc, 2.82, s * (zfar - 0.22)), Vector3(len, 0.10, 0.10), fy)
@@ -65,7 +67,7 @@ static func add(kit: MeshKit, s: float, xa: float, xb: float, zwall: float, zfar
 			kit.box("cable_black", Vector3(x + 0.6, 1.9, s * (zfar - 0.45)), Vector3(0.05, 1.3, 0.05), fy)
 		elif r < 0.26:
 			# a refuge niche in the far wall
-			kit.box("black", Vector3(x, 0.85, s * (zwall + 0.02)), Vector3(1.4, 1.7, 0.04), fy)
+			kit.box("black", Vector3(x, 0.85, s * (zwall + 0.02)), Vector3(1.4, 1.7, 0.04), fy, false, -int(s))
 		elif r < 0.36:
 			# a cable drop from the high runs to the floor, in a steel cover
 			kit.box("steel", Vector3(x, 1.3, s * (zfar - 0.33)), Vector3(0.12, 2.6, 0.10), fy)

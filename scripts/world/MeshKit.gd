@@ -82,7 +82,8 @@ func horiz(mat: String, x0: float, x1: float, z0: float, z1: float, y: float, up
 
 
 ## Axis-aligned box. `mats` may be a String (all faces) or a Dictionary with keys top,bottom,front,back,left,right ("*" fallback)
-func box(mats, center: Vector3, size: Vector3, floor_y: float = 0.0, skip_bottom := false) -> void:
+## `skip_z` +1 / -1 leaves out the +z / -z face (a box standing against a wall: its back face lies in the wall's plane, where it would z-fight with whatever is drawn on the other side of the wall)
+func box(mats, center: Vector3, size: Vector3, floor_y: float = 0.0, skip_bottom := false, skip_z := 0) -> void:
 	var h := size * 0.5
 	var x0 := center.x - h.x
 	var x1 := center.x + h.x
@@ -97,8 +98,10 @@ func box(mats, center: Vector3, size: Vector3, floor_y: float = 0.0, skip_bottom
 	horiz(m.call("top"), x0, x1, z0, z1, y1, true, floor_y)
 	if not skip_bottom:
 		horiz(m.call("bottom"), x0, x1, z0, z1, y0, false, floor_y)
-	wall(m.call("front"), Vector3(x0, 0, z1), Vector3(x1, 0, z1), y0, y1, floor_y)      # +z face
-	wall(m.call("back"), Vector3(x1, 0, z0), Vector3(x0, 0, z0), y0, y1, floor_y)       # -z face
+	if skip_z <= 0:
+		wall(m.call("front"), Vector3(x0, 0, z1), Vector3(x1, 0, z1), y0, y1, floor_y)      # +z face
+	if skip_z >= 0:
+		wall(m.call("back"), Vector3(x1, 0, z0), Vector3(x0, 0, z0), y0, y1, floor_y)       # -z face
 	wall(m.call("right"), Vector3(x1, 0, z1), Vector3(x1, 0, z0), y0, y1, floor_y)      # +x face
 	wall(m.call("left"), Vector3(x0, 0, z0), Vector3(x0, 0, z1), y0, y1, floor_y)       # -x face
 

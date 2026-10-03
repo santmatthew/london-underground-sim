@@ -149,6 +149,20 @@ loaded its car model synchronously (about 0.8 s each): `Train.preload_async` at 
 the empty scene already costs 4.3 ms at 1080p (the full-screen passes of the Balanced tier at the GPU's throttled clock). The laptop's GPU spends the runs in "software power cap" / "software thermal
 slowdown" (SM clock mean about 740 MHz of 2100) and its CPU package idles near 100 C with the fans at maximum while a VM, k3s and Chrome run in the background.
 
+### Measuring on this machine: which GPU is rendering? (2026-10-03)
+Check the F3 overlay ("... on <adapter>") or the first lines of a Godot run (`Vulkan ... Using Device #0: ...`) before trusting any frame time. An unattended apt upgrade (2026-10-03 09:08) replaced the NVIDIA user-space libraries
+(595.84 -> 595.91) under the still-loaded 595.84 kernel module: `nvidia-smi` says "Driver/library version mismatch", the NVIDIA Vulkan ICD fails and Godot silently renders on the Intel Iris Xe iGPU (the empty scene went from
+4.3 ms to 14.8 ms at 1080p, the static station from 7.5 ms to 30 ms). A reboot (or reloading the nvidia modules) fixes it; no code change does. The tunnel detail costs about 13 draw calls and 12k triangles in a platform view (`UG_OFF=tunnel_detail` / `tunnel_lights` switch it off for an A/B).
+
+### Z-fighting (2026-10-03)
+`tests/zfight_audit_test.gd` (`--stations="A|B"`, `--range=a,b`, `--all`, `--sep=` metres) flattens every ArrayMesh of a built station to world triangles, groups them by plane and reports pairs of *different materials* that lie in the same plane (within 0.6 mm), face the same way
+and overlap: they are drawn at the same depth and flicker. Found: pilasters stood on the dado at the same offset (`_band` now takes an `off`: pilasters 10 mm, their edge strips 14 mm, the dado 4 mm), cable trays of the running tunnel had a face in the plane of the spine's wall
+(`MeshKit.box(..., skip_z)` leaves the wall-side face out), cables of equal height overlapped.
+
+### Crowd and the player (2026-10-03)
+`CrowdManager._step_walk`: from `AVOID_R` (2.8 m) a walker heading for the player bears off to the side the player is not on (the nearer, the harder; dead ahead each person keeps a side chosen by their seed), slows a little head-on and never comes closer than
+`KEEP_OFF` (0.66 m; the bodies touch at 0.52), so the crowd goes round the player instead of pushing. Test: `crowd_avoid_test` (a player standing in the main flow at Oxford Circus in the morning peak: closest approach 0.01 m before, 0.66 m after).
+
 ### Explore mode (2026-10-02)
 `ExplorePanel` (setup screen: station search / random, start spot labelled by `ExplorePanel.spot_label`, day, time slider) -> `Game.start_explore(cfg)` (tears the world down with `_teardown_world`, rebuilds the timetable for the chosen day, builds the station, puts the player on the chosen start spot and goes straight to play, no briefing).
 `journey["mode"] == "explore"` (`Game._exploring()`): no destination, par, score or result panel; the street exit only turns the player back, the end of service does not fail the session (a toast says the network has closed), the HUD shows "Exploring", the hint (H) explains there is no destination, the pause panel offers "Start somewhere else"

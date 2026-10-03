@@ -109,7 +109,7 @@ func build(p_spec: Dictionary) -> void:
 		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 
 	var mats := {}
-	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "ped_glass", "stainless", "floor_cream", "brick_stock", "brick_red", "brick_blue", "ballast", "tactile_buff", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab", "tunnel_lining", "cable_black", "cable_grey", "cable_red", "cable_blue", "cable_orange"]:
+	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "ped_glass", "stainless", "floor_cream", "brick_stock", "brick_red", "brick_blue", "ballast", "tactile_buff", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab", "tunnel_lining", "cable_black", "cable_grey", "cable_red"]:
 		mats[n] = Mats.get_mat(n)
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
@@ -284,6 +284,8 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 ## cabling, brackets and a few lamps on the lining of the running tunnel beyond the platform ends: west stretch xa..xw, east stretch xe..xb (TunnelDetail); the lamps nearest the platform
 ## also light the bore for real, the rest only glow
 func _run_detail(s: float, xa: float, xw: float, xb: float, xe: float, zwall_run: float, zfar: float) -> void:
+	if Station.debug_off("tunnel_detail"):         # (UG_OFF=tunnel_detail,tunnel_lights: the frame-rate experiment switches the cabling / its lights off)
+		return
 	var seed := hash(String(spec.get("name", "")) + str(s))
 	for west in [true, false]:
 		var lo: float = xa if west else xe
@@ -299,10 +301,10 @@ func _run_detail(s: float, xa: float, xw: float, xb: float, xe: float, zwall_run
 			lx += dirn * (17.0 + 6.0 * _frac(seed + 9, k))
 			k += 1
 		var lights: Array = []
-		var near := Vector2(hi - 70.0, hi) if west else Vector2(lo, lo + 70.0)
+		var near := Vector2(hi - 45.0, hi) if west else Vector2(lo, lo + 45.0)
 		TunnelDetail.add(kit, s, lo, hi, zwall_run, zfar, {"seed": seed, "lamps": lamps, "near": near, "lamp_lights": lights})
 		for lp in lights:
-			if absf((lp as Vector3).x - from_platform) < 45.0:
+			if absf((lp as Vector3).x - from_platform) < 45.0 and not Station.debug_off("tunnel_lights"):
 				_lights.append([lp, 1.3, 9.0])
 
 
@@ -532,9 +534,9 @@ func _segments(xa: float, xb: float, centres: Array, w: float) -> Array:
 	return out
 
 
-func _band(mat: String, zc: float, xa: float, xb: float, y0: float, y1: float, neg: bool, tunnel_side_positive_toward_center: bool, holes := []) -> void:
-	# thin coloured band slightly proud of the wall; faces the tunnel interior
-	var off := 0.004
+func _band(mat: String, zc: float, xa: float, xb: float, y0: float, y1: float, neg: bool, tunnel_side_positive_toward_center: bool, holes := [], off := 0.004) -> void:
+	# thin coloured band slightly proud of the wall; faces the tunnel interior. (`off`: how far; a band that crosses another one - a pilaster over the dado - stands further out, or the two
+	# would be drawn in the same plane and flicker)
 	var toward_tunnel := -signf(zc) if tunnel_side_positive_toward_center else signf(zc)
 	# for the track-side wall the tunnel interior is toward the centre (-sign(zc)); for the platform-side wall it is away from the centre (+sign)
 	var z := zc + toward_tunnel * off
@@ -617,9 +619,9 @@ func _pilasters(s: float, x0: float, x1: float, zwall: float, holes: Array, open
 		if not cols.is_empty():
 			key = "dado:" + (cols[ci % cols.size()] as Color).to_html(false)
 			ci += 1
-		_band(key, s * zwall, xc - w * 0.5, xc + w * 0.5, 0.0, SPRING_Y, s < 0.0, false, holes)
+		_band(key, s * zwall, xc - w * 0.5, xc + w * 0.5, 0.0, SPRING_Y, s < 0.0, false, holes, 0.010)
 		if edge != "":
-			_band(edge, s * zwall, xc + w * 0.5, xc + w * 0.5 + 0.075, 0.0, SPRING_Y, s < 0.0, false, holes)
+			_band(edge, s * zwall, xc + w * 0.5, xc + w * 0.5 + 0.075, 0.0, SPRING_Y, s < 0.0, false, holes, 0.014)
 
 
 ## a seat recess in the platform wall (Victoria line): a shallow niche in the 150 mm tile with a motif panel at the back, stainless trim and a timber slab

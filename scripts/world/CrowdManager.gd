@@ -524,6 +524,10 @@ func _step(a: Agent, delta: float, ppos: Vector3) -> void:
 		a.body.position = a.pos + Vector3(0, 0.88, 0)
 
 
+const AVOID_R := 2.8         # people start to walk round the player from this far away
+const KEEP_OFF := 0.66       # ... and never come closer than this to the player's centre (the bodies touch at 0.52)
+
+
 func _step_walk(a: Agent, delta: float, ppos: Vector3) -> void:
 	if a.state == "gate":
 		a.wait_t -= delta
@@ -565,17 +569,32 @@ func _step_walk(a: Agent, delta: float, ppos: Vector3) -> void:
 	# lateral lane offset in wide spaces (not on gates / boarding)
 	var lat_target := Vector3(-dir.z, 0, dir.x) * a.lane * 0.5 if a.state == "walk" and a.route_done_action != "despawn" else Vector3.ZERO
 	var desired := dir * a.speed * (1.35 if a.hurry else 1.0)
-	# slow for the player / others ahead
+	# walk round the player: from AVOID_R away, someone heading for them bears off to the side the player is not on (the nearer, the harder), easing off a little when it is head-on, and
+	# never comes closer than KEEP_OFF (the bodies touch at 0.52), so the crowd goes round a person and does not push them
 	var slow := 1.0
 	var pl := Vector3(a.pos.x - ppos.x, 0, a.pos.z - ppos.z)
-	if absf(a.pos.y - ppos.y) < 2.5 and pl.length() < 1.6:
-		var ahead := -pl.normalized().dot(dir)
-		if ahead > 0.3:
-			slow = clampf(pl.length() / 1.6, 0.15, 1.0)
-			desired += Vector3(-dir.z, 0, dir.x) * (0.6 if (a.seed & 1) == 0 else -0.6)
+	var pd := pl.length()
+	if absf(a.pos.y - ppos.y) < 2.5 and pd < AVOID_R and pd > 0.01:
+		var to_p := -pl / pd
+		var ahead := to_p.dot(dir)
+		if ahead > 0.1:
+			var perp := Vector3(-dir.z, 0, dir.x)
+			var lat := to_p.dot(perp)
+			var away := -signf(lat) if absf(lat) > 0.12 else (1.0 if (a.seed & 1) == 0 else -1.0)      # (dead ahead: each person picks a side and keeps it)
+			var urgency := clampf((AVOID_R - pd) / (AVOID_R - 0.9), 0.0, 1.0)
+			desired += perp * away * a.speed * (0.5 + 1.6 * urgency) * ahead
+			if ahead > 0.6:
+				slow = clampf((pd - 0.5) / 1.6, 0.4, 1.0)
 	a.cur = move_toward(a.cur, a.speed * slow * (1.35 if a.hurry else 1.0), 3.0 * delta)
 	var step := (desired.normalized() * a.cur + lat_target * 0.2) * delta
 	a.pos += step
+	if absf(a.pos.y - ppos.y) < 2.0:
+		var dp := Vector3(a.pos.x - ppos.x, 0, a.pos.z - ppos.z)
+		var dl := dp.length()
+		if dl < KEEP_OFF:
+			var out_dir := dp / dl if dl > 0.001 else Vector3(-dir.z, 0, dir.x)
+			a.pos.x = ppos.x + out_dir.x * KEEP_OFF
+			a.pos.z = ppos.z + out_dir.z * KEEP_OFF
 	a.pos.y = lerpf(a.pos.y, target.y, clampf(delta * 6.0, 0.0, 1.0)) if absf(a.pos.y - target.y) < 0.6 else target.y
 	if step.length() > 0.0005:
 		a.yaw = lerp_angle(a.yaw, atan2(-step.x, -step.z), clampf(delta * 8.0, 0.0, 1.0))
