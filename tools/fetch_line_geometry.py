@@ -33,8 +33,15 @@ def overpass(q, tries=4):
     raise RuntimeError("overpass failed: %s" % last)
 
 
+PLAT_Q = '[out:json][timeout:160];(way["railway"="platform"](%s);way["public_transport"="platform"]["subway"="yes"](%s););out geom;' % (LONDON, LONDON)
+
+
 def main():
     os.makedirs(REL, exist_ok=True)
+    pp = os.path.join(GEOM, "platforms_london.json")
+    if not os.path.exists(pp) or "--replatform" in sys.argv:
+        # every platform outline in Greater London in one go: which side of the track each platform lies on (tools/build_line_geometry.py, door_side)
+        json.dump(overpass(PLAT_Q), open(pp, "w"))
     lp = os.path.join(GEOM, "relations.json")
     if not os.path.exists(lp) or "--relist" in sys.argv:
         rels = overpass(LIST_Q)["elements"]

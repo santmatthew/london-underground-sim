@@ -151,8 +151,23 @@ def nearest_on(poly, p):
     return best
 
 
-def door_side(stop, path, plat_ways, reach=30.0):
-    """on which side of the track (looking the way the train goes) the platform(s) at `stop` lie: 'L', 'R', 'B' (both) or '' (no platform outline near)"""
+def load_platforms():
+    """every platform outline in Greater London (tools/fetch_line_geometry.py): [(bounding box, polyline)]"""
+    fp = os.path.join(GEOM, "platforms_london.json")
+    out = []
+    if not os.path.exists(fp):
+        return out
+    for e in json.load(open(fp)).get("elements", []):
+        pts = [xy(p["lat"], p["lon"]) for p in e.get("geometry", []) if p]
+        if len(pts) >= 2:
+            xs, ys = [q[0] for q in pts], [q[1] for q in pts]
+            out.append(((min(xs), min(ys), max(xs), max(ys)), pts))
+    return out
+
+
+def door_side(stop, path, plat_ways, reach=4.0):
+    """on which side of the track (looking the way the train goes) the platform at `stop` lies: 'L' or 'R' (the nearest platform outline, within `reach` metres of the stop on the track), 'B' when
+    there is one almost as near on the other side too, '' when no outline is that close. (The opposite track's platform is 5 m or more away; a platform edge is 1.5-2.5 m from the track.)"""
     if path is None or len(path) < 2:
         return ""
     cs = cum(path)
@@ -160,19 +175,26 @@ def door_side(stop, path, plat_ways, reach=30.0):
     d = (b[0] - a[0], b[1] - a[1])
     if d == (0.0, 0.0):
         return ""
-    left = right = False
+    near = {"L": None, "R": None}
     for pw in plat_ways:
+        if isinstance(pw, tuple):                      # (bounding box, polyline) from load_platforms: skip what is clearly too far
+            bb, pw = pw
+            if stop[0] < bb[0] - 15 or stop[0] > bb[2] + 15 or stop[1] < bb[1] - 15 or stop[1] > bb[3] + 15:
+                continue
         dist, q = nearest_on(pw, stop)
-        if q is None or dist > reach:
+        if q is None or dist > 15.0 or dist < 0.8:
             continue
         cross = d[0] * (q[1] - stop[1]) - d[1] * (q[0] - stop[0])
-        if dist < 0.8:
-            continue
-        if cross > 0:
-            left = True
-        else:
-            right = True
-    return "B" if left and right else ("L" if left else ("R" if right else ""))
+        k = "L" if cross > 0 else "R"
+        if near[k] is None or dist < near[k]:
+            near[k] = dist
+    dl, dr = near["L"], near["R"]
+    best = min([x for x in (dl, dr) if x is not None], default=None)
+    if best is None or best > reach:
+        return ""
+    if dl is not None and dr is not None and abs(dl - dr) < 1.5:
+        return "B"
+    return "L" if (dl is not None and dl == best) else "R"
 
 
 def main():
@@ -182,6 +204,7 @@ def main():
     sxy = {sid: xy(s["lat"], s["lon"]) for sid, s in stations.items()}
     files = sorted(glob.glob(os.path.join(GEOM, "rel", "*.json")))
     pairs, plats = {}, {}
+    all_platforms = load_platforms()
     stats = {"rel": 0, "pairs": 0, "nopath": 0, "nostation": 0}
     for fp in files:
         rel = json.load(open(fp))
@@ -261,7 +284,7 @@ def main():
             nxt = seq[i + 1] if i + 1 < len(seq) else None
             if nxt is None or paths[i] is None:
                 continue
-            side = door_side(stops[i], paths[i], plat_ways)
+            side = door_side(stops[i], paths[i], plat_ways + all_platforms)
             if side:
                 plats.setdefault(sid, {}).setdefault(nxt, {"line": line})["side"] = side
             half = PLAT_SPAN * 0.5
