@@ -8,12 +8,20 @@ const PITCH := {"deep": [16.64, 17.14], "ss": [18.5, 19.5]}       # mid-mid, cab
 const CAR_SCENES := {
 	"deep_mid": "res://assets/models/train/tube_car_deep_mid.glb", "deep_cab": "res://assets/models/train/tube_car_deep_cab.glb",
 	"ss_mid": "res://assets/models/train/tube_car_ss_mid.glb", "ss_cab": "res://assets/models/train/tube_car_ss_cab.glb",
+	"deep72_mid": "res://assets/models/train/tube_car_deep72_mid.glb", "deep72_cab": "res://assets/models/train/tube_car_deep72_cab.glb",     # the 1972 / 1973 stock: mixed seating
 }
 const CAR_LEN := {"deep_mid": 16.0, "deep_cab": 16.5, "ss_mid": 18.0, "ss_cab": 19.0}
 const DOOR_X := {  # door centre x per car type (README)
 	"deep_mid": [-5.0, 0.0, 5.0], "deep_cab": [-5.4, -0.9, 3.6], "ss_mid": [-6.6, -2.2, 2.2, 6.6], "ss_cab": [-6.9, -2.5, 1.9],
 }
 static var _packed: Dictionary = {}
+## the line's rolling stock where it is not the family's default: the Bakerloo's 1972 and the Piccadilly's 1973 stock have transverse seating bays at the car ends (their bodies are the other tubes' size)
+const STOCK_OF_LINE := {"bakerloo": "deep72", "piccadilly": "deep72"}
+
+
+## which car model family (a key prefix of CAR_SCENES) a line runs
+static func stock_of_line(lid: String) -> String:
+	return STOCK_OF_LINE.get(lid, kind_of_line(lid))
 
 
 ## which car family a line runs: the sub-surface lines and the Elizabeth line use the wide "ss" cars, the deep tubes the small "deep" ones
@@ -22,6 +30,7 @@ static func kind_of_line(lid: String) -> String:
 	return "ss" if (g == "ss" or g == "elizabeth") else "deep"
 
 var kind := "deep"
+var stock := "deep"             # the model family of the cars (kind, or deep72)
 var n_cars := 6
 var line_id := ""
 var run := -1
@@ -62,6 +71,7 @@ func build(p_kind: String, p_cars: int, p_line: String, livery: Color) -> void:
 	n_cars = maxi(3, p_cars)
 	line_id = p_line
 	var pm: Array = PITCH[kind]
+	stock = stock_of_line(p_line) if Net.lines.has(p_line) else kind
 	# lay out cars: front cab, mids, rear cab
 	var keys: Array = []
 	for i in n_cars:
@@ -75,7 +85,7 @@ func build(p_kind: String, p_cars: int, p_line: String, livery: Color) -> void:
 	length = -x + CAR_LEN[keys[0]] * 0.5 + CAR_LEN[keys[n_cars - 1]] * 0.5
 	var shift: float = -(float(xs[0]) + float(xs[n_cars - 1])) * 0.5
 	for i in n_cars:
-		var car: Node3D = scene_for(keys[i]).instantiate()
+		var car: Node3D = scene_for(stock + (("_cab" if (i == 0 or i == n_cars - 1) else "_mid"))).instantiate()
 		car.name = "Car%d" % i
 		car.position.x = xs[i] + shift
 		if i == n_cars - 1:

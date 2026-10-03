@@ -6,6 +6,9 @@ extends RefCounted
 
 const LAMP_Y := 2.45
 const CELL := 3.0                 # clutter is laid in cells of this length (brackets, boxes, drops)
+## Nothing on the track-side wall may stand out further than this: the widest train (the sub-surface cars, 3.06 m) leaves 0.22 m to the wall (1.75 m from the track centre), and the bore is the same for every line.
+## (Cables and trays stood 0.27 m out, junction boxes and signals 0.5 m: they ran through the carriage.)
+const WALL_DEPTH := 0.18
 
 ## rows of the track-side wall: [y, cables]  (a tray with `cables` cables on it)
 const ROWS_TRACK := [[0.35, 3], [0.88, 4], [1.42, 3], [1.98, 4]]
@@ -40,16 +43,17 @@ static func add(kit: MeshKit, s: float, xa: float, xb: float, zwall: float, zfar
 			var y: float = rows[ri][0]
 			var n: int = rows[ri][1]
 			# (the tray stands against the wall: its wall-side face is left out. On the far wall that face lies in the plane of the spine's wall, which faces the other way and would z-fight with it)
-			kit.box("metal", Vector3(xc, y, s * (zw + into * 0.15)), Vector3(len, 0.045, 0.30), fy, false, int(s) * (1 if wall == 0 else -1))
-			var zc0 := zw + into * 0.15 - 0.10
+			var tray_d: float = WALL_DEPTH if wall == 0 else 0.30
+			kit.box("metal", Vector3(xc, y, s * (zw + into * tray_d * 0.5)), Vector3(len, 0.045, tray_d), fy, false, int(s) * (1 if wall == 0 else -1))
 			for c in n:
 				# (each cable has its own height, and they are spaced wider than they are thick: two tops at the same height that overlap would flicker)
-				var th := 0.040 + 0.008 * c + 0.002 * _f(seed + wall * 7 + ri, c)
+				var th := 0.030 + 0.005 * c + 0.002 * _f(seed + wall * 7 + ri, c)
 				var mat: String = ["cable_black", "cable_black", "cable_grey", "cable_black", "cable_black", "cable_grey", "cable_black", "cable_red"][_h(seed + wall * 11 + ri, c) % 8]
-				kit.box(mat, Vector3(xc, y + 0.025 + th * 0.5, s * (zc0 + c * 0.07)), Vector3(len, th, th), fy)
+				var off := 0.03 + (0.04 if wall == 0 else 0.07) * c
+				kit.box(mat, Vector3(xc, y + 0.025 + th * 0.5, s * (zw + into * off)), Vector3(len, th, th), fy)
 	# a heavy power cable high on the track-side wall
-	kit.box("cable_black", Vector3(xc, 2.65, s * (zfar - 0.12)), Vector3(len, 0.13, 0.13), fy)
-	kit.box("cable_black", Vector3(xc, 2.82, s * (zfar - 0.22)), Vector3(len, 0.10, 0.10), fy)
+	kit.box("cable_black", Vector3(xc, 2.62, s * (zfar - 0.075)), Vector3(len, 0.10, 0.10), fy)
+	kit.box("cable_black", Vector3(xc, 2.78, s * (zfar - 0.12)), Vector3(len, 0.09, 0.09), fy)
 	# the clutter, cell by cell (absolute cells, so neighbouring stretches agree)
 	var c0 := int(floor(maxf(xa, near.x) / CELL))
 	var c1 := int(floor(minf(xb, near.y) / CELL))
@@ -63,14 +67,14 @@ static func add(kit: MeshKit, s: float, xa: float, xb: float, zwall: float, zfar
 		var r := _f(seed, ci)
 		if r < 0.16:
 			# a junction box on the track-side wall with a conduit up to the high cables
-			kit.box("steel", Vector3(x + 0.6, 1.15, s * (zfar - 0.45)), Vector3(0.55, 0.45, 0.22), fy)
-			kit.box("cable_black", Vector3(x + 0.6, 1.9, s * (zfar - 0.45)), Vector3(0.05, 1.3, 0.05), fy)
+			kit.box("steel", Vector3(x + 0.6, 1.15, s * (zfar - 0.10)), Vector3(0.55, 0.45, 0.18), fy)
+			kit.box("cable_black", Vector3(x + 0.6, 1.9, s * (zfar - 0.05)), Vector3(0.05, 1.3, 0.05), fy)
 		elif r < 0.26:
 			# a refuge niche in the far wall
 			kit.box("black", Vector3(x, 0.85, s * (zwall + 0.02)), Vector3(1.4, 1.7, 0.04), fy, false, -int(s))
 		elif r < 0.36:
 			# a cable drop from the high runs to the floor, in a steel cover
-			kit.box("steel", Vector3(x, 1.3, s * (zfar - 0.33)), Vector3(0.12, 2.6, 0.10), fy)
+			kit.box("steel", Vector3(x, 1.3, s * (zfar - 0.07)), Vector3(0.12, 2.6, 0.10), fy)
 		elif r < 0.44:
 			# a signalling cabinet at the track side of the far wall
 			kit.box("steel", Vector3(x, 0.6, s * (zwall + 0.35)), Vector3(0.9, 1.2, 0.5), fy)
@@ -84,6 +88,6 @@ static func add(kit: MeshKit, s: float, xa: float, xb: float, zwall: float, zfar
 	for lx: float in opts.get("lamps", []):
 		if lx < xa + 0.3 or lx > xb - 0.3:
 			continue
-		kit.box("steel", Vector3(lx, LAMP_Y, s * (zfar - 0.1)), Vector3(0.62, 0.2, 0.16), fy)
-		kit.box("light_emissive", Vector3(lx, LAMP_Y, s * (zfar - 0.2)), Vector3(0.5, 0.12, 0.04), fy)
+		kit.box("steel", Vector3(lx, LAMP_Y, s * (zfar - 0.07)), Vector3(0.62, 0.2, 0.12), fy)
+		kit.box("light_emissive", Vector3(lx, LAMP_Y, s * (zfar - 0.145)), Vector3(0.5, 0.12, 0.03), fy)
 		lamp_pos.append(Vector3(lx, LAMP_Y - 0.1, s * (zfar - 0.7)))

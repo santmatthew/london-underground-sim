@@ -82,9 +82,9 @@ func _cell_kit(v: int, cls: int) -> MeshKit:
 	TunnelDetail.add(kit, 1.0, -SEG_LEN * 0.5, SEG_LEN * 0.5, zwall_run, zfar, {"seed": 17 + v * 31, "lamps": [0.0] if v < N_VAR else []})
 	match v % N_VAR:
 		1:     # a signal post with its red and green lamps, on the track-side wall
-			kit.box("steel", Vector3(-2.0, 1.1, zfar - 0.55), Vector3(0.12, 2.2, 0.12), 0.0)
-			kit.box("light_emissive_red", Vector3(-2.0, 1.85, zfar - 0.68), Vector3(0.2, 0.2, 0.05), 0.0)
-			kit.box("light_emissive_green", Vector3(-2.0, 1.5, zfar - 0.68), Vector3(0.2, 0.2, 0.05), 0.0)
+			kit.box("steel", Vector3(-2.0, 1.1, zfar - 0.07), Vector3(0.12, 2.2, 0.10), 0.0)
+			kit.box("light_emissive_red", Vector3(-2.0, 1.85, zfar - 0.135), Vector3(0.2, 0.2, 0.04), 0.0)
+			kit.box("light_emissive_green", Vector3(-2.0, 1.5, zfar - 0.135), Vector3(0.2, 0.2, 0.04), 0.0)
 		2:     # a blue emergency light by a dark cross-passage doorway in the far wall
 			kit.box("light_emissive_blue", Vector3(1.5, 2.0, zwall_run + 0.1), Vector3(0.5, 0.18, 0.06), 0.0)
 			kit.box("black", Vector3(1.5, 0.85, zwall_run + 0.03), Vector3(1.6, 1.7, 0.04), 0.0)

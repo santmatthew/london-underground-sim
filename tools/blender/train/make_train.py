@@ -42,6 +42,11 @@ VARIANTS = {
     'ss_mid': dict(SS, name='tube_car_ss_mid', L=18.0, cab=False, doors=[-6.6, -2.2, 2.2, 6.6]),
     'ss_cab': dict(SS, name='tube_car_ss_cab', L=19.0, cab=True, doors=[-6.9, -2.5, 1.9]),
 }
+# The 1972 (Bakerloo) and 1973 (Piccadilly) stock: the same bodyshell and doors as the other tubes here, but a MIXED seating layout (transverse bays at the car ends, longitudinal seats between the doors) and
+# an older interior (red moquette). The newer tube stock (Central, Northern, Jubilee, Victoria, Waterloo & City) and the sub-surface S stock keep their longitudinal seating.
+DEEP72 = dict(DEEP, stock='deep72', seating='mixed', moq_file='moquette_red_c.jpg')
+VARIANTS['deep72_mid'] = dict(DEEP72, name='tube_car_deep72_mid', L=16.0, cab=False, doors=[-5.0, 0.0, 5.0])
+VARIANTS['deep72_cab'] = dict(DEEP72, name='tube_car_deep72_cab', L=16.5, cab=True, doors=[-5.4, -0.9, 3.6])
 OPEN_OFFSET = 0.66     # door leaf slide distance (m)
 
 
@@ -140,7 +145,8 @@ def make_mat(name, tex=None, color=(1, 1, 1, 1), rough=0.5, metal=0.0, emit=None
     return m
 
 
-def build_materials(kind='deep'):
+def build_materials(kind='deep', cfg=None):
+    cfg = cfg or {}
     M = {}
     M['mat_body_paint'] = make_mat('mat_body_paint', tex='body' if kind == 'deep' else 'body_ss', metal=0.2)
     M['mat_livery'] = make_mat('mat_livery', color=(0.70, 0.045, 0.06, 1), rough=0.36, metal=0.0, spec=0.6)
@@ -154,7 +160,7 @@ def build_materials(kind='deep'):
     M['mat_floor'] = make_mat('mat_floor', tex='floor')
     M['mat_wall'] = make_mat('mat_wall', tex='laminate')
     M['mat_ceiling'] = make_mat('mat_ceiling', tex='ceiling', emit=(1, 1, 1, 1), emit_strength=0.14, emit_tex=True)   # faint self-illumination = bounce light from the LED strips
-    M['mat_moquette'] = make_mat('mat_moquette', tex='moquette')
+    M['mat_moquette'] = make_mat('mat_moquette', tex='moquette', albedo_file=cfg.get('moq_file'))
     M['mat_moquette_prio'] = make_mat('mat_moquette_prio', tex='moquette', albedo_file='moquette_prio_c.jpg')
     M['mat_plastic'] = make_mat('mat_plastic', color=(0.05, 0.055, 0.06, 1), rough=0.55, metal=0.0)
     M['mat_light_emissive'] = make_mat('mat_light_emissive', color=(0.9, 0.9, 0.88, 1), rough=0.4, emit=(1.0, 0.96, 0.88, 1),
@@ -776,11 +782,19 @@ class Car:
         c = self.c; ai = self.ai; fl = self.fl
         it = self.int
         sd = c['seat_d']
-        self.seat_pos = {1: [], -1: []}
+        self.seat_pos = {1: [], -1: []}              # (x, y, z[, yaw]) of every seat; no yaw: facing across the car
         self.seat_colliders = {1: [], -1: []}
+        self.seat_boxes = {1: [], -1: []}            # transverse seats: (x0, x1, z0, z1, top)
+        self.trans_bays = []                         # (xa, xb) of the bays with transverse seating
+        self.run_mixed = set()
         n_prio = 2
         for s in (1, -1):
             for (sa, sb, n, ta, tb) in self.runs:
+                if c.get('seating') == 'mixed' and (ta == 'end' or tb == 'end') and (sb - sa) >= 1.75:
+                    # a bay at the end of the car: two double seats facing each other across the bay
+                    self.run_mixed.add((sa, sb, n, ta, tb))
+                    self.transverse_bay(s, sa, sb)
+                    continue
                 w = (sb - sa) / n
                 # base box (dark plastic) with heater-grille slots
                 zb0 = s * (ai - sd + 0.03); zb1 = s * ai
@@ -824,6 +838,43 @@ class Car:
                     it.cyl('mat_pole', (xg2, hh, z_a), (xg2, hh, z_b), 0.013, 8, caps=True)
                     it.cyl('mat_pole', (xg2, fl + 0.46, z_b), (xg2, hh, z_b), 0.013, 8, caps=True)
                     it.cyl('mat_pole', (xg2, fl + 0.46, z_a), (xg2, fl + 0.46, z_b), 0.010, 8, caps=True)
+
+    def transverse_bay(self, s, xa, xb):
+        """a bay of transverse seating on the side s: a double seat at each end of the bay, the two facing each other, the aisle left free"""
+        c = self.c; ai = self.ai; fl = self.fl
+        it = self.int
+        depth = 0.45
+        span = 0.95                     # two seats across, wall to aisle
+        if s > 0 and not any(abs(b[0] - xa) < 0.01 for b in self.trans_bays):
+            self.trans_bays.append((xa, xb))
+        z_wall = s * ai
+        z_aisle = s * (ai - span)
+        zlo, zhi = min(z_wall, z_aisle), max(z_wall, z_aisle)
+        for (x0, fx) in ((xa, 1), (xb - depth, -1)):          # fx: the way the seats face along the car
+            x1 = x0 + depth
+            mat = c['moq']
+            off = (random.random(), random.random())
+            # pedestal on the wall side, cushion, tilted high back
+            it.box('mat_plastic', (x0 + 0.02, fl, min(z_wall, z_wall - s * 0.22)), (x1 - 0.02, fl + 0.34, max(z_wall, z_wall - s * 0.22)), bevel=0.008, skip=('-y',))
+            it.box(mat, (x0 + 0.005, fl + 0.33, zlo + 0.005), (x1 - 0.005, fl + c['seat_h'], zhi - 0.005), bevel=0.028, off=off)
+            xb_back0, xb_back1 = (x0, x0 + 0.09) if fx > 0 else (x1 - 0.09, x1)
+            old = it.xf
+            xp = x0 if fx > 0 else x1
+            it.xf = Rot('z', 7.0 * fx, pivot=(xp, fl + c['seat_h'], 0.0))
+            it.box(mat, (xb_back0, fl + c['seat_h'] + 0.005, zlo + 0.005), (xb_back1, fl + 0.98, zhi - 0.005), bevel=0.03, off=off)
+            it.xf = old
+            # the aisle-end stanchion on the back of the seat
+            xs = xb_back0 + 0.045
+            it.cyl('mat_pole', (xs, fl + 0.90, z_aisle), (xs, fl + 1.36, z_aisle), 0.014, 8, caps=True)
+            # a divider/armrest between the two seats and at the aisle end
+            xm = (x0 + x1) / 2
+            for zz in (s * (ai - span * 0.5), z_aisle):
+                it.box('mat_plastic', (xm - 0.17, fl + c['seat_h'] - 0.02, zz - 0.012), (xm + 0.17, fl + c['seat_h'] + 0.15, zz + 0.012), bevel=0.01)
+            yaw = -90 if fx > 0 else 90          # a marker looks along its -Z: -90 turns that to +X
+            for k in range(2):
+                zc = s * (ai - span * (0.25 + 0.5 * k))
+                self.seat_pos[s].append((xm, fl + c['seat_h'], zc, yaw))
+            self.seat_boxes[s].append((x0, x1, zlo, zhi, fl + c['seat_h'] + 0.02, xb_back0, xb_back1))
 
     # ============================================================ poles, rails
     def build_poles_rails(self):
@@ -938,6 +989,8 @@ class Car:
         # priority signs above priority seats
         for s in (1, -1):
             for (sa, sb, n, ta, tb) in self.runs:
+                if (sa, sb, n, ta, tb) in self.run_mixed:
+                    continue
                 w = (sb - sa) / n
                 zw = s * (ai - 0.003)
                 for (cond, xc) in ((ta == 'door', sa + 0.55 * w), (tb == 'door', sb - 0.55 * w)):
@@ -1247,6 +1300,9 @@ class Car:
                 sc.box('mat_plastic', (sa, fl, min(z0, z1)), (sb, fl + c['seat_h'] + 0.02, max(z0, z1)))
                 z2 = s * (ai - 0.16)
                 sc.box('mat_plastic', (sa, fl, min(z0, z2)), (sb, fl + 0.95, max(z0, z2)))
+            for (bx0, bx1, bz0, bz1, btop, br0, br1) in self.seat_boxes[s]:
+                sc.box('mat_plastic', (bx0, fl, bz0), (bx1, btop, bz1))                        # cushion and pedestal
+                sc.box('mat_plastic', (br0, fl, bz0), (br1, fl + 0.98, bz1))                  # the high back
         for i, (px, pz) in enumerate(self.poles):
             p = cm('Pole_%02d' % i)
             p.cyl('mat_plastic', (px, fl, pz), (px, self.ceil_y(pz), pz), 0.035, 8, caps=True)
@@ -1260,7 +1316,7 @@ class Car:
         for s in (1, -1):
             name = 'R' if s > 0 else 'L'
             for i, p in enumerate(sorted(self.seat_pos[s], key=lambda q: q[0])):
-                M.append(dict(name='seat_%s_%02d' % (name, i), pos=p, yaw=0 if s > 0 else 180, kind='seat', side=name))
+                M.append(dict(name='seat_%s_%02d' % (name, i), pos=p[:3], yaw=p[3] if len(p) > 3 else (0 if s > 0 else 180), kind='seat', side=name))
         # standing spots: aisle grid, staggered
         xa, xb = self.xi0 + 0.7, self.xi1 - 0.7
         k = 0
@@ -1269,6 +1325,8 @@ class Car:
         while x <= xb:
             zs = (-0.32, 0.32) if row % 2 == 0 else (0.0,)
             for z in zs:
+                if abs(z) > 0.2 and any(ba - 0.1 <= x <= bb + 0.1 for (ba, bb) in self.trans_bays):
+                    continue                     # (the aisle between the transverse seats is narrow: one line of standing spots down its middle)
                 near_door = min(abs(x - xd) for xd in self.doors) < 0.85
                 M.append(dict(name='stand_%02d' % k, pos=(x, fl, z), yaw=(90 if (k % 3) else 0) * (1 if k % 2 else -1), kind='stand_door' if near_door else 'stand'))
                 k += 1
@@ -1276,6 +1334,8 @@ class Car:
             row += 1
         # near poles
         for (px, pz) in self.poles[::2]:
+            if any(ba - 0.1 <= px + 0.30 <= bb + 0.1 for (ba, bb) in self.trans_bays):
+                continue
             zz = pz * 0.55
             M.append(dict(name='stand_%02d' % k, pos=(px + 0.30, fl, zz), yaw=180 if pz > 0 else 0, kind='stand_pole'))
             k += 1
@@ -1334,7 +1394,7 @@ def build_variant(key, want_tris=False):
     cfg = VARIANTS[key]
     random.seed(7)
     clear_scene()
-    M = build_materials(cfg['kind'])
+    M = build_materials(cfg['kind'], cfg)
     car = Car(cfg, M)
     car.build()
     stats = {}

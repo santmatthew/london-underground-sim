@@ -148,18 +148,21 @@ static func board(rows: Array, width := 2.4, row_h := 0.34, _bg := Color.WHITE, 
 		var arrow_dir: int = r.get("arrow", -1)
 		var arrow_left: bool = r.get("arrow_side", "left") == "left"
 		if txt.begins_with("Way out"):
-			# black box with yellow text
-			var bw := minf(width - 0.12, 0.95 + 0.0)
+			# black box with yellow text: as wide as the text and, when there is one, the arrow after it (a fixed width put the arrow on top of the end of "out")
+			var fs := row_h * 0.52
+			var tw: float = font_bold().get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 64).x * (fs / 64.0)
+			var a_sz := row_h * 0.6
+			var bw := minf(0.07 + tw + (0.10 + a_sz if arrow_dir >= 0 else 0.0) + 0.07, width - 0.12)
 			var bx := -width * 0.5 + 0.08 + bw * 0.5
 			var box := _quad(Vector2(bw, row_h * 0.86), _mat(Color(0.02, 0.02, 0.02), 0.0, 0.4))
 			box.position = Vector3(bx, yc, 0.016)
 			root.add_child(box)
-			var lt := label(txt, row_h * 0.52, YELLOW, true, HORIZONTAL_ALIGNMENT_LEFT)
+			var lt := label(txt, fs, YELLOW, true, HORIZONTAL_ALIGNMENT_LEFT)
 			lt.position = Vector3(bx - bw * 0.5 + 0.07, yc - row_h * 0.02, 0.022)
 			root.add_child(lt)
 			if arrow_dir >= 0:
-				var ay := arrow(arrow_dir, row_h * 0.6, YELLOW)
-				ay.position = Vector3(bx + bw * 0.5 - row_h * 0.38, yc, 0.024)
+				var ay := arrow(arrow_dir, a_sz, YELLOW)
+				ay.position = Vector3(bx + bw * 0.5 - 0.07 - a_sz * 0.5, yc, 0.024)
 				root.add_child(ay)
 		else:
 			var x := -width * 0.5 + 0.1

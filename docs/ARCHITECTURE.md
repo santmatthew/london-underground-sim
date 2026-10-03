@@ -91,6 +91,11 @@ and rate limited: relations are fetched one at a time inside the London bounding
 - Tests: `bend_test` (maths), `ride_curve_test` (forced curve), `curved_platform_test` (Bank: floor, edge guard, walls, cars, gap, crowd), `curved_ride_test` (Bank -> Liverpool Street, real geometry),
   `bend_list_test` (every curved platform of the network), `ride_speed_test` (real lengths vs timetable), `tunnel_view_test --curve=7 --at=100` (screenshot).
 
+## Rolling stock per line
+`Train.stock_of_line(lid)` picks the car model family of a line: the Bakerloo (1972 stock) and the Piccadilly (1973 stock) run `deep72` - transverse seating bays at the car ends, longitudinal seats between the doors, red
+moquette (`make_train.py`, `seating='mixed'`) - the other tubes `deep` (longitudinal seats), the Circle, District, Hammersmith & City and Metropolitan lines and the Elizabeth line `ss` (S-stock-style, walk-through).
+`Train.kind` stays the size class (`deep` / `ss`: platform gaps, door positions, clearances), `Train.stock` is the model. `stock_test` checks the seats, their facing, the standing spots and the aisle of each line's cars.
+
 ## Signage
 Every sign is tagged (`meta "sign"`, `meta "size"`), hung through `StationSigns.hang_room / hang_blade / mount_wall` and fitted by
 `PlatformModule.ceiling_at / fit_blade` (roof arch, walls, columns, headroom `HEAD` = 2.15 m). `tests/sign_audit_test.gd` checks every sign of
