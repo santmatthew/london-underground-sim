@@ -15,6 +15,12 @@ const DOOR_X := {  # door centre x per car type (README)
 }
 static var _packed: Dictionary = {}
 
+
+## which car family a line runs: the sub-surface lines and the Elizabeth line use the wide "ss" cars, the deep tubes the small "deep" ones
+static func kind_of_line(lid: String) -> String:
+	var g: String = Net.lines[lid]["group"]
+	return "ss" if (g == "ss" or g == "elizabeth") else "deep"
+
 var kind := "deep"
 var n_cars := 6
 var line_id := ""

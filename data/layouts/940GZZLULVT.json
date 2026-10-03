@@ -1,5 +1,5 @@
 {
- "note": "Liverpool Street from TfL diagram C101 (topology; dimensions estimated); ticket halls A and B share a paid-side opening so Central <-> Metropolitan/Circle interchange stays inside the barriers",
+ "note": "Liverpool Street from TfL diagram C101 (topology; dimensions estimated); ticket halls A and B share a paid-side opening so Central <-> Metropolitan/Circle interchange stays inside the barriers; Elizabeth line platforms 37.0 m below street (tubedepths), reached from the east side of the hall (simplified)",
  "rooms": [
   {
    "id": "hall_a",
@@ -85,6 +85,15 @@
     16
    ],
    "depth": 11.8
+  },
+  {
+   "id": "conc_el",
+   "kind": "landing",
+   "size": [
+    44,
+    16.0
+   ],
+   "depth": 37.0
   }
  ],
  "esc": [
@@ -124,6 +133,20 @@
     -1,
     1
    ]
+  },
+  {
+   "id": "conc_el_0",
+   "from": "hall_a",
+   "to": "conc_el",
+   "dir": "E",
+   "c": -3.0,
+   "lanes": [
+    1,
+    -1,
+    1,
+    -1
+   ],
+   "to_off": 0.0
   }
  ],
  "modules": [
@@ -157,6 +180,23 @@
     ],
     [
      "central:Westbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "conc_el",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "elizabeth",
+   "faces": [
+    [
+     "elizabeth:Eastbound",
+     0
+    ],
+    [
+     "elizabeth:Westbound",
      0
     ]
    ]

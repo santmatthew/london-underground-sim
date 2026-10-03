@@ -167,7 +167,7 @@ func _spawn(vkey: String, fkey: String, f: Dictionary, module: PlatformModule, i
 	var dir_dep := -canon if origin else canon
 	var lid: String = info["line"]
 	var cars: Array = StationPlan.CARS.get(lid, [6, 16.0])
-	var kind := "ss" if Net.lines[lid]["group"] == "ss" else "deep"
+	var kind := Train.kind_of_line(lid)
 	var train := Train.new()
 	train.name = "Train_" + vkey.replace(":", "_")
 	train.run = info["run"]

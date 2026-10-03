@@ -18,7 +18,7 @@ static var _leaf_mesh: ArrayMesh
 ## x positions of the doors along the platform (module frame): the train stops centred on the module origin
 static func door_xs(line_id: String) -> Array:
 	var cars: Array = StationPlan.CARS.get(line_id, [7, 17.0])
-	return Train.door_positions_for("deep", int(cars[0]))
+	return Train.door_positions_for(Train.kind_of_line(line_id) if Net.lines.has(line_id) else "deep", int(cars[0]))
 
 
 static func _leaf() -> ArrayMesh:

@@ -109,8 +109,10 @@
     "victoria": {"light": [0.95, 0.98, 1.0], "floor": "floor_slab", "wall": "tile_sq_grey", "stripes": [[0.0, 0.16, "blue_skirt", 0]]},
     "jubilee": {"wall": "tile_white", "stripes": [[0.0, 0.30, "grey_mid", 1]]},
     "jubilee_ext": {"peds": true, "light": [0.93, 0.97, 1.0], "floor": "floor_stone", "wall": "panel_white", "stripes": [[0.0, 0.14, "grey_dk", 0]]},
-    "waterloo-city": {"wall": "tile_white", "stripes": [[0.0, 0.30, "green_dk", 1], [1.10, 1.18, "green_dk", 1]]}
+    "waterloo-city": {"wall": "tile_white", "stripes": [[0.0, 0.30, "green_dk", 1], [1.10, 1.18, "green_dk", 1]]},
+    "elizabeth": {"peds": true, "light": [0.95, 0.97, 1.0], "floor": "floor_stone", "wall": "panel_white", "stripes": [[0.0, 0.14, "grey_dk", 0]]}
   },
+  "elizabeth_core": ["Paddington", "Bond Street", "Tottenham Court Road", "Farringdon", "Liverpool Street", "Whitechapel", "Canary Wharf", "Custom House", "Woolwich"],
   "jubilee_ext": ["Westminster", "Waterloo", "Southwark", "London Bridge", "Bermondsey", "Canada Water", "Canary Wharf", "North Greenwich"],
   "hall_types": {
     "default": {"wall": "tile_white", "floor": "floor_hall", "ceil": "ceiling", "bands": [[1.15, 1.40, "blue_navy", 0]]},
@@ -148,7 +150,7 @@
                        "lamps": "cctv", "planters": "brick", "roundel_post": true}
   },
   "surface_lines": {"central": "post_war", "piccadilly": "holden", "northern": "holden", "jubilee": "holden", "bakerloo": "victorian", "district": "victorian",
-                    "metropolitan": "metropolitan", "circle": "victorian", "hammersmith-city": "victorian"},
+                    "metropolitan": "metropolitan", "circle": "victorian", "hammersmith-city": "victorian", "elizabeth": "post_war"},
   "surface_overrides": {
     "Acton Town": "holden", "Ealing Common": "holden", "Rayners Lane": "holden", "Eastcote": "holden", "Ruislip Manor": "holden", "Ruislip": "holden", "Ickenham": "holden",
     "Hillingdon": "holden", "Uxbridge": "holden", "Boston Manor": "Boston Manor", "Northfields": "holden", "Loughton": "Loughton", "Debden": "post_war", "Buckhurst Hill": "post_war",

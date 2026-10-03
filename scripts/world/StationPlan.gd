@@ -12,9 +12,10 @@ extends RefCounted
 const CARS := {   # line -> [cars, car length m]
 	"bakerloo": [7, 15.5], "central": [8, 16.5], "circle": [7, 18.0], "district": [7, 18.0], "hammersmith-city": [7, 18.0],
 	"jubilee": [7, 17.0], "metropolitan": [8, 18.0], "northern": [6, 16.0], "piccadilly": [6, 17.0], "victoria": [8, 16.0], "waterloo-city": [4, 16.0],
+	"elizabeth": [11, 18.5],          # (the Class 345 is 9 cars of 23 m = 205 m; the simulator's car models are the 18 m S-stock cars, so eleven of them make the same length)
 }
 const BASE_DEPTH := {  # metres below the ticket hall
-	"bakerloo": 21.0, "central": 22.0, "jubilee": 29.0, "northern": 25.0, "piccadilly": 27.0, "victoria": 24.0, "waterloo-city": 23.0, "ss": 9.0,
+	"bakerloo": 21.0, "central": 22.0, "jubilee": 29.0, "northern": 25.0, "piccadilly": 27.0, "victoria": 24.0, "waterloo-city": 23.0, "ss": 9.0, "elizabeth": 24.0,
 }
 const MAX_STREET_DOORS := 5
 const HALL_H := 4.2
@@ -260,7 +261,7 @@ func generate(station_idx: int) -> void:
 			var L: float = cars[0] * cars[1] + 10.0
 			var pw := PlatformModule.PW_RUN
 			var corr_len := PlatformModule.TUNNEL_MIN + 6.0 + rng.randf() * 10.0      # the platform tunnel stops before the landing, so the passage is at least as long as the tunnel we keep
-			var is_box: bool = kind != "deep"
+			var is_box: bool = kind != "deep" or line_id == "elizabeth"          # (the Elizabeth line has box platforms, with edge doors, in every kind of station)
 			var spine_x0 := -L * 0.5 if is_box else -L * 0.5 - 6.0
 			var mx: float = rect[1] + corr_len - spine_x0
 			var mpos := Vector3(mx, -lvl[li]["depth"], lane_z)

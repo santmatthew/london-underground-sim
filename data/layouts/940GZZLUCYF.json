@@ -1,5 +1,5 @@
 {
- "note": "Canary Wharf, from TfL layout diagram J007-02 (topology; dimensions estimated): ticket hall with 3 entrances, escalators to Jubilee 23.0 m",
+ "note": "Canary Wharf, from TfL layout diagram J007-02 (topology; dimensions estimated): ticket hall with 3 entrances, escalators to Jubilee 23.0 m; Elizabeth line platforms 22.0 m below street (tubedepths), reached from the east side of the hall (simplified)",
  "rooms": [
   {
    "id": "hall_main",
@@ -38,6 +38,15 @@
     16
    ],
    "depth": 23.0
+  },
+  {
+   "id": "conc_el",
+   "kind": "landing",
+   "size": [
+    44,
+    16.0
+   ],
+   "depth": 22.0
   }
  ],
  "esc": [
@@ -50,6 +59,19 @@
    "lanes": [
     1,
     -1,
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
+  },
+  {
+   "id": "conc_el_0",
+   "from": "hall_main",
+   "to": "conc_el",
+   "dir": "E",
+   "c": -3.0,
+   "lanes": [
     1,
     -1,
     1
@@ -71,6 +93,23 @@
     ],
     [
      "jubilee:Westbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "conc_el",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "elizabeth",
+   "faces": [
+    [
+     "elizabeth:Eastbound",
+     0
+    ],
+    [
+     "elizabeth:Westbound",
      0
     ]
    ]

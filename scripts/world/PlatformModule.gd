@@ -80,7 +80,7 @@ func build(p_spec: Dictionary) -> void:
 	open = bool(character.get("open", false)) and box
 	open_style = character.get("open_style", {})
 	ped_xs = []
-	if character.get("peds", false) and not box and faces.size() > 0 and faces[0] != null:
+	if character.get("peds", false) and faces.size() > 0 and faces[0] != null:
 		ped_xs = PlatformDoors.door_xs(String(faces[0].get("line", "jubilee")))
 	meta = {"faces": [], "openings": openings, "spine_x0": spine_x0, "spine_x1": spine_x1, "length": L, "pw": pw, "style": spec.get("style", "arch"),
 		"tun_w": float(spec.get("tun_w", TUNNEL_EXT)), "tun_e": float(spec.get("tun_e", TUNNEL_EXT)), "recesses": recesses}

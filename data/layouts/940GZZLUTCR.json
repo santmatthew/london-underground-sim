@@ -1,5 +1,5 @@
 {
- "note": "Tottenham Court Road from TfL diagram N105 (topology; dimensions estimated)",
+ "note": "Tottenham Court Road from TfL diagram N105 (topology; dimensions estimated); Elizabeth line platforms 23.0 m below street (tubedepths), reached from the east side of the hall (simplified)",
  "rooms": [
   {
    "id": "hall",
@@ -60,6 +60,15 @@
     16
    ],
    "depth": 25.8
+  },
+  {
+   "id": "conc_el",
+   "kind": "landing",
+   "size": [
+    44,
+    16.0
+   ],
+   "depth": 23.0
   }
  ],
  "esc": [
@@ -100,6 +109,19 @@
     -1
    ],
    "to_off": 0.0
+  },
+  {
+   "id": "conc_el_0",
+   "from": "hall",
+   "to": "conc_el",
+   "dir": "E",
+   "c": -3.0,
+   "lanes": [
+    1,
+    -1,
+    1
+   ],
+   "to_off": 0.0
   }
  ],
  "modules": [
@@ -133,6 +155,23 @@
     ],
     [
      "northern:Southbound",
+     0
+    ]
+   ]
+  },
+  {
+   "attach": "conc_el",
+   "lane_z": 0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "elizabeth",
+   "faces": [
+    [
+     "elizabeth:Eastbound",
+     0
+    ],
+    [
+     "elizabeth:Westbound",
      0
     ]
    ]

@@ -1,5 +1,5 @@
 {
- "note": "Heathrow Terminal 4, from TfL station layout diagram D235-02 (topology; dimensions estimated)",
+ "note": "Heathrow Terminal 4, from TfL station layout diagram D235-02 (topology; dimensions estimated); Elizabeth line platforms 12.0 m below street (tubedepths), reached from the east side of the hall (simplified)",
  "rooms": [
   {
    "id": "hall",
@@ -38,6 +38,15 @@
     16.0
    ],
    "depth": 8.0
+  },
+  {
+   "id": "conc_el",
+   "kind": "landing",
+   "size": [
+    44,
+    16.0
+   ],
+   "depth": 12.0
   }
  ],
  "esc": [
@@ -53,6 +62,18 @@
    ],
    "stairs": true,
    "to_off": 0.0
+  },
+  {
+   "id": "conc_el_0",
+   "from": "hall",
+   "to": "conc_el",
+   "dir": "E",
+   "c": -3.0,
+   "lanes": [
+    1,
+    -1
+   ],
+   "to_off": 0.0
   }
  ],
  "modules": [
@@ -66,6 +87,23 @@
     [
      "piccadilly:Southbound",
      0
+    ]
+   ]
+  },
+  {
+   "attach": "conc_el",
+   "lane_z": 0.0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "elizabeth",
+   "faces": [
+    [
+     "elizabeth:Eastbound",
+     0
+    ],
+    [
+     "elizabeth:Eastbound",
+     1
     ]
    ]
   }

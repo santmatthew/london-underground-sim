@@ -20,7 +20,7 @@ const TPH := {
 	"bakerloo": [8, 22, 14, 22, 12, 8], "central": [10, 32, 20, 32, 16, 9], "circle": [4, 6, 6, 6, 6, 4],
 	"district": [6, 24, 16, 24, 12, 6], "hammersmith-city": [4, 8, 6, 8, 6, 4], "jubilee": [10, 30, 20, 30, 16, 9],
 	"metropolitan": [4, 16, 10, 16, 8, 4], "northern": [10, 30, 20, 30, 18, 10], "piccadilly": [8, 24, 18, 24, 14, 8],
-	"victoria": [12, 34, 27, 34, 20, 12], "waterloo-city": [6, 20, 8, 20, 6, 0],
+	"victoria": [12, 34, 27, 34, 20, 12], "waterloo-city": [6, 20, 8, 20, 6, 0], "elizabeth": [8, 24, 16, 24, 14, 8],
 }
 # share of the line's trains that work each service (normalised at build time)
 const WEIGHTS := {
@@ -29,6 +29,8 @@ const WEIGHTS := {
 	"metropolitan": [0.25, 0.10, 0.40, 0.25],
 	"northern": [0.09, 0.09, 0.13, 0.05, 0.13, 0.13, 0.05, 0.13],
 	"piccadilly": [0.20, 0.45, 0.35],
+	# Abbey Wood - T4, - T5, - Reading; Paddington - T4, - T5, - Reading; Shenfield - T4, - T5; Abbey Wood - Paddington; Shenfield - Paddington (the API lists the through routes; the two short ones carry the core)
+	"elizabeth": [0.10, 0.04, 0.08, 0.04, 0.02, 0.04, 0.04, 0.02, 0.30, 0.32],
 }
 
 # --- run storage (parallel arrays indexed by run id) ---

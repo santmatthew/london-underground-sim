@@ -6,6 +6,7 @@ extends RefCounted
 const STATIONS := "res://data/stations_real.json"
 const PLATFORM_NUMBERS := "res://data/platform_numbers.json"
 const LAYOUTS := "res://data/station_layouts.json"
+const EL_DEPTHS := "res://data/elizabeth_depths.json"      # platform depths of the Elizabeth line (tools/build_elizabeth_depths.py), merged into the layouts' depths
 
 static var _stations: Dictionary = {}
 static var _numbers: Dictionary = {}
@@ -29,6 +30,19 @@ static func _load() -> void:
 						_numbers = parsed
 					_:
 						_layouts = parsed
+	if FileAccess.file_exists(EL_DEPTHS):
+		var fe := FileAccess.open(EL_DEPTHS, FileAccess.READ)
+		var el = JSON.parse_string(fe.get_as_text())
+		if el is Dictionary:
+			for nap in el:
+				if String(nap).begins_with("_"):
+					continue
+				var ent: Dictionary = _layouts.get(nap, {})
+				var deps: Dictionary = ent.get("depths", {})
+				for g in el[nap]["depths"]:
+					deps[g] = el[nap]["depths"][g]
+				ent["depths"] = deps
+				_layouts[nap] = ent
 
 
 ## digest for a NaPTAN id, or {}

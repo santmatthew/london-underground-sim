@@ -1,5 +1,5 @@
 {
- "note": "Paddington (Circle/District/Bakerloo), from TfL layout diagram B071-02 (topology; dimensions estimated): halls A (Praed Street), B/C (Lawn, Bakerloo), D&C 5.2 m, Bakerloo 9.7 m",
+ "note": "Paddington (Circle/District/Bakerloo), from TfL layout diagram B071-02 (topology; dimensions estimated): halls A (Praed Street), B/C (Lawn, Bakerloo), D&C 5.2 m, Bakerloo 9.7 m; Elizabeth line platforms 20.0 m below street (tubedepths), reached from the east side of the hall (simplified)",
  "rooms": [
   {
    "id": "hall_a",
@@ -64,6 +64,15 @@
     14
    ],
    "depth": 9.7
+  },
+  {
+   "id": "conc_el",
+   "kind": "landing",
+   "size": [
+    44,
+    34.0
+   ],
+   "depth": 20.0
   }
  ],
  "esc": [
@@ -106,6 +115,20 @@
    ],
    "stairs": true,
    "to_off": 0.0
+  },
+  {
+   "id": "conc_el_0",
+   "from": "hall_main",
+   "to": "conc_el",
+   "dir": "E",
+   "c": -3.0,
+   "lanes": [
+    1,
+    -1,
+    1,
+    -1
+   ],
+   "to_off": 0.0
   }
  ],
  "modules": [
@@ -136,6 +159,40 @@
     [
      "bakerloo:Northbound",
      0
+    ]
+   ]
+  },
+  {
+   "attach": "conc_el",
+   "lane_z": -9.0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "elizabeth",
+   "faces": [
+    [
+     "elizabeth:Eastbound",
+     0
+    ],
+    [
+     "elizabeth:Eastbound",
+     1
+    ]
+   ]
+  },
+  {
+   "attach": "conc_el",
+   "lane_z": 9.0,
+   "lane_rel": true,
+   "corr_len": 12,
+   "group": "elizabeth",
+   "faces": [
+    [
+     "elizabeth:Westbound",
+     0
+    ],
+    [
+     "elizabeth:Westbound",
+     1
     ]
    ]
   }

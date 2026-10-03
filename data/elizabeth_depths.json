@@ -1,0 +1,307 @@
+{
+ "_comment": "Elizabeth line platform depth in metres below street level, from MichalPaszkiewicz/tubedepths platformdepths.js (TfL FOI depth table, whole metres). tools/build_elizabeth_depths.py",
+ "940GZZLUBND": {
+  "depths": {
+   "elizabeth": [
+    25.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "940GZZLUCYF": {
+  "depths": {
+   "elizabeth": [
+    22.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "940GZZLUEBY": {
+  "depths": {
+   "elizabeth": [
+    5.1
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "940GZZLUFCN": {
+  "depths": {
+   "elizabeth": [
+    26.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "940GZZLULVT": {
+  "depths": {
+   "elizabeth": [
+    37.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "940GZZLUPAC": {
+  "depths": {
+   "elizabeth": [
+    20.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "940GZZLUSTD": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "940GZZLUTCR": {
+  "depths": {
+   "elizabeth": [
+    23.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "940GZZLUWPL": {
+  "depths": {
+   "elizabeth": [
+    26.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GWOLWXR": {
+  "depths": {
+   "elizabeth": [
+    28.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GCUSTMHS": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GABWDXR": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GRDNGSTN": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GTWYFORD": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GMDNHEAD": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GTAPLOW": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GBNHAM": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GSLOUGH": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GLANGLEY": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GIVER": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GWDRYTON": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GHAYESAH": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GSTHALL": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GHANWELL": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GWEALING": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GMRYLAND": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GFRSTGT": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GILFORD": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GSVNKNGS": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GGODMAYS": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GCHDWLHT": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GROMFORD": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GGIDEAPK": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GHRLDWOD": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GBRTWOOD": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GSHENFLD": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GACTONML": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ },
+ "910GMANRPK": {
+  "depths": {
+   "elizabeth": [
+    0.0
+   ]
+  },
+  "source": "tubedepths (TfL FOI depth table, rounded to 1 m)"
+ }
+}

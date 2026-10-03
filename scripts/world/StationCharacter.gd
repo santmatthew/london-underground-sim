@@ -70,6 +70,14 @@ static func platform(station_name: String, line_id: String, kind: String) -> Dic
 	_load()
 	if _data.is_empty():
 		return {}
+	if line_id == "elizabeth":
+		# the nine new stations of the central and south-east sections share one platform design ("kit of parts": full-height edge doors, panelled walls)
+		if short_name(station_name) in _data.get("elizabeth_core", []):
+			var el: Dictionary = (_data.get("lines", {}) as Dictionary).get("elizabeth", {})
+			var lc: Array = el.get("light", [1, 1, 1])
+			return {"wall": String(el.get("wall", "panel_white")), "stripes": _stripes(el.get("stripes", [])), "frieze": false, "station_slug": slug(station_name), "peds": true,
+				"floor": String(el.get("floor", "floor_stone")), "light_color": Color(lc[0], lc[1], lc[2])}
+		return _generic(station_name, line_id, "surface" if kind == "deep" else kind)
 	if kind != "deep":
 		return _generic(station_name, line_id, kind)
 	var stations: Dictionary = _data.get("stations", {})

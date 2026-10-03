@@ -27,7 +27,7 @@ func load_data() -> void:
 		l["color"] = Color.html(l["color"])
 		l["id"] = lid
 		lines[lid] = l
-	line_ids = ["bakerloo", "central", "circle", "district", "hammersmith-city", "jubilee", "metropolitan", "northern", "piccadilly", "victoria", "waterloo-city"]
+	line_ids = ["bakerloo", "central", "circle", "district", "hammersmith-city", "jubilee", "metropolitan", "northern", "piccadilly", "victoria", "waterloo-city", "elizabeth"]
 	var sids: Array = d["stations"].keys()
 	sids.sort()
 	for sid in sids:
