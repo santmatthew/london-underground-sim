@@ -425,11 +425,11 @@ func _on_doors_opened(v: Dictionary) -> void:
 		var best := Vector3.ZERO
 		var bd := 1e9
 		for dx in doors:
-			var dw := train.to_global(Vector3(dx, 0.0, 0.0))
-			var d := absf(to_local(dw).x - to_local(world_pos).x)
+			var dd := station.to_design(to_local(train.slot_global(dx)))         # (design space: where the door is along the straight platform of the plan)
+			var d := absf(dd.x - station.to_design(to_local(world_pos)).x)
 			if d < bd:
 				bd = d
-				best = to_local(dw)
+				best = dd
 		var a := _new_outbound(fk, best.x, rng.randf() < 0.14)
 		if a == null:
 			continue
@@ -447,8 +447,7 @@ func _on_doors_opened(v: Dictionary) -> void:
 				var dx := 0.0
 				var bd2 := 1e9
 				for d in doors:
-					var dxw := train.to_global(Vector3(d, 0, 0))
-					var dl := to_local(dxw)
+					var dl := station.to_design(to_local(train.slot_global(d)))
 					var dist := absf(dl.x - a.pos.x)
 					if dist < bd2:
 						bd2 = dist
@@ -489,7 +488,7 @@ func _process(delta: float) -> void:
 	if not _pending.is_empty():
 		_fill_pending(RIDERS_PER_FRAME)
 	var dead: Array = []
-	var ppos := to_local(player.global_position) if player else Vector3(1e6, 1e6, 1e6)
+	var ppos := station.to_design(to_local(player.global_position)) if player else Vector3(1e6, 1e6, 1e6)
 	for a in agents:
 		_step(a, delta, ppos)
 		if a.state == "dead":
@@ -516,12 +515,21 @@ func _step(a: Agent, delta: float, ppos: Vector3) -> void:
 				_finish_hop(a)
 		"walk", "board", "gate":
 			_step_walk(a, delta, ppos)
-	# sync visuals
+	_sync(a)
+
+
+## writes the agent's pose to its model and its body: the walking itself is in design space (every platform straight), a curved platform wraps it round the arc here
+func _sync(a: Agent) -> void:
+	var pp := a.pos
+	var yaw := a.yaw
+	if station.has_bend:
+		pp = station.to_phys(a.pos)
+		yaw += station.phys_yaw(a.pos)
 	if a.node:
-		a.node.position = a.pos
-		a.node.rotation.y = a.yaw
+		a.node.position = pp
+		a.node.rotation.y = yaw
 	if a.body:
-		a.body.position = a.pos + Vector3(0, 0.88, 0)
+		a.body.position = pp + Vector3(0, 0.88, 0)
 
 
 const AVOID_R := 2.8         # people start to walk round the player from this far away
@@ -649,11 +657,7 @@ func _step_escalator(a: Agent, delta: float) -> void:
 	var fwd_local := Vector3(float(info["dir"]), 0, 0)
 	var fwd_world := Basis(Vector3.UP, e["yaw"]) * fwd_local
 	a.yaw = atan2(-fwd_world.x, -fwd_world.z)
-	if a.node:
-		a.node.position = a.pos
-		a.node.rotation.y = a.yaw
-	if a.body:
-		a.body.position = a.pos + Vector3(0, 0.88, 0)
+	_sync(a)
 	if done:
 		a.state = "walk"
 		_set_solid(a, true)
@@ -676,7 +680,7 @@ func _finish_hop(a: Agent) -> void:
 	stats["lift_rides"] += 1
 	if a.node:
 		a.node.visible = true
-		a.node.position = a.pos
+		_sync(a)
 	a.cur = 0.0
 
 
@@ -692,7 +696,7 @@ func _finish_route(a: Agent) -> void:
 			a.yaw = PI if f["side"] > 0.0 else 0.0
 			if a.node:
 				a.node.play(a.idle_clip, 0.3)
-				a.node.rotation.y = a.yaw
+				_sync(a)
 		_:
 			a.state = "dead"
 
@@ -714,7 +718,7 @@ func _wait_pass() -> void:
 				var dx := 0.0
 				var bd := 1e9
 				for d in doors:
-					var dl := to_local(train.to_global(Vector3(d, 0, 0)))
+					var dl := station.to_design(to_local(train.slot_global(d)))
 					var dist := absf(dl.x - a.pos.x)
 					if dist < bd:
 						bd = dist
@@ -733,7 +737,7 @@ func _wait_pass() -> void:
 func _wake_sleep_pass() -> void:
 	if player == null:
 		return
-	var ppos := to_local(player.global_position)
+	var ppos := station.to_design(to_local(player.global_position))
 	awake_count = 0
 	for a in agents:
 		var d: float = a.pos.distance_to(ppos)
@@ -753,8 +757,7 @@ func _wake(a: Agent) -> void:
 	var p := PersonModel.create(a.char_idx, a.seed)
 	add_child(p)
 	a.node = p
-	p.position = a.pos
-	p.rotation.y = a.yaw
+	_sync(a)
 	if a.bag:
 		p.set_bag(true)
 	lod.register(p)
@@ -796,7 +799,7 @@ func _free_agent(a: Agent) -> void:
 
 ## number of people in a 3 m cone ahead of `world_pos` (used to slow the player in dense crowds)
 func density_ahead(world_pos: Vector3, forward: Vector3) -> int:
-	var lp := to_local(world_pos)
+	var lp := station.to_design(to_local(world_pos))
 	var fwd := (global_transform.basis.inverse() * forward)
 	fwd.y = 0.0
 	fwd = fwd.normalized()

@@ -487,7 +487,7 @@ func start_explore(cfg: Dictionary) -> void:
 	Clock.time_scale = 1.0
 	await _enter_station(idx)
 	player.cancel_sit()
-	player.global_position = spot["pos"] + Vector3(0, 0.05, 0)
+	player.global_position = station.to_global(station.to_phys(spot["pos"])) + Vector3(0, 0.05, 0)
 	player.velocity = Vector3.ZERO
 	var yaw: float = spot.get("yaw", 0.0)
 	player.face(Vector3(sin(yaw), 0, cos(yaw)))
@@ -697,7 +697,7 @@ func start_journey() -> void:
 	_stage("_enter_station (build + hook)")
 	var spot: Dictionary = journey["spot"]
 	player.cancel_sit()
-	player.global_position = spot["pos"] + Vector3(0, 0.05, 0)
+	player.global_position = station.to_global(station.to_phys(spot["pos"])) + Vector3(0, 0.05, 0)
 	player.velocity = Vector3.ZERO
 	var yaw: float = spot.get("yaw", 0.0)
 	player.face(Vector3(sin(yaw), 0, cos(yaw)))
@@ -1063,7 +1063,7 @@ func _describe_location() -> String:
 			return "aboard the %s line train to %s" % [Net.line_name((vv["info"] as Dictionary)["line"]), Net.station_name((vv["info"] as Dictionary)["dest"])]
 	for mi in station.modules.size():
 		var m: PlatformModule = station.modules[mi]
-		var lp := m.to_local(p)
+		var lp := m.design_local(p)
 		if absf(lp.x) < m.meta["length"] * 0.5 + 12.0 and absf(lp.z) < 9.0 and absf(lp.y) < 3.5:
 			var mod: Dictionary = station.plan.modules[mi]
 			for fd in mod["faces"]:
@@ -1229,7 +1229,7 @@ func _hint_multi() -> String:
 	var best := "hall_unpaid"
 	var bd := 1e9
 	for n in plan.nodes:
-		var d: float = (n["pos"] as Vector3).distance_to(station.to_local(player.global_position))
+		var d: float = (n["pos"] as Vector3).distance_to(station.to_design(station.to_local(player.global_position)))
 		if d < bd:
 			bd = d
 			best = n["name"]
@@ -1280,7 +1280,7 @@ func _change_text(idx: int, line: String) -> String:
 
 ## the door of a train (train-local x) nearest to the player, and how far along the train that is: sounds of the doors are heard from there (a train is 100 m long, its middle is far from the platform end)
 func _nearest_door_x(train: Train) -> Array:
-	var lx: float = train.to_local(player.global_position).x
+	var lx: float = train.train_x_of(player.global_position)
 	var best := 0.0
 	var bd := 1e9
 	for dx in train.door_positions():

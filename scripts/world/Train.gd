@@ -35,6 +35,11 @@ var doors_open := false
 var gap_plates: Array = []
 var _busy_tween: Tween
 var front_light: SpotLight3D
+var bend: Bend = null            # the platform the train stands on is curved: the cars follow the arc (place)
+var track_z := 0.0               # module frame, design space: z of the track the train runs on (curved platforms)
+var design_x := 0.0              # module frame, design space: x of the middle of the train
+var _placed_bent := false        # place() has put the cars on the curve at design_x
+var _articulated := false        # the cars have been placed along a curve (place / follow_path): they are not in a straight line
 
 
 ## Start loading the four car models in the background (about 0.8 s each if loaded on the spot, which is what a station's first train used to cost in one frame)
@@ -91,7 +96,8 @@ func build(p_kind: String, p_cars: int, p_line: String, livery: Color) -> void:
 	front_light.light_energy = 3.0
 	front_light.light_color = Color(1.0, 0.95, 0.85)
 	front_light.shadow_enabled = false
-	add_child(front_light)
+	front_light.position = Vector3(length * 0.5 + 0.2 - float(car_x[0]), 1.2, 0.0)
+	(cars[0] as Node3D).add_child(front_light)         # (the cars swing round curves: the light goes with the front one)
 
 
 ## A moving train passes through walkways that share its tunnel line (landings/corridors west of the platform): its bodies must only be
@@ -105,6 +111,109 @@ func set_solid(on: bool) -> void:
 		if not co.has_meta("orig_layer"):
 			co.set_meta("orig_layer", co.collision_layer)
 		co.collision_layer = int(co.get_meta("orig_layer")) if on else 0
+
+
+## puts the middle of the train at x along its platform (module frame, design space). On a curved platform the train takes the pose the track has there and every car sits on the arc.
+func place(x: float) -> void:
+	if bend == null:
+		design_x = x
+		if _articulated:
+			straighten()
+		position.x = x
+		return
+	if x == design_x and _placed_bent:
+		return                                    # (standing at the platform: nothing to do)
+	design_x = x
+	_placed_bent = true
+	var base := 0.0 if facing > 0 else PI
+	transform = bend.pose(x, position.y, track_z) * Transform3D(Basis(Vector3.UP, base), Vector3.ZERO)
+	var inv := transform.affine_inverse()
+	for i in cars.size():
+		var half := _bogie_half(i)
+		var xi := float(car_x[i])
+		var f := bend.map(Vector3(bend.advance_x(x, float(facing) * (xi + half), track_z), position.y, track_z))
+		var r := bend.map(Vector3(bend.advance_x(x, float(facing) * (xi - half), track_z), position.y, track_z))
+		var t := inv * _bogie_pose(f, r)
+		if i == cars.size() - 1:
+			t.basis = t.basis * Basis(Vector3.UP, PI)
+		(cars[i] as Node3D).transform = t
+
+
+## half the distance between the bogie centres of car i: a car's bogies sit on the rails, so its middle lies inside the curve and its ends swing outside it
+func _bogie_half(i: int) -> float:
+	var key := kind + ("_cab" if (i == 0 or i == cars.size() - 1) else "_mid")
+	return float(CAR_LEN[key]) * 0.34
+
+
+## the pose of a car whose front bogie is at f and rear bogie at r (module / ride frame): in the middle, pointing from one to the other
+static func _bogie_pose(f: Vector3, r: Vector3) -> Transform3D:
+	var d := f - r
+	return Transform3D(Basis(Vector3.UP, atan2(-d.z, d.x)), (f + r) * 0.5)
+
+
+## the cars follow the track `path` of a ride (TrackPath, distance of the train's middle `s_c`; the player's car, `co` ahead of the middle, is the one that stays put in the world and sits at path distance `s_ref`)
+func follow_path(path: TrackPath, s_c: float, s_ref: float, co: float) -> void:
+	_articulated = not path.is_straight()
+	var inv := path.pose(s_ref).affine_inverse()
+	for i in cars.size():
+		var half := _bogie_half(i)
+		var f := path.pose(s_c + float(car_x[i]) + half).origin
+		var r := path.pose(s_c + float(car_x[i]) - half).origin
+		var rel := inv * _bogie_pose(f, r)
+		var t := Transform3D(Basis.IDENTITY, Vector3(co, 0.0, 0.0)) * rel
+		if i == cars.size() - 1:
+			t.basis = t.basis * Basis(Vector3.UP, PI)
+		(cars[i] as Node3D).transform = t
+
+
+## the cars back in a straight line along the train
+func straighten() -> void:
+	_articulated = false
+	_placed_bent = false
+	for i in cars.size():
+		var c := cars[i] as Node3D
+		c.position = Vector3(float(car_x[i]), 0.0, 0.0)
+		c.rotation = Vector3(0.0, PI if i == cars.size() - 1 else 0.0, 0.0)
+
+
+## design x of the middle of car i: the cars stand a fixed distance apart ALONG the track, which on a curve is not the same as along x
+func car_design_x(i: int) -> float:
+	if bend == null:
+		return design_x + float(facing) * float(car_x[i])
+	return bend.advance_x(design_x, float(facing) * float(car_x[i]), track_z)
+
+
+## where the point (x, y, z) of the train's frame is in the world: the same as to_global for a straight train, but on a curve the car that holds x is turned off the train's axis, so the point is taken in that car's frame
+func slot_global(x: float, y := 0.0, z := 0.0) -> Vector3:
+	if bend == null and not _articulated:
+		return to_global(Vector3(x, y, z))
+	var i := car_index_at_x(x)
+	var flip := -1.0 if i == cars.size() - 1 else 1.0
+	return (cars[i] as Node3D).to_global(Vector3((x - float(car_x[i])) * flip, y, z * flip))
+
+
+## the train-frame x of the world point p (for a curved train: along the car nearest to it)
+func train_x_of(p: Vector3) -> float:
+	if bend == null and not _articulated:
+		return to_local(p).x
+	var i := car_index_at(p)
+	var flip := -1.0 if i == cars.size() - 1 else 1.0
+	return float(car_x[i]) + flip * (cars[i] as Node3D).to_local(p).x
+
+
+func door_world(dx: float) -> Vector3:
+	return slot_global(dx)
+
+
+func car_index_at_x(x: float) -> int:
+	var best := 0
+	var bd := 1e9
+	for i in cars.size():
+		var d := absf(x - float(car_x[i]))
+		if d < bd:
+			bd = d
+			best = i
+	return best
 
 
 func setup_orientation(p_facing: int, p_platform_side: float) -> void:
@@ -166,8 +275,11 @@ func _make_gap_plates() -> void:
 		sh.size = Vector3(1.5, 0.08, 0.5)
 		cs.shape = sh
 		body.add_child(cs)
-		body.position = Vector3(dx, floor_h - 0.04, local_side * (half_w + 0.1))
-		add_child(body)
+		# (a plate belongs to the car its door is in, so it swings with it round a curve; the rear car is turned half round)
+		var ci := car_index_at_x(dx)
+		var flip := -1.0 if ci == cars.size() - 1 else 1.0
+		body.position = Vector3((dx - float(car_x[ci])) * flip, floor_h - 0.04, local_side * (half_w + 0.1) * flip)
+		(cars[ci] as Node3D).add_child(body)
 		gap_plates.append(body)
 
 
@@ -193,18 +305,25 @@ func set_doors(open: bool, duration := 1.6, stagger := 0.12) -> void:
 
 ## is a world point inside any car's walkable interior (used to decide whether the player is aboard)
 func contains_world_point(p: Vector3) -> bool:
-	var lp := to_local(p)
-	if lp.y < 0.7 or lp.y > 3.2 or absf(lp.z) > 1.3:
-		return false
-	return absf(lp.x) < length * 0.5 + 0.2
+	if bend == null and not _articulated:
+		var lp := to_local(p)
+		if lp.y < 0.7 or lp.y > 3.2 or absf(lp.z) > 1.3:
+			return false
+		return absf(lp.x) < length * 0.5 + 0.2
+	# on a curve the cars stand off the train's axis: test each one in its own frame
+	for i in cars.size():
+		var half: float = float(CAR_LEN[kind + ("_cab" if (i == 0 or i == cars.size() - 1) else "_mid")]) * 0.5 + (0.2 if (i == 0 or i == cars.size() - 1) else 0.8)
+		var lp2 := (cars[i] as Node3D).to_local(p)
+		if lp2.y >= 0.7 and lp2.y <= 3.2 and absf(lp2.z) <= 1.3 and absf(lp2.x) < half:
+			return true
+	return false
 
 
 func car_index_at(p: Vector3) -> int:
-	var lp := to_local(p)
 	var best := 0
 	var bd := 1e9
 	for i in cars.size():
-		var d := absf(lp.x - car_x[i])
+		var d := (cars[i] as Node3D).global_position.distance_to(p)
 		if d < bd:
 			bd = d
 			best = i

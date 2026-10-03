@@ -15,7 +15,8 @@ as you can. Time of day (crowds and train frequency), the real train timetable, 
   tile-lettering panels, live dot-matrix indicators driven by the timetable).
 - **Trains**: Blender-built deep-tube and sub-surface cars (interiors, moquette, poles, sliding doors, line diagrams, destination displays)
   that approach, stop, open doors and depart on the timetable. **Ride** them: the world scrolls past as tunnel while the next station is built
-  and slides in; announcements, ambience and sway included.
+  and slides in; announcements, ambience and sway included. The track **bends** like the real one (heading and curvature from OpenStreetMap): rides turn through the tunnels, the cars swing round the
+  bends, and about sixty platforms are curved (Bank, Waterloo Bakerloo, Embankment, Euston, Liverpool Street ...) with the gap that goes with them.
 - **People**: 36 MakeHuman-based characters (clothes, hair, skins, bags) animated with retargeted CMU mocap; crowd flows follow the same routes
   the planner uses (gates, escalators — standing on the right — platforms, boarding and alighting), scaled by time of day; riders fill the carriages.
 - **Audio**: 1300+ generated clips: station/line announcements in a British voice (keyed by station and line/destination), ambience layers

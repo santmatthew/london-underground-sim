@@ -157,6 +157,9 @@ func _ready() -> void:
 		var a2 := sys_arg("mlook", "0,1.5,0").split(",")
 		pos = mpos + Vector3(float(a1[0]), float(a1[1]), float(a1[2]))
 		look = mpos + Vector3(float(a2[0]), float(a2[1]), float(a2[2]))
+	if mcam != "" or view in ["plat", "train", "plat_end"]:
+		pos = st.to_phys(pos)               # (design space -> the curved world, where a platform is curved)
+		look = st.to_phys(look)
 	if cam_a != "" and look_a != "":
 		var cp := cam_a.split(",")
 		var lp := look_a.split(",")

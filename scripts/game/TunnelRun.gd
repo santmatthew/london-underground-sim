@@ -1,48 +1,46 @@
 class_name TunnelRun
 extends Node3D
-## Endless running tunnel used while riding between stations. The train stays fixed; this node's segments scroll past.
+## The running tunnel between two stations as the player sees it while riding. The train stays fixed; Ride moves this node (and the stations) past it along the TrackPath.
 ## Cross-section is identical (relative to the track) to the running tunnel in PlatformModule so the hand-over to a station is invisible.
-## Local frame: the train's track is along +x at z = track_z; y = 0 is the platform-surface level (rail head at -0.9).
+## Local frame: the frame of the ride (TrackPath): the train's track is the path itself, y = 0 is the platform-surface level (rail head at -0.9). The scenery is a ring of SEG_LEN cells; cell k is
+## centred on the path at k * SEG_LEN and curves with the path (a mesh per curvature step, built by worker threads the moment the path is known; straight ones at once).
 
 const SEG_LEN := 12.0
 const N_SEG := 22
-
-var track_z := 6.45          # world z of the track relative to this node
-var side := 1.0              # +1: platform (absent) toward -z, like module face A
-var speed := 0.0             # m/s the scenery moves toward -x (train moving toward +x)
-var direction := 1.0         # train travel direction sign along x
-var offset := 0.0            # accumulated distance
-var limit_ahead := INF       # scenery is not shown farther than this distance ahead of the train centre (station approach)
-var segs: Array = []
-var _variants: Array = []
-var _pw := PlatformModule.PW_RUN
-
-
-## The scenery: segments of SEG_LEN of the bare bore (dark lining, cabling on both walls; TunnelDetail, the same as the running tunnel beyond a platform), some with a lamp. What a segment shows is a
-## function of its absolute cell along the tunnel, so it does not change as the segments are recycled; a lamp hangs in every second cell (about every 24 m).
 const N_VAR := 3
 
-var _lamps: Array = []         # the OmniLight3D of each segment instance
+var path: TrackPath
+var segs: Array = []                 # the MeshInstance3D of cell k at index posmod(k, N_SEG)
+var _lamps: Array = []               # the OmniLight3D of each instance
 var _cells: PackedInt32Array = PackedInt32Array()
-var _zc := 0.0
+var _shown: PackedInt32Array = PackedInt32Array()      # the mesh key each instance shows (class * 16 + variant, 99999: the fallback)
+var _zfar := 0.0
+var _ztrack := 0.0
+var _zwall_run := 0.0
+
+static var _cache: Dictionary = {}          # class * 16 + variant -> ArrayMesh (shared by every ride)
+static var _pending: Dictionary = {}        # key -> true while a worker builds it
+static var _jobs: Array = []                # [task id, key, [MeshKit]] of the workers that are building them
 
 
-func setup(_wall_mat := "tunnel_lining") -> void:
-	var zfar := PlatformModule.GAP * 0.5 + _pw + PlatformModule.TRACK_TO_EDGE + PlatformModule.TRACK_TO_WALL
-	var ztrack := zfar - PlatformModule.TRACK_TO_WALL
-	var zwall_run := zfar - (PlatformModule.TRACK_TO_WALL + PlatformModule.TRACK_TO_EDGE + PlatformModule.PW_RUN)
-	_zc = (zwall_run + zfar) * 0.5
-	# variants 0..N_VAR-1 have a lamp in the middle of the segment, N_VAR..2*N_VAR-1 have none
+func setup(p_path: TrackPath = null) -> void:
+	path = p_path if p_path != null else TrackPath.new()
+	_zfar = PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE + PlatformModule.TRACK_TO_WALL
+	_ztrack = _zfar - PlatformModule.TRACK_TO_WALL
+	_zwall_run = _zfar - (PlatformModule.TRACK_TO_WALL + PlatformModule.TRACK_TO_EDGE + PlatformModule.PW_RUN)
+	# the straight meshes at once: variants 0..N_VAR-1 have a lamp in the middle of the cell, N_VAR..2*N_VAR-1 have none
 	for v in 2 * N_VAR:
-		_variants.append(_segment_mesh(v, zwall_run, zfar, ztrack))
+		if not _cache.has(v):
+			_cache[v] = _finish(_cell_kit(v, 0), 0)
 	_cells.resize(N_SEG)
+	_shown.resize(N_SEG)
 	for i in N_SEG:
 		var mi := MeshInstance3D.new()
-		mi.mesh = _variants[0]
+		mi.mesh = _cache[0]
 		add_child(mi)
 		segs.append(mi)
 		var o := OmniLight3D.new()
-		o.position = Vector3(0, TunnelDetail.LAMP_Y - 0.1, zfar - 0.7)
+		o.position = Vector3(0, TunnelDetail.LAMP_Y - 0.1, _zfar - 0.7)
 		o.light_energy = 1.5
 		o.omni_range = 9.0
 		o.omni_attenuation = 1.3
@@ -51,12 +49,23 @@ func setup(_wall_mat := "tunnel_lining") -> void:
 		mi.add_child(o)
 		_lamps.append(o)
 		_cells[i] = -1000000
-	# the tunnel geometry was built in face-A coordinates: shift so the track sits at track_z
-	position = Vector3(0, 0, track_z - ztrack)
-	_place(0.0)
+		_shown[i] = -1
+	# the bent ones, for every curvature the path has
+	var seen := {}
+	for k in path.cell_count():
+		var c := path.cell_class(k)
+		if c != 0 and not seen.has(c):
+			seen[c] = true
+			for v in 2 * N_VAR:
+				_request(c, v)
+	place(0.0)
 
 
-func _segment_mesh(v: int, zwall_run: float, zfar: float, ztrack: float) -> ArrayMesh:
+## the cell `k` of the tunnel (k * SEG_LEN along the path) as a MeshKit with the track at z = _ztrack; bent about the cell's entry when `cls` is not 0
+func _cell_kit(v: int, cls: int) -> MeshKit:
+	var zfar := PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE + PlatformModule.TRACK_TO_WALL
+	var ztrack := zfar - PlatformModule.TRACK_TO_WALL
+	var zwall_run := zfar - (PlatformModule.TRACK_TO_WALL + PlatformModule.TRACK_TO_EDGE + PlatformModule.PW_RUN)
 	var kit := MeshKit.new()
 	kit.seed_rng(3 + v)
 	var prof := _profile(zwall_run, zfar)
@@ -77,10 +86,50 @@ func _segment_mesh(v: int, zwall_run: float, zfar: float, ztrack: float) -> Arra
 		2:     # a blue emergency light by a dark cross-passage doorway in the far wall
 			kit.box("light_emissive_blue", Vector3(1.5, 2.0, zwall_run + 0.1), Vector3(0.5, 0.18, 0.06), 0.0)
 			kit.box("black", Vector3(1.5, 0.85, zwall_run + 0.03), Vector3(1.6, 1.7, 0.04), 0.0)
+	if cls != 0:
+		kit.bend(Bend.new(float(cls) * TrackPath.Q, -SEG_LEN * 0.5, SEG_LEN * 0.5, ztrack), 3.0)
+	return kit
+
+
+## the mesh of a kit (materials looked up on the main thread)
+func _finish(kit: MeshKit, _cls: int) -> ArrayMesh:
 	var mats := {}
 	for k in kit.surfaces.keys():
 		mats[k] = Mats.get_mat(k) if not k.begins_with("light_emissive_") else _lamp_mat(k)
 	return kit.build(mats)
+
+
+func _request(cls: int, v: int) -> void:
+	var key := cls * 16 + v
+	if _cache.has(key) or _pending.has(key):
+		return
+	var box: Array = [null]
+	var id := WorkerThreadPool.add_task(func(): box[0] = _cell_kit(v, cls), false, "tunnel cell")
+	_pending[key] = true
+	_jobs.append([id, key, box])
+
+
+## meshes the workers have finished become usable; instances that were showing the straight fallback are refreshed
+func _collect() -> void:
+	var any := false
+	var left: Array = []
+	for j in _jobs:
+		if WorkerThreadPool.is_task_completed(j[0]):
+			WorkerThreadPool.wait_for_task_completion(j[0])
+			_cache[j[1]] = _finish(j[2][0], int(j[1]) / 16)
+			_pending.erase(j[1])
+			any = true
+		else:
+			left.append(j)
+	_jobs = left
+	if any:
+		for i in N_SEG:
+			_cells[i] = -1000000
+
+
+func busy() -> bool:
+	_collect()
+	return not _jobs.is_empty()
 
 
 func _lamp_mat(key: String) -> Material:
@@ -110,28 +159,32 @@ func _profile(za: float, zb: float) -> PackedVector2Array:
 	return pts
 
 
-## advance the scenery by `dist` metres (train moves along `direction`)
-func advance(dist: float) -> void:
-	offset += dist
-	_place(offset)
-
-
-func _place(off: float) -> void:
-	# segment i sits at x = (i - N/2) * SEG_LEN - direction * fposmod(off, SEG_LEN)  (scenery moves opposite to the train); the cell of the tunnel it shows is
-	# i - N/2 + direction * floor(off / SEG_LEN)
-	var f := fposmod(off, SEG_LEN)
-	var k := int(floor(off / SEG_LEN))
-	var dir := int(direction)
-	for i in N_SEG:
-		var x := (i - N_SEG / 2) * SEG_LEN - direction * f
+## show the cells round the point `s` of the path (the player's car)
+func place(s: float) -> void:
+	_collect()
+	var kc := int(roundf(s / SEG_LEN))
+	for k in range(kc - N_SEG / 2, kc + N_SEG / 2):
+		var i := posmod(k, N_SEG)
+		if _cells[i] == k:
+			continue
+		_cells[i] = k
 		var mi: MeshInstance3D = segs[i]
-		mi.position.x = x
-		var cell := i - N_SEG / 2 + dir * k
-		if _cells[i] != cell:
-			_cells[i] = cell
-			var lit := posmod(cell, 2) == 0
-			mi.mesh = _variants[(0 if lit else N_VAR) + posmod(cell * 7 + (cell >> 2), N_VAR)]
-			(_lamps[i] as OmniLight3D).visible = lit
-		# hide segments beyond the station approach plane
-		var ahead := x * direction
-		mi.visible = ahead + SEG_LEN * 0.5 <= limit_ahead
+		var cls := path.cell_class(k) if k >= 0 else 0
+		var lit := posmod(k, 2) == 0
+		var v := (0 if lit else N_VAR) + posmod(k * 7 + (k >> 2), N_VAR)
+		var key := cls * 16 + v
+		if not _cache.has(key):
+			key = v                                  # (not built yet: the straight cell)
+			cls = 0
+		mi.mesh = _cache[key]
+		(_lamps[i] as OmniLight3D).visible = lit
+		# the cell enters at s = k * SEG_LEN - SEG_LEN / 2 with the heading the path has there; its mesh runs from x = -SEG_LEN / 2 and has the track at z = _ztrack
+		var s0 := float(k) * SEG_LEN - SEG_LEN * 0.5
+		var pe := path.pose(s0)
+		var fwd := pe.basis.x
+		mi.transform = Transform3D(pe.basis, pe.origin + fwd * (SEG_LEN * 0.5)) * Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, -_ztrack))
+		# the lamp hangs at the middle of the cell: where the bend puts it
+		var lp := Vector3(0, TunnelDetail.LAMP_Y - 0.1, _zfar - 0.7)
+		if cls != 0:
+			lp = Bend.new(float(cls) * TrackPath.Q, -SEG_LEN * 0.5, SEG_LEN * 0.5, _ztrack).map(lp)
+		(_lamps[i] as OmniLight3D).position = lp

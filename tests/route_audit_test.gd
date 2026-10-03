@@ -116,11 +116,11 @@ func _audit_station(idx: int, step: float, verbose: bool, faces_only: bool) -> A
 				if r[2] is Vector3:
 					pts.append(r[2])
 				elif r[2] != null:
-					pts.append(st.platform_point(String(r[2]).substr(5), 0.5, 1.4))
+					pts.append(st.platform_point_design(String(r[2]).substr(5), 0.5, 1.4))
 			for w in wps:
 				pts.append(w["pos"])
 			if si == segs.size() - 1 and r[3] != null:
-				pts.append(st.platform_point(String(r[3]).substr(5), 0.5, 1.4))
+				pts.append(st.platform_point_design(String(r[3]).substr(5), 0.5, 1.4))
 			var err := _sweep(st, pts, step)
 			if err != "":
 				fails += 1
@@ -147,8 +147,10 @@ func _sweep(st: Station, pts: Array, step: float) -> String:
 		var n := maxi(1, int(ceil(flat / step)))
 		for k in range(0 if i == 0 else 1, n + 1):
 			var t := float(k) / n
-			var x := lerpf(a.x, b.x, t)
-			var z := lerpf(a.z, b.z, t)
+			# (the route is in design space, where every platform is straight: each sample is put where a curved platform really is)
+			var wp := st.to_global(st.to_phys((pts[i] as Vector3).lerp(pts[i + 1], t)))
+			var x := wp.x
+			var z := wp.z
 			var fy: float
 			if is_nan(y_prev):
 				fy = _floor(x, z, a.y + 1.5, 3.0)         # first point: the plan's y is only approximate

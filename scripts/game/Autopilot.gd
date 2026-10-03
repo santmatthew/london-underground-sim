@@ -185,7 +185,7 @@ func _nearest_node(st: Station) -> String:
 
 
 func _nearest_node_raw(st: Station) -> String:
-	var lp := st.to_local(player.global_position)
+	var lp := st.to_design(st.to_local(player.global_position))
 	var best := "hall_unpaid"
 	var bd := 1e9
 	for n in st.plan.nodes:
@@ -206,12 +206,12 @@ func _nearest_visible_node(st: Station) -> String:
 	var space := player.get_world_3d().direct_space_state
 	var eye := player.global_position + Vector3(0, 1.0, 0)
 	var cands: Array = []
-	var lp := st.to_local(player.global_position)
+	var lp := st.to_design(st.to_local(player.global_position))
 	for n in st.plan.nodes:
 		cands.append([(n["pos"] as Vector3).distance_to(lp), n["name"], n["pos"]])
 	cands.sort_custom(func(a, b): return a[0] < b[0])
 	for c in cands.slice(0, 24):
-		var to: Vector3 = st.to_global((c[2] as Vector3) + Vector3(0, 1.0, 0))
+		var to: Vector3 = st.to_global(st.to_phys((c[2] as Vector3) + Vector3(0, 1.0, 0)))
 		var across := (to - eye).cross(Vector3.UP).normalized() * 0.35     # the capsule is not a point: test three rays
 		var clear := true
 		for off in [Vector3.ZERO, across, -across]:
@@ -369,8 +369,18 @@ func _waypoints_for(st: Station, names: Array) -> Array:
 	var out: Array = []
 	_lift_at.clear()
 	_spiral_at.clear()
+	var prev := Vector3.INF
 	for wp in st.plan.walk_points(names, 0):
-		out.append(st.to_global(wp["pos"]))
+		var wpos: Vector3 = wp["pos"]
+		if st.has_bend and prev.x < 1e8 and absf(prev.y - wpos.y) < 1.0:
+			# (a straight line between two points of a curved platform would cut the corner: steer by points on the curve)
+			var n := int(prev.distance_to(wpos) / 4.0)
+			for k in range(1, n):
+				var mid := prev.lerp(wpos, float(k) / float(n))
+				if st.to_phys(mid) != mid:
+					out.append(st.to_global(st.to_phys(mid)))
+		prev = wpos
+		out.append(st.to_global(st.to_phys(wpos)))
 		if wp["kind"] == "lift":
 			_lift_at[out.size() - 1] = wp
 		elif wp["kind"] == "spiral":
@@ -585,16 +595,16 @@ func _start_boarding(v: Dictionary) -> void:
 	var half_w := 1.31 if train.kind == "deep" else 1.5
 	var floor_y := 0.88 if train.kind == "deep" else 1.0
 	for dx in train.door_positions():
-		var dw := train.to_global(Vector3(dx, floor_y, local_side * (half_w + 0.3)))
+		var dw := train.slot_global(dx, floor_y, local_side * (half_w + 0.3))
 		var d := dw.distance_to(pos)
 		if d < bd:
 			bd = d
 			best = Vector3(dx, floor_y, local_side)
 	var dx2: float = best.x
-	var outside := train.to_global(Vector3(dx2, floor_y, local_side * (half_w + 0.9)))
-	var sill := train.to_global(Vector3(dx2, floor_y, local_side * half_w))
-	var inside := train.to_global(Vector3(dx2 + 0.6, floor_y, local_side * (half_w - 1.5)))
-	var deeper := train.to_global(Vector3(dx2 + 0.6, floor_y, local_side * (half_w - 1.5)))
+	var outside := train.slot_global(dx2, floor_y, local_side * (half_w + 0.9))
+	var sill := train.slot_global(dx2, floor_y, local_side * half_w)
+	var inside := train.slot_global(dx2 + 0.6, floor_y, local_side * (half_w - 1.5))
+	var deeper := train.slot_global(dx2 + 0.6, floor_y, local_side * (half_w - 1.5))
 	wps = [outside, sill, inside]
 	wp_i = 0
 	mode = "board"
@@ -657,16 +667,16 @@ func _start_alighting(v: Dictionary, next_mode := "alight") -> void:
 	var bd := 1e9
 	var bdx := 0.0
 	for dx in train.door_positions():
-		var dw := train.to_global(Vector3(dx, floor_y, local_side * half_w))
+		var dw := train.slot_global(dx, floor_y, local_side * half_w)
 		var d := dw.distance_to(pos)
 		if d < bd:
 			bd = d
 			bdx = dx
-	var inside := train.to_global(Vector3(bdx, floor_y, local_side * (half_w - 1.0)))
-	var sill := train.to_global(Vector3(bdx, floor_y, local_side * half_w))
-	var outside := train.to_global(Vector3(bdx, floor_y, local_side * (half_w + 1.4)))
+	var inside := train.slot_global(bdx, floor_y, local_side * (half_w - 1.0))
+	var sill := train.slot_global(bdx, floor_y, local_side * half_w)
+	var outside := train.slot_global(bdx, floor_y, local_side * (half_w + 1.4))
 	# then a step further along the platform (away from the doorway)
-	var beyond := train.to_global(Vector3(bdx + 1.2, floor_y, local_side * (half_w + 2.0)))
+	var beyond := train.slot_global(bdx + 1.2, floor_y, local_side * (half_w + 2.0))
 	wps = [inside, sill, outside, beyond]
 	wp_i = 0
 	mode = next_mode

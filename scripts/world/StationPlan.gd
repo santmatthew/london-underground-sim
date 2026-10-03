@@ -442,6 +442,8 @@ func finish_common(rng: RandomNumberGenerator = null) -> void:
 			real_no[pid] = best
 	if real_no.size() == platform_no.size():
 		platform_no = real_no
+	for mi in modules.size():
+		modules[mi]["bend"] = PlatformCurve.for_module(self, mi)         # curved platforms (Bank, Liverpool Street ...): {} for a straight one
 	_add_start_spots(rng)
 	_add_lifts()
 

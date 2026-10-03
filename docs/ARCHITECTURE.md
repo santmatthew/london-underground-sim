@@ -61,6 +61,27 @@ layout -> `data/tube_diagram.json` (~42 KB). The layout is cached in `build/diag
 - `Autopilot` also: boards early when the doors are open and it is on the platform; steps back out if a boarding passenger pushes it into a standing
   train; never dodges a person into a train; picks the exit door by walking time (as the planner does), not by node count.
 
+## Curves: rides that turn, platforms that bend (2026-10-03)
+The real track is not straight. `tools/fetch_line_geometry.py` + `tools/build_line_geometry.py` turn the OpenStreetMap route relations of every line (raw geometry under `build/geom`, never shipped) into
+`data/line_geometry.json`: for each pair of consecutive stops the track length and its heading every 20 m, and for each platform the heading change across it (110 m, + = left in the travel direction).
+- **Rides turn.** `TrackPath` is the track between two stops in the frame of the train that sets off (cells of 12 m, constant curvature each, so a pose at any distance is closed form). The real profile is
+  held straight near both stations (`fade_in/out`: the platform and the hand-over stretches), and the exact curves of curved platforms at either end are laid over it (`head` / `tail`). `Ride` keeps the
+  *player's car* fixed in the world and places everything else on that path: the origin station, the destination station (`dest_p`, so it arrives rotated to meet the track), the tunnel scenery (`TunnelRun`:
+  a ring of 22 cells, each a mesh bent to its curvature class, built by worker threads) and the other cars (`Train.follow_path`: each car sits between its two bogies, so a car swings out at its ends
+  and in at its middle). The real track length replaces the 1.15 x straight-line estimate when the data has it. `UG_CURVE=<class>` bends every ride (tests).
+- **Platforms bend.** A module is *designed* straight (plan, rooms, walking graph, crowd, dressing all live in "design space") and `Bend` wraps it round an arc afterwards: the part with the spine and the
+  cross-passages stays straight, the platform beyond follows the curve, the running tunnel carries on straight at the final heading. `PlatformCurve.for_module` decides (average of both faces; >= 5 degrees across
+  the platform; radius not under 150 m; the mirror image if the real direction would hit another module or room at the same level, `_conflicts`; else straight). The mesh is cut into 3 m slabs and
+  bent (`MeshKit.bend`, on a worker thread), colliders become rotated pieces, lights/signs/props are set down on the curve (`PlatformModule.bend_children`), posters are bent where they are made
+  (`PosterKit.finish`), the occluders follow (`StationOcclusion`). `UG_BEND=<radius>` bends every deep-tube module (tests).
+- **Two spaces.** Anything that reasons about the plan stays in design space; anything physical (the player, rays, node positions) is in the curved world. `Station.to_phys / to_design / phys_yaw`
+  convert, `PlatformModule.design_local(world)` gives a module-local point, `Station.platform_point` is physical and `platform_point_design` is not. The crowd walks in design space and `_sync` puts
+  the people on the curve; the autopilot's waypoints are mapped (with intermediate points, a chord would cut the corner); trains come from `Train.place(x)` (`design_x`), doors from `Train.slot_global`.
+- Gotchas: a straight line in design space is not a straight line in the world (audits sweep `to_phys` of each sample); shared statics read by plan-building worker threads need a mutex
+  (`PlatformCurve`, `TrackPath.data`); `WorkerThreadPool` tasks must be waited for (`wait_for_task_completion`) or the engine corrupts memory at exit.
+- Tests: `bend_test` (maths), `ride_curve_test` (forced curve), `curved_platform_test` (Bank: floor, edge guard, walls, cars, gap, crowd), `curved_ride_test` (Bank -> Liverpool Street, real geometry),
+  `bend_list_test` (every curved platform of the network), `ride_speed_test` (real lengths vs timetable), `tunnel_view_test --curve=7 --at=100` (screenshot).
+
 ## Signage
 Every sign is tagged (`meta "sign"`, `meta "size"`), hung through `StationSigns.hang_room / hang_blade / mount_wall` and fitted by
 `PlatformModule.ceiling_at / fit_blade` (roof arch, walls, columns, headroom `HEAD` = 2.15 m). `tests/sign_audit_test.gd` checks every sign of
@@ -241,7 +262,7 @@ FSR 1 and FSR 2 for `tools/upscale_sheet.py`; Godot has no DLSS (it needs NVIDIA
 `walkbot_test` (real capsule along routes; `--reverse`, `--rot=180`, `--trace`), `walk_test` (floor audit), `spine_wall_test`, `sign_audit_test`,
 `tools/hub_walks.sh` (walkbot on every authored hub, all halls + reverse, in parallel) and `tools/hub_journeys.sh [file]` (autopilot journeys between hubs in parallel; flags falls, stuck events, missed trains),
 `route_audit_test` (`--all` or `--stations=..`: free path everywhere), `wall_audit_test` (visible surfaces without a collider, `--range=a,b`), `tube_map_test` / `map_toggle_test`, `person_bag_test`,
-`layouts_test` (every data/layouts file maps to a station and compiles), `plan_dump_test` (`--station`, optional `--from/--to`: platform ids, rooms, modules, waypoints of a route),
+`layouts_test` (every data/layouts file maps to a station and compiles), `module_dump_test` (`--station`: modules with their bends, rooms, faces), `plan_dump_test` (`--station`, optional `--from/--to`: platform ids, rooms, modules, waypoints of a route),
 `ray_probe_test` (what is at a point), `esc_edge_test` (real capsule pinned on every escalator lane, incl. `--crowd` = the station's real crowd at 08:50; fails if the player climbs a
 balustrade or leaves the shaft), `bot_test` (autopilot journey; `--seed`, `--multi=N`, `--start/--dest/--spot/--hour`, `--every`, `--frames`; prints DROP/TRAIL diagnostics
 when the player falls), `shots_test` (autopilot journey with screenshots), `overlap_test`, `plan_warm_test` (threaded plan / timetable builds equal the synchronous ones), `build_chunks_test` (longest uninterrupted stretch of a station build, cold and warm).

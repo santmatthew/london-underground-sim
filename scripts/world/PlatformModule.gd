@@ -48,6 +48,7 @@ var roof_info: Dictionary = {}     # the roof's kind and measures, see PlatformO
 var ped_doors: Dictionary = {}     # face sign -> [{x, l, r, open}]: the platform edge door leaves (PlatformDoors)
 var ped_xs: Array = []             # door x positions when this module has platform edge doors
 var box := false
+var bend: Bend = null         # the platform curves (Bend): the module is built straight, in design space, and the shell, colliders, lights and trains are then wrapped round the arc
 var kit := MeshKit.new()
 var _cols: Array = []        # [center, size]  (collision boxes in local space)
 var _lights: Array = []      # [pos, energy, range]
@@ -59,7 +60,7 @@ static func half_width(pw: float) -> float:
 
 
 ## spec: length, pw, wall ("tile_white"/"tile_cream"), faces:[{line,color,label}], openings_x:[...], spine_x0, spine_x1, name
-func build(p_spec: Dictionary) -> void:
+func build(p_spec: Dictionary, p_async := false) -> void:
 	spec = p_spec
 	box = spec.get("style", "arch") == "box"
 	var L: float = spec.get("length", 110.0)
@@ -120,6 +121,21 @@ func build(p_spec: Dictionary) -> void:
 			mats[k] = Mats.dado(Color.html(k.substr(5)))
 		elif k.begins_with("char:"):
 			mats[k] = StationCharacter.material(k)
+	bend = null
+	var bd: Dictionary = spec.get("bend", {})
+	if not bd.is_empty() and not box:
+		bend = Bend.new(float(bd["kappa"]), float(bd["x0"]), float(bd["x1"]), 0.0)
+		var tb := Time.get_ticks_usec()
+		if p_async and is_inside_tree():
+			# (a quarter of a second of vertex work: on a worker thread, the frames go on meanwhile)
+			var task := WorkerThreadPool.add_task(func(): kit.bend(bend, 3.0), false, "bend platform")
+			while not WorkerThreadPool.is_task_completed(task):
+				await get_tree().process_frame
+			WorkerThreadPool.wait_for_task_completion(task)
+		else:
+			kit.bend(bend, 3.0)
+		meta["bend_ms"] = (Time.get_ticks_usec() - tb) / 1000
+		meta["bend"] = bd
 	var mi := MeshInstance3D.new()
 	mi.mesh = kit.build(mats)
 	mi.name = "Shell"
@@ -727,8 +743,63 @@ func _add_recess_seats() -> void:
 				m.name = "seat_%d_%d" % [int(rx * 10.0), int(dx * 2.0)]
 				m.position = Vector3(rx + dx, 0.45, s * (GAP * 0.5 - 0.03))
 				m.rotation.y = atan2(0.0, -s)
+				if bend != null:
+					m.rotation.y += bend.theta(m.position.x)
+					m.position = bend.map(m.position)
 				m.add_to_group("seat")
 				add_child(m)
+
+
+## the world point p in this module's design frame (straight, x along the platform): on a curved platform the module is wrapped round an arc, which is undone here
+func design_local(p: Vector3) -> Vector3:
+	var lp := to_local(p)
+	return bend.unmap(lp) if bend != null else lp
+
+
+## Moves what dressing, signs and props added to this module (placed straight, in design space) onto the curve: a baked mesh was bent where it was made (PosterKit.finish), everything else is
+## picked up and set down again on the curve with the heading the track has there. Holders (plain Node3Ds at the origin) are looked through.
+func bend_children() -> void:
+	if bend == null:
+		return
+	for c in get_children():
+		_bend_node(c)
+
+
+func _bend_node(n: Node) -> void:
+	if n.name in ["Shell", "Collision", "EdgeGuard", "Lights"] or n is Train or n.has_meta("bent"):
+		return
+	if not n is Node3D:
+		return
+	var nd := n as Node3D
+	nd.set_meta("bent", true)
+	if nd.get_class() == "Node3D" and nd.transform == Transform3D.IDENTITY:
+		for c in nd.get_children():
+			_bend_node(c)
+		return
+	var p := nd.position
+	nd.position = bend.map(p)
+	nd.basis = bend.rot(p.x) * nd.basis
+
+
+## a collision box [centre, size] of the straight design as the boxes that follow the bend: long ones are cut into pieces (a little longer than their pitch so they overlap and leave no crack),
+## each turned with the track where it stands. -> [[centre, size, basis], ...]
+func _bent_pieces(c: Array) -> Array:
+	var ctr: Vector3 = c[0]
+	var size: Vector3 = c[1]
+	var xa := ctr.x - size.x * 0.5
+	var xb := ctr.x + size.x * 0.5
+	if xb <= bend.x0:
+		return [[ctr, size, Basis.IDENTITY]]
+	if size.x <= 1.6:
+		return [[bend.map(ctr), size + Vector3(0.12, 0.0, 0.0), bend.rot(ctr.x)]]          # (a little longer than the pitch: neighbouring pieces overlap, no crack at the corners)
+	var n := maxi(1, int(ceil(size.x / 4.0)))
+	var out: Array = []
+	for i in n:
+		var xc := xa + (float(i) + 0.5) * size.x / float(n)
+		var len := size.x / float(n)
+		var piece := Vector3(len + (0.3 if n > 1 else 0.0), size.y, size.z)
+		out.append([bend.map(Vector3(xc, ctr.y, ctr.z)), piece, bend.rot(xc)])
+	return out
 
 
 func _add_collision() -> void:
@@ -740,19 +811,21 @@ func _add_collision() -> void:
 	edge_body.collision_mask = 0
 	body.collision_layer = 1
 	for c in _cols:
-		var cs := CollisionShape3D.new()
-		var sh := BoxShape3D.new()
-		sh.size = c[1]
-		cs.shape = sh
-		cs.position = c[0]
-		if c.size() > 2 and c[2] == "edge":
-			edge_body.add_child(cs)
-			if c.size() > 3:
-				if not edge_shapes.has(c[3]):
-					edge_shapes[c[3]] = []
-				edge_shapes[c[3]].append([c[0].x, cs])
-		else:
-			body.add_child(cs)
+		var pieces: Array = _bent_pieces(c) if bend != null else [[c[0], c[1], Basis.IDENTITY]]
+		for pc in pieces:
+			var cs := CollisionShape3D.new()
+			var sh := BoxShape3D.new()
+			sh.size = pc[1]
+			cs.shape = sh
+			cs.transform = Transform3D(pc[2], pc[0])
+			if c.size() > 2 and c[2] == "edge":
+				edge_body.add_child(cs)
+				if c.size() > 3:
+					if not edge_shapes.has(c[3]):
+						edge_shapes[c[3]] = []
+					edge_shapes[c[3]].append([c[0].x, cs])
+			else:
+				body.add_child(cs)
 	add_child(body)
 	add_child(edge_body)
 
@@ -856,7 +929,7 @@ func _add_lights() -> void:
 	add_child(holder)
 	for l in _lights:
 		var o := OmniLight3D.new()
-		o.position = l[0]
+		o.position = bend.map(l[0]) if bend != null else l[0]
 		o.light_energy = l[1]
 		o.omni_range = l[2]
 		o.omni_attenuation = 1.3

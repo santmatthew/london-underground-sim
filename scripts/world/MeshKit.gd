@@ -218,6 +218,143 @@ func sweep_x(mat: String, profile: PackedVector2Array, x0: float, x1: float, flo
 		arc += seg_arc
 
 
+## Bends everything gathered so far (see Bend). A triangle that reaches into the curved stretch is first cut along x into slabs of at most `step` metres, so a long wall or floor follows the arc
+## in a chain of short flat pieces; then every vertex is moved, and its normal and tangent turned with the track. Texture coordinates, colours and the order of the corners are kept.
+## Triangles before the arc stay as they are and those beyond it (the running tunnel) are moved as one rigid piece, both in place; only the ones in the arc are rebuilt.
+func bend(b: Bend, step := 3.0) -> void:
+	if b.is_straight():
+		return
+	var tail_xf := Transform3D(b.rot(b.x1), Vector3.ZERO)
+	var tail_pos := b.map(Vector3(b.x1, 0.0, 0.0)) - tail_xf.basis * Vector3(b.x1, 0.0, 0.0)
+	tail_xf.origin = tail_pos
+	var tail_rot := Transform3D(tail_xf.basis, Vector3.ZERO)
+	for name in surfaces.keys():
+		var s: Dictionary = surfaces[name]
+		var V: PackedVector3Array = s["v"]
+		var N: PackedVector3Array = s["n"]
+		var UV: PackedVector2Array = s["uv"]
+		var T: PackedFloat32Array = s["t"]
+		var C: PackedColorArray = s["c"]
+		var I: PackedInt32Array = s["i"]
+		var nv := V.size()
+		var is_tail := PackedByteArray()
+		is_tail.resize(nv)
+		var keep := PackedInt32Array()
+		var rebuilt: Array = []                 # the corners of the triangles that are in the arc (read before anything is moved)
+		for ti in range(0, I.size(), 3):
+			var i0: int = I[ti]
+			var i1: int = I[ti + 1]
+			var i2: int = I[ti + 2]
+			var x0v: float = V[i0].x
+			var x1v: float = V[i1].x
+			var x2v: float = V[i2].x
+			var xmax := maxf(x0v, maxf(x1v, x2v))
+			if xmax <= b.x0:
+				keep.append_array([i0, i1, i2])
+				continue
+			var xmin := minf(x0v, minf(x1v, x2v))
+			if xmin >= b.x1:
+				keep.append_array([i0, i1, i2])
+				is_tail[i0] = 1
+				is_tail[i1] = 1
+				is_tail[i2] = 1
+				continue
+			var corner: Array = []
+			for i in [i0, i1, i2]:
+				var p := V[i]
+				corner.append([p.x, p.y, p.z, N[i].x, N[i].y, N[i].z, UV[i].x, UV[i].y, T[i * 4], T[i * 4 + 1], T[i * 4 + 2], T[i * 4 + 3], C[i].r, C[i].g, C[i].b, C[i].a])
+			rebuilt.append([corner, xmin, xmax])
+		# the tail, as one rigid piece
+		for i in nv:
+			if is_tail[i] == 1:
+				V[i] = tail_xf * V[i]
+				N[i] = tail_rot * N[i]
+				var tt := tail_rot * Vector3(T[i * 4], T[i * 4 + 1], T[i * 4 + 2])
+				T[i * 4] = tt.x
+				T[i * 4 + 1] = tt.y
+				T[i * 4 + 2] = tt.z
+		# the arc
+		for rb in rebuilt:
+			var polys: Array = [rb[0]]
+			if float(rb[2]) > b.x0 and float(rb[1]) < b.x1:
+				polys = _cut_slabs(rb[0], rb[1], rb[2], b, step)
+			for poly: Array in polys:
+				var base := V.size()
+				for vt: Array in poly:
+					var rbasis := b.rot(vt[0])
+					var n2 := rbasis * Vector3(vt[3], vt[4], vt[5])
+					var t2 := rbasis * Vector3(vt[8], vt[9], vt[10])
+					V.append(b.map(Vector3(vt[0], vt[1], vt[2])))
+					N.append(n2)
+					UV.append(Vector2(vt[6], vt[7]))
+					T.append(t2.x)
+					T.append(t2.y)
+					T.append(t2.z)
+					T.append(vt[11])
+					C.append(Color(vt[12], vt[13], vt[14], vt[15]))
+				for k in range(1, poly.size() - 1):
+					keep.append_array([base, base + k, base + k + 1])
+		s["v"] = V
+		s["n"] = N
+		s["uv"] = UV
+		s["t"] = T
+		s["c"] = C
+		s["i"] = keep
+
+
+## the pieces (convex polygons, corners as 16-float arrays) a triangle falls into when cut by the planes x = b.x0, b.x1 and b.x0 + k step between them
+func _cut_slabs(tri: Array, xmin: float, xmax: float, b: Bend, step: float) -> Array:
+	var planes: Array = []
+	if xmin < b.x0 and b.x0 < xmax:
+		planes.append(b.x0)
+	var lo := maxf(xmin, b.x0)
+	var hi := minf(xmax, b.x1)
+	var k := int(floor((lo - b.x0) / step)) + 1
+	while b.x0 + k * step < hi - 1e-4:
+		var xc := b.x0 + k * step
+		if xc > lo + 1e-4 and xc < b.x1 - 1e-4:
+			planes.append(xc)
+		k += 1
+	if xmin < b.x1 and b.x1 < xmax:
+		planes.append(b.x1)
+	planes.sort()
+	var out: Array = []
+	var rest: Array = tri
+	for xc: float in planes:
+		var below: Array = []
+		var above: Array = []
+		var n: int = rest.size()
+		for i in n:
+			var a: Array = rest[i]
+			var c: Array = rest[(i + 1) % n]
+			var a_in: bool = a[0] <= xc
+			var c_in: bool = c[0] <= xc
+			if a_in:
+				below.append(a)
+			if not a_in:
+				above.append(a)
+			if a_in != c_in:
+				var t: float = (xc - a[0]) / (c[0] - a[0])
+				var m: Array = []
+				for j in 16:
+					m.append(lerpf(a[j], c[j], t))
+				m[0] = xc
+				var nl := Vector3(m[3], m[4], m[5]).normalized()
+				m[3] = nl.x
+				m[4] = nl.y
+				m[5] = nl.z
+				below.append(m)
+				above.append(m)
+		if below.size() >= 3:
+			out.append(below)
+		rest = above
+		if rest.size() < 3:
+			break
+	if rest.size() >= 3:
+		out.append(rest)
+	return out
+
+
 func build(materials: Dictionary, default_mat: Material = null) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	for name in surfaces:

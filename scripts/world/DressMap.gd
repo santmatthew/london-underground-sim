@@ -58,11 +58,11 @@ static func build(station: Station) -> DressMap:
 				if r[1] is Vector3:
 					pts.append(r[1])
 				elif r[1] != null:
-					pts.append(station.platform_point(String(r[1]).substr(5), 0.5, 1.4))
+					pts.append(station.platform_point_design(String(r[1]).substr(5), 0.5, 1.4))
 			for w in plan.walk_points(seg, 0):
 				pts.append(w["pos"])
 			if si == segs.size() - 1 and r[2] != null:
-				pts.append(station.platform_point(String(r[2]).substr(5), 0.5, 1.4))
+				pts.append(station.platform_point_design(String(r[2]).substr(5), 0.5, 1.4))
 			for i in pts.size() - 1:
 				dm._mark(pts[i], pts[i + 1])
 	return dm

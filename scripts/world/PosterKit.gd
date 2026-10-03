@@ -187,6 +187,10 @@ static func finish(kit: MeshKit, parent: Node3D, node_name := "Posters") -> Mesh
 		else:
 			mats[key] = Mats.get_mat(key)
 	var mi := MeshInstance3D.new()
+	var pm := parent.get_parent() as PlatformModule
+	if pm != null and pm.bend != null and parent.transform == Transform3D.IDENTITY:
+		kit.bend(pm.bend, 3.0)                 # (a run of posters on a curved platform follows the wall)
+		mi.set_meta("bent", true)
 	mi.mesh = kit.build(mats)
 	mi.name = node_name
 	parent.add_child(mi)

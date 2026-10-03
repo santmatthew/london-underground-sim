@@ -67,7 +67,7 @@ func _clip_cars(train: Train, mlen: float, tun_w: float, tun_e: float) -> void:
 	var any := false
 	var last := train.cars.size() - 1
 	for i in train.cars.size():
-		var cx := (train.transform * Vector3(float(train.car_x[i]), 0.0, 0.0)).x
+		var cx := train.car_design_x(i)
 		var key := train.kind + ("_cab" if (i == 0 or i == last) else "_mid")
 		var half_car: float = float(Train.CAR_LEN[key]) * 0.5
 		var vis := cx - half_car > cap_w and cx + half_car < cap_e
@@ -92,7 +92,7 @@ func _process(delta: float) -> void:
 		var info: Dictionary = v["info"]
 		var x := x_at(v, now)
 		var train: Train = v["train"]
-		train.position.x = x
+		train.place(x)
 		train.set_solid(absf(x) < 0.5)
 		# a running tunnel that stops short of the rooms behind it ends in a black cap: a train beyond it is not there
 		var mod: PlatformModule = v["module"]
@@ -129,7 +129,7 @@ func _edge_guard(v: Dictionary, open: bool) -> void:
 	var module: PlatformModule = v["module"]
 	var side: float = v["side"]
 	for dx in train.door_positions():
-		var mx: float = train.position.x + train.facing * dx
+		var mx: float = train.design_x + train.facing * dx
 		module.set_edge_open(side, mx - 0.8, mx + 0.8, open)
 
 
@@ -177,6 +177,8 @@ func _spawn(vkey: String, fkey: String, f: Dictionary, module: PlatformModule, i
 	train.position = Vector3(0, PlatformModule.RAIL_Y, side * (PlatformModule.GAP * 0.5 + module.meta["pw"] + PlatformModule.TRACK_TO_EDGE))
 	var facing: int = dir_dep if origin else dir_arr
 	train.setup_orientation(facing, -side)    # platform lies toward the tunnel centre (-side)
+	train.bend = module.bend                  # (a curved platform: the cars follow the arc, see Train.place)
+	train.track_z = train.position.z
 	var dest_txt: String = Net.station_name(info["dest"]).replace(" (H&C)", "").replace(" (D&P)", "").replace(" (Circle)", "")
 	if info["via"] != "":
 		dest_txt += " " + info["via"]
@@ -185,14 +187,14 @@ func _spawn(vkey: String, fkey: String, f: Dictionary, module: PlatformModule, i
 	var v := {"train": train, "key": fkey, "info": info, "dir_arr": dir_arr, "dir_dep": dir_dep, "origin": origin, "doors": false, "module": module, "side": side, "vkey": vkey}
 	train.set_meta("visit", v)
 	visits[vkey] = v
-	train.position.x = x_at(v, Clock.now)
+	train.place(x_at(v, Clock.now))
 	if not origin:
 		var lead: float = info["arr"] - Clock.now         # seconds until it stops
 		if lead > -2.0 and lead < 26.0 and Sfx.has("train_arrive_platform"):
 			Sfx.play_at("train_arrive_platform", train, Vector3(length_front(train), 1.0, 0), 0.0, 90.0, maxf(0.0, 25.0 - lead))
 		if lead > 8.0 and player != null:
 			# the platform PA only speaks for the platform you are on (stations with several modules must not announce each other's trains)
-			var lp := module.to_local(player.global_position)
+			var lp := module.design_local(player.global_position)
 			if absf(lp.x) < module.meta["length"] * 0.5 + 6.0 and absf(lp.z) < 9.0 and absf(lp.y) < 3.5:
 				Sfx.say_platform_approach(lid, info["dest"], info["via"])
 	train_spawned.emit(train, v)
@@ -206,7 +208,7 @@ func _despawn(vkey: String) -> void:
 	var v: Dictionary = visits[vkey]
 	if player != null and is_instance_valid(v["train"]) and (v["train"] as Train).contains_world_point(player.global_position):
 		var inf: Dictionary = v["info"]
-		push_warning("DESPAWN of the player's own train %s: now %s arr %s dep %s x %.1f origin %s" % [vkey, Clock.fmt(Clock.now, true), Clock.fmt(inf["arr"], true), Clock.fmt(inf["dep"], true), (v["train"] as Train).position.x, str(v["origin"])])
+		push_warning("DESPAWN of the player's own train %s: now %s arr %s dep %s x %.1f origin %s" % [vkey, Clock.fmt(Clock.now, true), Clock.fmt(inf["arr"], true), Clock.fmt(inf["dep"], true), (v["train"] as Train).design_x, str(v["origin"])])
 	if is_instance_valid(v["train"]):
 		(v["train"] as Train).queue_free()
 	visits.erase(vkey)

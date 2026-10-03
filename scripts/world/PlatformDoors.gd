@@ -98,7 +98,7 @@ static func build(pm: PlatformModule, kit: MeshKit, s: float, zedge: float, xs: 
 	# the leaves
 	var rec: Array = []
 	for xd in xs:
-		var pair: Dictionary = {"x": float(xd), "open": false}
+		var pair: Dictionary = {"x": float(xd), "open": false, "z": zl, "lx": float(xd) - OPEN_W * 0.25, "rx": float(xd) + OPEN_W * 0.25}
 		for side in [-1.0, 1.0]:
 			var mi := MeshInstance3D.new()
 			mi.mesh = _leaf(el)
@@ -126,6 +126,17 @@ static func slide(pm: PlatformModule, face_sign: float, x: float, open: bool) ->
 		var tw := pm.create_tween().set_parallel(true)
 		var dx := SLIDE if open else 0.0
 		var d := 0.25 if open else 0.0
-		tw.tween_property(l, "position:x", float(pair["x"]) - OPEN_W * 0.25 - dx, OPEN_S).set_delay(d).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		tw.tween_property(r, "position:x", float(pair["x"]) + OPEN_W * 0.25 + dx, OPEN_S).set_delay(d).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		# (the leaves slide along the track: on a curved platform each position is put on the curve, see _put)
+		tw.tween_method(func(v: float): _put(pm, l, pair, "lx", v), float(pair["lx"]), float(pair["x"]) - OPEN_W * 0.25 - dx, OPEN_S).set_delay(d).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_method(func(v: float): _put(pm, r, pair, "rx", v), float(pair["rx"]), float(pair["x"]) + OPEN_W * 0.25 + dx, OPEN_S).set_delay(d).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		pair["tw"] = tw
+
+
+## puts a door leaf at design x (module frame) on the platform edge: a straight module just moves it, a curved one sets it down on the curve with the track's heading
+static func _put(pm: PlatformModule, leaf: Node3D, pair: Dictionary, key: String, x: float) -> void:
+	pair[key] = x
+	if pm.bend == null:
+		leaf.position.x = x
+		return
+	leaf.position = pm.bend.map(Vector3(x, leaf.position.y, float(pair["z"])))
+	leaf.basis = pm.bend.rot(x)

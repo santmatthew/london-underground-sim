@@ -18,6 +18,7 @@ Full per-asset list with links is generated to `assets/people/CREDITS.txt` by `t
 
 ## Real-station data
 - `data/stations_real.json`: entrances/exits, platform outlines, stairs/escalators and corridors near each station come from **OpenStreetMap** (© OpenStreetMap contributors, ODbL, https://www.openstreetmap.org/copyright) via the Geofabrik Greater London extract; gate/escalator/ticket-hall counts come from the TfL Unified API (Open Government Licence v3).
+- `data/line_geometry.json`: the heading of the track between stations and the curvature of each platform, derived from the track geometry of the London Underground and Elizabeth line route relations in **OpenStreetMap** (© OpenStreetMap contributors, ODbL); only the derived numbers are stored (`tools/build_line_geometry.py`).
 - `data/elizabeth_depths.json`: platform depths of the Elizabeth line stations, from the numbers in MichalPaszkiewicz/tubedepths (`data/platformdepths.js`, which adds the Elizabeth line to the TfL FOI depth table), rounded to whole metres. Only the numbers are used.
 - `data/platform_numbers.json`: platform numbers per line and direction, sampled from TfL live arrivals (OGL v3).
 - `data/station_layouts.json`: platform depths (metres below street level) read from TfL's official station layout diagrams released under a Freedom of Information request (2015). The drawings are TfL copyright and are **not** included in this repository; only the depth figures are recorded.

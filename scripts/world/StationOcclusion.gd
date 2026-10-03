@@ -23,7 +23,11 @@ static func build(st: Station) -> void:
 			var sz: Vector3 = c[1]
 			if minf(sz.x, minf(sz.y, sz.z)) < MIN_THICKNESS and (sz.x * sz.y * sz.z) < 2.0:
 				continue
-			_box(verts, idx, m.position + (c[0] as Vector3), sz)
+			if m.bend != null:
+				for pc in m._bent_pieces(c):                    # (a curved platform: the solids follow the curve, turned with the track)
+					_box_xf(verts, idx, Transform3D(pc[2], m.position + (pc[0] as Vector3)), pc[1])
+			else:
+				_box(verts, idx, m.position + (c[0] as Vector3), sz)
 		# the rock above the tunnel: a lid over the arch's crown, spanning the module
 		var spec: Dictionary = m.spec
 		var L: float = spec["length"]
@@ -38,6 +42,11 @@ static func build(st: Station) -> void:
 				var a: float = (sp as Vector2).x
 				var b: float = (sp as Vector2).y
 				_box(verts, idx, m.position + Vector3((a + b) * 0.5, rh + 0.2, 0), Vector3(b - a, 0.3, PlatformOpen.CANOPY_HALF * 2.0 - 0.4))
+		elif m.bend != null:
+			var n := int(ceil(L / 8.0))
+			for i in n:
+				var xc := -L * 0.5 + (float(i) + 0.5) * L / float(n)
+				_box_xf(verts, idx, Transform3D(m.bend.rot(xc), m.position + m.bend.map(Vector3(xc, top + 0.5, 0.0))), Vector3(L / float(n) + 0.4, 1.0, zfar * 2.0 - 0.6))
 		else:
 			_box(verts, idx, m.position + Vector3(0, top + 0.5, 0), Vector3(L, 1.0, zfar * 2.0 - 0.6))
 	if verts.is_empty():
@@ -48,6 +57,19 @@ static func build(st: Station) -> void:
 	inst.name = "Occluders"
 	inst.occluder = occ
 	st.add_child(inst)
+
+
+## a box turned by `xf` (centre = xf's origin), the same 12 triangles
+static func _box_xf(verts: PackedVector3Array, idx: PackedInt32Array, xf: Transform3D, size: Vector3) -> void:
+	var h := size * 0.5
+	var b := verts.size()
+	for sx in [-1.0, 1.0]:
+		for sy in [-1.0, 1.0]:
+			for sz in [-1.0, 1.0]:
+				verts.append(xf * Vector3(h.x * sx, h.y * sy, h.z * sz))
+	var faces := [[0, 1, 3, 2], [4, 6, 7, 5], [0, 4, 5, 1], [2, 3, 7, 6], [0, 2, 6, 4], [1, 5, 7, 3]]
+	for f in faces:
+		idx.append_array([b + f[0], b + f[1], b + f[2], b + f[0], b + f[2], b + f[3]])
 
 
 ## an axis-aligned box as 12 outward-facing triangles

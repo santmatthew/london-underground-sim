@@ -49,7 +49,7 @@ func face_at(pos: Vector3) -> Dictionary:
 		return {}
 	for mi in station.modules.size():
 		var m: PlatformModule = station.modules[mi]
-		var lp := m.to_local(pos)
+		var lp := m.design_local(pos)
 		if absf(lp.x) < float(m.meta["length"]) * 0.5 + 3.0 and absf(lp.z) < 9.0 and absf(lp.y) < 3.5:
 			var mod: Dictionary = station.plan.modules[mi]
 			for fd in mod["faces"]:
@@ -181,9 +181,12 @@ func _chatter(density: float) -> void:
 ## the push of air out of the tunnel mouth the train comes from
 func _gust(v: Dictionary, m: PlatformModule) -> void:
 	var train: Train = v["train"]
-	var from_x := signf(train.position.x) * (float(m.meta["length"]) * 0.5 + 4.0)
+	var from_x := signf(train.design_x) * (float(m.meta["length"]) * 0.5 + 4.0)
 	var key: String = "wind_gust_tunnel_air_push" if _rng.randf() < 0.6 else "wind_gust_tunnel_air_push_short"
-	Sfx.play_at(key, m, Vector3(from_x, 1.5, float(v["side"]) * (PlatformModule.GAP * 0.5 + float(m.meta["pw"]) + PlatformModule.TRACK_TO_EDGE)), -7.0, 70.0)
+	var mouth := Vector3(from_x, 1.5, float(v["side"]) * (PlatformModule.GAP * 0.5 + float(m.meta["pw"]) + PlatformModule.TRACK_TO_EDGE))
+	if m.bend != null:
+		mouth = m.bend.map(mouth)
+	Sfx.play_at(key, m, mouth, -7.0, 70.0)
 
 
 func _rumble(delta: float) -> void:

@@ -25,6 +25,7 @@ static func debug_off(what: String) -> bool:
 var stats := {"tris": 0, "lights": 0}
 var trains: TrainService
 var crowd: CrowdManager
+var has_bend := false                # some platform module is curved (to_phys / to_design do something)
 
 
 var async_mode := false
@@ -107,9 +108,11 @@ func build_async(p: StationPlan, use_async := true) -> void:
 			if absf(d.z) < 46.0 and absf(d.x) < float(m["spec"]["length"]):
 				nb.append(1.0 if d.z > 0.0 else -1.0)
 		(m["spec"] as Dictionary)["nb"] = nb
-		pm.build(m["spec"])
+		(m["spec"] as Dictionary)["bend"] = m.get("bend", {})
+		await pm.build(m["spec"], async_mode)
 		modules.append(pm)
 		stats["tris"] += pm.meta.get("tri_count", 0)
+		has_bend = has_bend or pm.bend != null
 		await _slice()
 	fitting_root = Node3D.new()
 	fitting_root.name = "Fittings"
@@ -131,6 +134,8 @@ func build_async(p: StationPlan, use_async := true) -> void:
 	if not Station.debug_off("dressing"):
 		await StationDressing.place(self)
 	_t0 = _t("props", _t0)
+	for pm: PlatformModule in modules:
+		pm.bend_children()                       # (curved platforms: the dressing and the signs were placed straight, now they follow the curve)
 	if DECALS and not Station.debug_off("decals"):
 		StationDecals.place(self)
 	_t0 = _t("decals", _t0)
@@ -507,7 +512,69 @@ func attach_crowd(p: Node3D) -> void:
 ## world position of a platform face's boarding point given a fraction along the platform (0..1) — inside the platform, at the edge
 ## station-LOCAL position (use to_global() for world space: after a ride the station is not at the origin)
 func platform_point(face_key: String, frac: float, inset := 0.9) -> Vector3:
+	return to_phys(platform_point_design(face_key, frac, inset))
+
+
+## the same in design space (every platform straight): what the plan, the walking graph and the placement maps use
+func platform_point_design(face_key: String, frac: float, inset := 0.9) -> Vector3:
 	var f: Dictionary = plan.faces[face_key]
 	var x: float = lerpf(f["x0"] + 4.0, f["x1"] - 4.0, frac)
 	var side: float = f["side"]
 	return Vector3(x, f["y"], f["edge_z"] - side * inset)
+
+
+# ---------------------------------------------------------------------------------------------------
+# Curved platforms. The plan, the walking graph and the crowd live in "design space", where every module is straight; a curved module (PlatformCurve) is wrapped round an arc in the
+# world. to_phys / to_design convert a station-local point between the two (identity everywhere except in a bent module's reach).
+# ---------------------------------------------------------------------------------------------------
+func bent_modules() -> Array:
+	var out: Array = []
+	for pm in modules:
+		if (pm as PlatformModule).bend != null:
+			out.append(pm)
+	return out
+
+
+## which bent module's reach holds the design-space point p (station-local), or null: past the start of its arc, within the tunnel, around the track pair and the levels it spans
+func _bent_module_at(p: Vector3) -> PlatformModule:
+	for pm: PlatformModule in modules:
+		if pm.bend == null:
+			continue
+		var lp := p - pm.position
+		if lp.x >= pm.bend.x0 and lp.x <= pm.bend.x1 + PlatformModule.TUNNEL_EXT and absf(lp.z) < 11.0 and lp.y > -3.0 and lp.y < 9.0:
+			return pm
+	return null
+
+
+func to_phys(p: Vector3) -> Vector3:
+	if not has_bend:
+		return p
+	var pm := _bent_module_at(p)
+	if pm == null:
+		return p
+	return pm.position + pm.bend.map(p - pm.position)
+
+
+## the heading (radians about +y) a thing that faces along the platform has in the world where design space says it faces along +x
+func phys_yaw(p: Vector3) -> float:
+	if not has_bend:
+		return 0.0
+	var pm := _bent_module_at(p)
+	if pm == null:
+		return 0.0
+	return pm.bend.theta((p - pm.position).x)
+
+
+func to_design(q: Vector3) -> Vector3:
+	if not has_bend:
+		return q
+	for pm: PlatformModule in modules:
+		if pm.bend == null:
+			continue
+		var lq := q - pm.position
+		if lq.y < -3.0 or lq.y > 9.0:
+			continue
+		var d := pm.bend.unmap(lq)
+		if d.x >= pm.bend.x0 and d.x <= pm.bend.x1 + PlatformModule.TUNNEL_EXT and absf(d.z) < 11.0:
+			return pm.position + d
+	return q
