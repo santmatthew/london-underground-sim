@@ -791,7 +791,8 @@ func _bent_pieces(c: Array) -> Array:
 	if xb <= bend.x0:
 		return [[ctr, size, Basis.IDENTITY]]
 	if size.x <= 1.6:
-		return [[bend.map(ctr), size + Vector3(0.12, 0.0, 0.0), bend.rot(ctr.x)]]          # (a little longer than the pitch: neighbouring pieces overlap, no crack at the corners)
+		var pad := 0.12 if xa > bend.x0 + 0.5 else 0.0          # (a little longer than the pitch: neighbouring pieces overlap, no crack at the corners; not where a wall stands on the edge of the arc)
+		return [[bend.map(ctr), size + Vector3(pad, 0.0, 0.0), bend.rot(ctr.x)]]
 	var n := maxi(1, int(ceil(size.x / 4.0)))
 	var out: Array = []
 	for i in n:

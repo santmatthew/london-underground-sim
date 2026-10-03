@@ -72,9 +72,31 @@ func _aabb(sg: Node) -> AABB:
 	return box
 
 
+## the sign's oriented bounding box: [centre, basis, size] (a sign on a curved platform stands turned: its axis-aligned box in the world would be much bigger than the sign)
+func _obb(sg: Node) -> Array:
+	var t: Transform3D = (sg as Node3D).global_transform
+	var sc := t.basis.get_scale().abs()
+	var tb := Transform3D(t.basis.orthonormalized(), t.origin)
+	var inv := tb.affine_inverse()
+	var box := AABB()
+	var first := true
+	for n in sg.find_children("*", "VisualInstance3D", true, false):
+		var vi := n as VisualInstance3D
+		if vi is Label3D and (vi as Label3D).text == "":
+			continue
+		var ab: AABB = inv * vi.global_transform * vi.get_aabb()
+		if first:
+			box = ab
+			first = false
+		else:
+			box = box.merge(ab)
+	return [tb * box.get_center(), tb.basis, box.size]
+
+
 func _check(st: Station, sg: Node, ab: AABB) -> String:
 	var inset := 0.03
-	var sz := (ab.size - Vector3.ONE * inset * 2.0).max(Vector3.ONE * 0.01)
+	var ob := _obb(sg)
+	var sz := ((ob[2] as Vector3) - Vector3.ONE * inset * 2.0).max(Vector3.ONE * 0.01)
 	# 1. world colliders (walls, columns, fences, escalator shafts)
 	var space := get_world_3d().direct_space_state
 	var q := PhysicsShapeQueryParameters3D.new()
@@ -82,7 +104,7 @@ func _check(st: Station, sg: Node, ab: AABB) -> String:
 	shape.size = sz
 	shape.margin = 0.0
 	q.shape = shape
-	q.transform = Transform3D(Basis.IDENTITY, ab.get_center())
+	q.transform = Transform3D(ob[1] as Basis, ob[0] as Vector3)
 	q.collision_mask = 1
 	for h in space.intersect_shape(q, 4):
 		var col := h["collider"] as Node
@@ -96,8 +118,14 @@ func _check(st: Station, sg: Node, ab: AABB) -> String:
 		return "solid %s/%s%s" % [col.get_parent().name, col.name, info]
 	# 2. tunnel roof (arch) / spine / box ceiling, per platform module
 	for pm in st.modules:
-		var inv: Transform3D = pm.global_transform.affine_inverse()
-		var lb: AABB = inv * ab
+		var lb := AABB()
+		for ci in 8:
+			var corner: Vector3 = (ob[0] as Vector3) + (ob[1] as Basis) * Vector3(((ci & 1) - 0.5) * (ob[2] as Vector3).x, (((ci >> 1) & 1) - 0.5) * (ob[2] as Vector3).y, (((ci >> 2) & 1) - 0.5) * (ob[2] as Vector3).z)
+			var dl: Vector3 = pm.design_local(corner)                    # (a curved platform: back to the straight design)
+			if ci == 0:
+				lb = AABB(dl, Vector3.ZERO)
+			else:
+				lb = lb.expand(dl)
 		var zf: float = PlatformModule.GAP * 0.5 + float(pm.meta["pw"]) + PlatformModule.TRACK_TO_EDGE + PlatformModule.TRACK_TO_WALL
 		var L: float = pm.meta["length"]
 		var cx := lb.get_center().x
