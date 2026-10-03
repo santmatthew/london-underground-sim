@@ -112,6 +112,7 @@
     "waterloo-city": {"wall": "tile_white", "stripes": [[0.0, 0.30, "green_dk", 1], [1.10, 1.18, "green_dk", 1]]},
     "elizabeth": {"peds": true, "light": [0.95, 0.97, 1.0], "floor": "floor_stone", "wall": "panel_white", "stripes": [[0.0, 0.14, "grey_dk", 0]]}
   },
+  "elizabeth_covered": ["Heathrow Terminals 2 & 3", "Heathrow Terminal 4", "Heathrow Terminal 5"],
   "elizabeth_vault": ["Bond Street", "Tottenham Court Road", "Farringdon", "Liverpool Street", "Whitechapel"],
   "elizabeth_core": ["Paddington", "Bond Street", "Tottenham Court Road", "Farringdon", "Liverpool Street", "Whitechapel", "Canary Wharf", "Custom House", "Woolwich"],
   "jubilee_ext": ["Westminster", "Waterloo", "Southwark", "London Bridge", "Bermondsey", "Canada Water", "Canary Wharf", "North Greenwich"],
@@ -135,6 +136,8 @@
     "Bank": "idiom", "Whitechapel": "idiom", "Wood Lane": "idiom", "Paddington (H&C)": "idiom"
   },
   "open_styles": {
+    "rail_valanced": {"canopy": "valanced", "col": "iron", "col_main": [0.9, 0.9, 0.88], "col_band": [0.24, 0.25, 0.28], "fascia": [0.93, 0.93, 0.9], "soffit": "timber_slab", "wall": "brick_stock", "front": "brick_stock", "floor": "floor_slab"},
+    "rail_modern": {"canopy": "slab", "col": "round", "col_main": [0.84, 0.84, 0.84], "col_band": [0.27, 0.28, 0.3], "fascia": [0.88, 0.88, 0.88], "wall": "brick_stock", "front": "brick_stock", "floor": "floor_slab"},
     "holden": {"canopy": "slab", "col": "square", "col_main": [0.86, 0.86, 0.83], "col_band": [0.10, 0.20, 0.50], "fascia": [0.90, 0.90, 0.88], "wall": "brick_stock", "front": "brick_stock", "floor": "floor_slab"},
     "post_war": {"canopy": "slab", "col": "round", "col_main": [0.84, 0.83, 0.80], "col_band": [0.20, 0.20, 0.22], "fascia": [0.86, 0.85, 0.82], "wall": "brick_red", "front": "brick_stock", "floor": "floor_slab"},
     "victorian": {"canopy": "valanced", "col": "iron", "col_main": [0.92, 0.92, 0.90], "col_band": [0.10, 0.18, 0.46], "fascia": [0.93, 0.93, 0.90], "soffit": "timber_slab", "wall": "brick_red", "front": "brick_red", "floor": "floor_slab"},
@@ -151,11 +154,12 @@
                        "lamps": "cctv", "planters": "brick", "roundel_post": true}
   },
   "surface_lines": {"central": "post_war", "piccadilly": "holden", "northern": "holden", "jubilee": "holden", "bakerloo": "victorian", "district": "victorian",
-                    "metropolitan": "metropolitan", "circle": "victorian", "hammersmith-city": "victorian", "elizabeth": "post_war"},
+                    "metropolitan": "metropolitan", "circle": "victorian", "hammersmith-city": "victorian", "elizabeth": "rail_valanced"},
   "surface_overrides": {
     "Acton Town": "holden", "Ealing Common": "holden", "Rayners Lane": "holden", "Eastcote": "holden", "Ruislip Manor": "holden", "Ruislip": "holden", "Ickenham": "holden",
     "Hillingdon": "holden", "Uxbridge": "holden", "Boston Manor": "Boston Manor", "Northfields": "holden", "Loughton": "Loughton", "Debden": "post_war", "Buckhurst Hill": "post_war",
-    "Rickmansworth": "metropolitan", "Chesham": "metropolitan", "Amersham": "metropolitan", "Chorleywood": "metropolitan", "Pinner": "metropolitan", "Kew Gardens": "Kew Gardens", "Northwick Park": "Northwick Park"
+    "Rickmansworth": "metropolitan", "Chesham": "metropolitan", "Amersham": "metropolitan", "Chorleywood": "metropolitan", "Pinner": "metropolitan", "Kew Gardens": "Kew Gardens", "Northwick Park": "Northwick Park",
+    "Abbey Wood": "rail_modern", "Custom House": "rail_modern", "Reading": "rail_modern", "Heathrow Terminal 5": "rail_modern"
   },
   "open_sub": ["Bayswater", "Westbourne Park", "Ladbroke Grove", "Latimer Road", "Goldhawk Road", "Shepherd's Bush Market", "Royal Oak", "West Kensington", "Ravenscourt Park",
                "Stamford Brook", "West Brompton", "Parsons Green", "Putney Bridge", "East Putney", "Kensington (Olympia)", "Bromley-by-Bow", "Bow Road", "Stepney Green"],

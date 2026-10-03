@@ -74,6 +74,14 @@ static func platform_is_box(station_name: String, line_id: String, kind: String)
 	return kind != "deep"
 
 
+## "glass" for the skylit halls of surface stations, "flat" for a covered platform (the Heathrow stations of the Elizabeth line are underground though their Underground namesakes are at the surface)
+static func platform_roof(station_name: String, line_id: String, kind: String) -> String:
+	_load()
+	if line_id == "elizabeth" and short_name(station_name) in _data.get("elizabeth_covered", []):
+		return "flat"
+	return "glass" if kind == "surface" else "flat"
+
+
 ## Finishes for one platform module (authored scheme, line default, or the generic one). Keys: wall, stripes, frieze, giant, ribs, pilasters, frame, recess.
 static func platform(station_name: String, line_id: String, kind: String) -> Dictionary:
 	_load()
@@ -90,6 +98,9 @@ static func platform(station_name: String, line_id: String, kind: String) -> Dic
 			if not vault:
 				out["ceil"] = "concrete"                 # (the box stations: bare concrete soffit, dark bronze wall panels)
 			return out
+		# the Heathrow stations are underground: covered white-tile platforms, not open air
+		if short_name(station_name) in _data.get("elizabeth_covered", []):
+			return _generic(station_name, line_id, "sub")
 		return _generic(station_name, line_id, "surface" if kind == "deep" else kind)
 	if kind != "deep":
 		return _generic(station_name, line_id, kind)
