@@ -5,7 +5,7 @@ You start at a random point inside a random station, are given a destination (or
 as you can. Time of day (crowds and train frequency), the real train timetable, and the route you take through each station all matter.
 
 ## What's in it
-- **Real network**: 272 stations, 11 lines, real routes/branches/zones/coordinates from the TfL open API; deterministic timetable with
+- **Real network**: 301 stations, 12 lines (the 11 Underground lines and the Elizabeth line from Reading and Heathrow to Shenfield and Abbey Wood), real routes/branches/zones/coordinates from the TfL open API; deterministic timetable with
   time-of-day and weekday/weekend frequencies, per-platform regulation (no two trains ever overlap) and 1–2 faces at termini.
 - **Journey planner**: earliest-arrival routing over the timetable *and* each station's walking graph gives the optimal ("par") time; an exact
   Held-Karp tour optimiser gives the par for multi-stop games (computed on a worker thread).
