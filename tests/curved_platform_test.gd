@@ -130,6 +130,7 @@ func run():
 					gap = gap
 			check(off_track < 0.35, "the cars stand on the track (worst %.2f m off the centre line)" % off_track)
 			check(min_gap > 0.03 and max_gap < 0.7, "the gap to the platform edge stays between %.2f and %.2f m" % [min_gap, max_gap])
+			print("  info: gap between the door sills and the platform edge %.2f .. %.2f m, cars at most %.2f m off the track centre line" % [min_gap, max_gap, off_track])
 			var aboard_mid := train.contains_world_point(train.cars[3].global_position + Vector3(0, 1.2, 0))
 			check(aboard_mid, "a point inside the middle of a car is aboard")
 			var far_ok := true
