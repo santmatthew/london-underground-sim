@@ -180,7 +180,7 @@ func _poster_band(hw: float) -> void:
 		var u_dir: float = -side          # the viewer's right-hand direction along x when facing this wall
 		var zw: float = side * hw
 		var zf: float = zw - side * 0.011     # frame centre (0.022 thick, on the shaft side of the wall)
-		var zp: float = zw - side * 0.0225    # poster face
+		var zp: float = zw - side * 0.026     # poster face (4 mm in front of the frame, which is 22 mm deep: a poster at the frame's own depth would flicker)
 		var last := ""
 		for i in n:
 			var xc: float = PLATE + 0.8 + (float(i) + 0.5) * PANEL_PITCH

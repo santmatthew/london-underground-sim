@@ -5,6 +5,8 @@ extends Node3D
 ## args: --stations="Goodge Street|Oxford Circus"  --all  --min=0.02 (smallest overlap area to report, m2)  --max=15
 var _min_area := 0.02
 var _agg: Dictionary = {}        # normalised pair -> [pairs, area, stations]
+var _detail := false
+var _big: Array = []             # groups of architecture / escalator overlaps over BIG m2: what the suite fails on
 var _sep := 0.0006               # triangles whose planes are closer than this (m) are drawn at the same depth
 
 
@@ -22,6 +24,7 @@ func run():
 				idxs_arg.append(i)
 		if a.begins_with("--min="): _min_area = float(a.substr(6))
 		if a.begins_with("--sep="): _sep = float(a.substr(6))
+		if a == "--detail": _detail = true
 		if a.begins_with("--max="): maxp = int(a.substr(6))
 	StationPlan.lifts_enabled = true
 	Timetable.build(1)
@@ -54,6 +57,9 @@ func run():
 		for k in ak.slice(0, 30):
 			print("   %d stations, x%d, %.1f m2   %s" % [_agg[k][2].size(), _agg[k][0], _agg[k][1], k])
 	print("TOTAL: %d stations, %d z-fighting overlaps over %.2f m2" % [idxs.size(), total, _min_area])
+	for b in _big:
+		print("  FAIL ", b)
+	print("OK" if _big.is_empty() else "FAILED")
 
 
 func _audit(st: Station, maxp: int) -> int:
@@ -99,10 +105,12 @@ func _audit(st: Station, maxp: int) -> int:
 		for h in hits:
 			var k := "%s [%s]  <>  %s [%s]" % [h[1][4], h[1][5], h[2][4], h[2][5]]
 			if not per.has(k):
-				per[k] = [0, 0.0, (h[1][0] + h[1][1] + h[1][2]) / 3.0, h[1][3]]
+				per[k] = [0, 0.0, (h[1][0] + h[1][1] + h[1][2]) / 3.0, h[1][3], h]
 			per[k][0] += 1
 			per[k][1] += h[0]
 		for k in per:
+			if float(per[k][1]) > 3.0 and (k.contains("/Shell") or k.contains("esc")) and not k.contains("Props"):
+				_big.append("%s: %s (%.1f m2)" % [st.plan.name, k, float(per[k][1])])
 			var nk := _norm(k)
 			if not _agg.has(nk):
 				_agg[nk] = [0, 0.0, {}]
@@ -113,6 +121,10 @@ func _audit(st: Station, maxp: int) -> int:
 		keys.sort_custom(func(x, y): return per[x][1] > per[y][1])
 		for k in keys.slice(0, maxp):
 			print("   x%d  %.2f m2  at %s facing %s   %s" % [per[k][0], per[k][1], str((per[k][2] as Vector3).snapped(Vector3(0.1, 0.1, 0.1))), str((per[k][3] as Vector3).snapped(Vector3(0.1, 0.1, 0.1))), k])
+			if _detail:
+				var hh: Array = per[k][4]
+				for tt in [hh[1], hh[2]]:
+					print("        tri %s  %s  %s" % [str((tt[0] as Vector3).snapped(Vector3(0.01, 0.01, 0.01))), str((tt[1] as Vector3).snapped(Vector3(0.01, 0.01, 0.01))), str((tt[2] as Vector3).snapped(Vector3(0.01, 0.01, 0.01)))])
 	return hits.size()
 
 

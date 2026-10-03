@@ -226,13 +226,16 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 		_box_track_wall(s, x0, x1, zfar, wall_mat)
 	# --- wall stripes / dado (station style) on the track-side wall and the platform wall ---
 	var stripes: Array = spec.get("stripes", [{"y0": 1.15, "y1": 1.42, "color": band}])
+	var stripe_i := 0
 	for st in stripes:
 		var col: Color = st["color"]
 		var key: String = ("dado:" if st.get("dado", false) else "flat:") + col.to_html(false)
 		var y0: float = st["y0"]
-		_band(key, s * zfar, x0 - RUN_IN, x1 + RUN_IN, y0, st["y1"], s < 0.0, true)
+		var soff := 0.004 + 0.0025 * stripe_i          # (stripes that overlap - an inset one over a wider one - must not lie in the same plane)
+		stripe_i += 1
+		_band(key, s * zfar, x0 - RUN_IN, x1 + RUN_IN, y0, st["y1"], s < 0.0, true, [], soff)
 		if not box:
-			_band(key, s * zwall, x0, x1, y0, st["y1"], s < 0.0, false, holes)
+			_band(key, s * zwall, x0, x1, y0, st["y1"], s < 0.0, false, holes, soff)
 	if not box:
 		if character.has("pilasters"):
 			_pilasters(s, x0, x1, zwall, holes, openings, character["pilasters"])
@@ -619,9 +622,9 @@ func _pilasters(s: float, x0: float, x1: float, zwall: float, holes: Array, open
 		if not cols.is_empty():
 			key = "dado:" + (cols[ci % cols.size()] as Color).to_html(false)
 			ci += 1
-		_band(key, s * zwall, xc - w * 0.5, xc + w * 0.5, 0.0, SPRING_Y, s < 0.0, false, holes, 0.010)
+		_band(key, s * zwall, xc - w * 0.5, xc + w * 0.5, 0.0, SPRING_Y, s < 0.0, false, holes, 0.016)
 		if edge != "":
-			_band(edge, s * zwall, xc + w * 0.5, xc + w * 0.5 + 0.075, 0.0, SPRING_Y, s < 0.0, false, holes, 0.014)
+			_band(edge, s * zwall, xc + w * 0.5, xc + w * 0.5 + 0.075, 0.0, SPRING_Y, s < 0.0, false, holes, 0.020)
 
 
 ## a seat recess in the platform wall (Victoria line): a shallow niche in the 150 mm tile with a motif panel at the back, stainless trim and a timber slab
@@ -687,7 +690,7 @@ func _build_spine(x0: float, x1: float, sx0: float, sx1: float, zwall: float, wa
 			continue
 		var skey: String = ("dado:" if st.get("dado", false) else "flat:") + (st["color"] as Color).to_html(false)
 		for s3 in [1.0, -1.0]:
-			_band(skey, s3 * zwall, sx0, sx1, st["y0"], sy1, s3 < 0.0, true, sholes)
+			_band(skey, s3 * zwall, sx0, sx1, st["y0"], sy1, s3 < 0.0, true, sholes, 0.004 + 0.0025 * float(spec.get("stripes", []).find(st)))
 	# east end cap (tile), west end open (portal)
 	kit.wall(wall_mat, Vector3(sx1, 0, zwall), Vector3(sx1, 0, -zwall), 0.0, SPINE_H, 0.0)
 	# lights: emissive panels in the spine ceiling

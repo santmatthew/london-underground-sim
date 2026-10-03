@@ -44,7 +44,7 @@ static func add(kit: MeshKit, s: float, xa: float, xb: float, zwall: float, zfar
 			var zc0 := zw + into * 0.15 - 0.10
 			for c in n:
 				# (each cable has its own height, and they are spaced wider than they are thick: two tops at the same height that overlap would flicker)
-				var th := 0.040 + 0.006 * c + 0.012 * _f(seed + wall * 7 + ri, c)
+				var th := 0.040 + 0.008 * c + 0.002 * _f(seed + wall * 7 + ri, c)
 				var mat: String = ["cable_black", "cable_black", "cable_grey", "cable_black", "cable_black", "cable_grey", "cable_black", "cable_red"][_h(seed + wall * 11 + ri, c) % 8]
 				kit.box(mat, Vector3(xc, y + 0.025 + th * 0.5, s * (zc0 + c * 0.07)), Vector3(len, th, th), fy)
 	# a heavy power cable high on the track-side wall

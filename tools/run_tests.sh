@@ -23,6 +23,8 @@ for t in settings_test input_bindings_test announcer_test palette_test lift_plan
 done
 GTEST_TIMEOUT=300 tools/gtest.sh route_audit_test --stations="Covent Garden|Borough|Goodge Street|Hampstead|Russell Square" --spiral > build/t_spiral_routes.log 2>&1
 check "spiral stairs: every route through them (doors and helix swept) is free" "TOTAL: 5 stations, [0-9]+ routes, 0 failed" build/t_spiral_routes.log
+GTEST_TIMEOUT=300 GTEST_LINES=200 tools/gtest.sh zfight_audit_test --stations="Goodge Street|Oxford Circus|Kennington|Covent Garden" --max=3 > build/t_zfight.log 2>&1
+check "z-fighting: no large coplanar overlaps in the architecture of four stations" "^OK" build/t_zfight.log
 GTEST_TIMEOUT=100 tools/gtest.sh audio_test > build/t_audio.log 2>&1
 check "audio: streams load, speech plays" "speech playing: true \(missing streams: 0\)" build/t_audio.log
 if [ "$1" == "--full" ]; then
