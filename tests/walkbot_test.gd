@@ -63,16 +63,26 @@ func run():
 				if names.is_empty() or (not p.is_empty() and p.size() < names.size()):
 					names = p
 			wps = plan.walk_points(names, 0)
-			wps.insert(0, {"pos": st.platform_point(fk, 0.5, 1.4), "kind": "walk"})
+			wps.insert(0, {"pos": st.platform_point_design(fk, 0.5, 1.4), "kind": "walk"})
 		else:
 			wps = plan.walk_points(names, 0)
-			wps.append({"pos": st.platform_point(fk, 0.5, 1.4), "kind": "walk"})
+			wps.append({"pos": st.platform_point_design(fk, 0.5, 1.4), "kind": "walk"})
 		if names.is_empty():
 			print("  FAIL %s: no path in the walking graph" % fk)      # (this used to teleport straight to the platform and report ok)
 			fails += 1
 			continue
+		if st.has_bend:
+			# (the route is in design space, where platforms are straight: steer by points on the curve, a chord would cut the corner)
+			var dense: Array = []
+			for wi in wps.size():
+				if wi > 0 and absf((wps[wi]["pos"] as Vector3).y - (wps[wi - 1]["pos"] as Vector3).y) < 1.0:
+					var n := int((wps[wi]["pos"] as Vector3).distance_to(wps[wi - 1]["pos"]) / 3.0)
+					for q in range(1, n):
+						dense.append({"pos": (wps[wi - 1]["pos"] as Vector3).lerp(wps[wi]["pos"], float(q) / float(n)), "kind": "walk"})
+				dense.append(wps[wi])
+			wps = dense
 		for w in wps:
-			w["pos"] = st.to_global(w["pos"])
+			w["pos"] = st.to_global(st.to_phys(w["pos"]))
 		player.global_position = wps[0]["pos"] + Vector3(0, 0.1, 0)
 		player.velocity = Vector3.ZERO
 		y_last = NAN
