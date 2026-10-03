@@ -13,6 +13,8 @@ REL = os.path.join(GEOM, "rel")
 UA = {"User-Agent": "UndergroundSimReference/0.1 (personal project; reference data only)", "Accept": "*/*",
       "Content-Type": "application/x-www-form-urlencoded"}
 HOSTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]
+# (the Elizabeth line relations run out to Reading and Shenfield, and the big ones time out: only Greater London's worth of geometry is fetched, which is also what the sim shows)
+LONDON = "51.38,-0.55,51.72,0.35"
 LIST_Q = '[out:json][timeout:120];(rel["route"="subway"]["network"="London Underground"];rel["route"="subway"]["name"~"^Elizabeth line"];);out tags;'
 
 
@@ -38,14 +40,16 @@ def main():
         rels = overpass(LIST_Q)["elements"]
         json.dump(rels, open(lp, "w"))
     rels = json.load(open(lp))
-    # (the Underground first, the long Elizabeth line relations - mostly mainline - last)
-    todo = [r["id"] for r in sorted(rels, key=lambda r: r["tags"].get("ref") == "Elizabeth") if not os.path.exists(os.path.join(REL, "%d.json" % r["id"]))]
+    el_ids = {r["id"]: r["tags"].get("ref") == "Elizabeth" for r in rels}
+    # (the Elizabeth line first: with the London bbox they come quickly; the few big Northern line relations that time out go last)
+    todo = [r["id"] for r in sorted(rels, key=lambda r: r["tags"].get("ref") != "Elizabeth") if not os.path.exists(os.path.join(REL, "%d.json" % r["id"]))]
     print("%d relations, %d to fetch" % (len(rels), len(todo)))
     BATCH = 1
     for i in range(0, len(todo), BATCH):
         ids = todo[i:i + BATCH]
+        el = el_ids.get(ids[0], False)
         try:
-            d = overpass('[out:json][timeout:120];rel(id:%s);out geom;' % ",".join(str(x) for x in ids), 2)
+            d = overpass('[out:json][timeout:120];rel(id:%s);out geom%s;' % (",".join(str(x) for x in ids), "(%s)" % LONDON), 2)
         except RuntimeError:
             print("  skipped", ids, flush=True)
             continue

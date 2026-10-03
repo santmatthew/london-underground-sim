@@ -79,6 +79,6 @@ func run():
 				tr = train
 		check(tr != null, "the train is a visit of the destination station")
 		if tr != null:
-			check(tr.global_position.distance_to(g.player.global_position) < 12.0, "the player is still with the train (%.1f m)" % tr.global_position.distance_to(g.player.global_position))
+			check(tr.contains_world_point(g.player.global_position + Vector3(0, 0.1, 0)), "the player is still aboard the train")
 	check(finish_err.x >= 0.0 and finish_err.x < 0.15 and finish_err.y < 0.01, "no jump when the train stopped (%.3f m, %.4f rad)" % [finish_err.x, finish_err.y])
 	print("OK" if ok else "FAILED")

@@ -159,15 +159,26 @@ def main():
         stops = []
         for m in rel["members"]:
             if m["type"] == "way" and m.get("role", "") in ("", "forward", "backward") and m.get("geometry"):
-                g.add_way([xy(p["lat"], p["lon"]) for p in m["geometry"]])
+                # (a relation fetched with a bounding box has no coordinates for what lies outside it: the way is cut there)
+                piece = []
+                for p in m["geometry"] + [None]:
+                    if p is None:
+                        if len(piece) > 1:
+                            g.add_way(piece)
+                        piece = []
+                    else:
+                        piece.append(xy(p["lat"], p["lon"]))
             elif m["type"] == "node" and m.get("role", "").startswith("stop"):
-                stops.append(xy(m["lat"], m["lon"]))
+                stops.append(xy(m["lat"], m["lon"]) if "lat" in m else None)
         if not g.pts or len(stops) < 2:
             continue
         stats["rel"] += 1
         # which station is each stop: the nearest one that this line serves
         seq = []
         for p in stops:
+            if p is None:                          # (outside the bounding box)
+                seq.append(None)
+                continue
             best = None
             for sid, q in sxy.items():
                 if line not in lines_of[sid]:
@@ -180,7 +191,7 @@ def main():
                 seq.append(None)
             else:
                 seq.append(best[1])
-        verts = [g.snap(p) for p in stops]
+        verts = [g.snap(p) if p is not None else None for p in stops]
         paths = []
         for i in range(len(stops) - 1):
             a, b = seq[i], seq[i + 1]

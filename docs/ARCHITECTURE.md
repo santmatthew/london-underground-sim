@@ -63,12 +63,14 @@ layout -> `data/tube_diagram.json` (~42 KB). The layout is cached in `build/diag
 
 ## Curves: rides that turn, platforms that bend (2026-10-03)
 The real track is not straight. `tools/fetch_line_geometry.py` + `tools/build_line_geometry.py` turn the OpenStreetMap route relations of every line (raw geometry under `build/geom`, never shipped) into
-`data/line_geometry.json`: for each pair of consecutive stops the track length and its heading every 20 m, and for each platform the heading change across it (110 m, + = left in the travel direction).
+`data/line_geometry.json`: for each pair of consecutive stops the track length and its heading every 20 m, and for each platform the heading change across it (110 m, + = left in the travel direction). Overpass is slow
+and rate limited: relations are fetched one at a time inside the London bounding box, failures are skipped and retried on the next run.
 - **Rides turn.** `TrackPath` is the track between two stops in the frame of the train that sets off (cells of 12 m, constant curvature each, so a pose at any distance is closed form). The real profile is
   held straight near both stations (`fade_in/out`: the platform and the hand-over stretches), and the exact curves of curved platforms at either end are laid over it (`head` / `tail`). `Ride` keeps the
   *player's car* fixed in the world and places everything else on that path: the origin station, the destination station (`dest_p`, so it arrives rotated to meet the track), the tunnel scenery (`TunnelRun`:
   a ring of 22 cells, each a mesh bent to its curvature class, built by worker threads) and the other cars (`Train.follow_path`: each car sits between its two bogies, so a car swings out at its ends
-  and in at its middle). The real track length replaces the 1.15 x straight-line estimate when the data has it. `UG_CURVE=<class>` bends every ride (tests).
+  and in at its middle). The real track length replaces the 1.15 x straight-line estimate when the data has it (702 hops, 650 covered; the Elizabeth line's core tunnels and a few
+  Piccadilly / Metropolitan branches ride straight). `UG_CURVE=<class>` bends every ride (tests).
 - **Platforms bend.** A module is *designed* straight (plan, rooms, walking graph, crowd, dressing all live in "design space") and `Bend` wraps it round an arc afterwards: the part with the spine and the
   cross-passages stays straight, the platform beyond follows the curve, the running tunnel carries on straight at the final heading. `PlatformCurve.for_module` decides (average of both faces; >= 5 degrees across
   the platform; radius not under 150 m; the mirror image if the real direction would hit another module or room at the same level, `_conflicts`; else straight). The mesh is cut into 3 m slabs and
