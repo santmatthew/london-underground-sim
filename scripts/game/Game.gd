@@ -300,6 +300,16 @@ func _mk_label(text: String, size: int, col := Color.WHITE, bold := false, wrap 
 	return l
 
 
+## the loading message in the middle of the screen: one line across the whole window (a label that is only as wide as a corner of the screen and wraps its words puts every word on a line of its own)
+func _mk_loading(text: String) -> Label:
+	var l := _mk_label(text, 30, Color.WHITE, true, false)
+	l.set_anchors_preset(Control.PRESET_FULL_RECT)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return l
+
+
 func _mk_button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
@@ -460,9 +470,7 @@ func start_explore(cfg: Dictionary) -> void:
 	StationPlan.step_free_mode = bool(Settings.get_v("access", "step_free"))
 	StepFree.ensure_loaded()
 	state = State.LOADING
-	_loading = _mk_label("Building the timetable...", 30, Color.WHITE, true)
-	_loading.set_anchors_preset(Control.PRESET_CENTER)
-	_loading.position = Vector2(-200, 0)
+	_loading = _mk_loading("Building the timetable...")
 	_ui.add_child(_loading)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -641,9 +649,7 @@ func start_journey() -> void:
 	StationPlan.step_free_mode = bool(Settings.get_v("access", "step_free"))      # (before anything is planned, picked or built)
 	StepFree.ensure_loaded()
 	state = State.LOADING
-	_loading = _mk_label("Building the timetable...", 30, Color.WHITE, true)
-	_loading.set_anchors_preset(Control.PRESET_CENTER)
-	_loading.position = Vector2(-200, 0)
+	_loading = _mk_loading("Building the timetable...")
 	_ui.add_child(_loading)
 	await get_tree().process_frame
 	await get_tree().process_frame
