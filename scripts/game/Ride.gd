@@ -32,11 +32,15 @@ var dest_face_key := ""
 var dest_vkey := ""
 var car_offset := 0.0               # distance of the player's car centre ahead of the train centre (m)
 var path: TrackPath                 # the track from the origin stop to the destination's, in the ride frame (see below)
-var p0 := Transform3D.IDENTITY      # the ride frame in the world at the start: the train's frame with y = platform level, x = the way it travels
+var p0 := Transform3D.IDENTITY      # the ride frame in the world at the start: the frame of the path (x = the way the train travels, y = 0 at platform level)
+var ref_car := 0                    # the car the player is in: it is the one that stays put in the world (the other cars swing round the bends about it)
+var ref_world := Transform3D.IDENTITY      # ... and where it stands in the world (rail level, pointing the way the train goes)
 var origin_p := Transform3D.IDENTITY      # the origin station in the ride frame
 var dest_p := Transform3D.IDENTITY        # the destination station in the ride frame (where its platform lies on the path)
 var dest_final := Transform3D.IDENTITY    # ...and in the world once the train has stopped
 var _path_straight := true
+var finish_cars := 0.0                    # the most any car moved when the platform took the train over (the player's own car does not move at all)
+var finish_left := 0.0                    # metres of the ride that were still to go when it was ended (the clock ran out first)
 var finish_error := Vector2.ZERO          # the jump (m, radians) of the destination station when the train stopped
 var _handoff_done := false
 var rider_state: Dictionary = {}
@@ -67,18 +71,22 @@ func start(p_game: Node3D, p_train: Train, p_run: int, p_k: int, p_origin: Stati
 	_solve_profile()
 	# reparent the train out of the moving station, keep its world transform
 	train.reparent(game, true)
-	var t_train := train.global_transform
-	t_train.basis = t_train.basis.orthonormalized()
-	p0 = t_train * Transform3D(Basis.IDENTITY, Vector3(0.0, -PlatformModule.RAIL_Y, 0.0))
+	ref_car = train.car_containing(p_player_pos)
+	ref_world = (train.cars[ref_car] as Node3D).global_transform
+	ref_world.basis = ref_world.basis.orthonormalized()
+	if ref_car == train.cars.size() - 1:
+		ref_world.basis = ref_world.basis * Basis(Vector3.UP, PI)          # (the rear car's model is turned half round)
 	car_offset = train.train_x_of(p_player_pos)
-	origin_p = p0.affine_inverse() * origin.global_transform
 	# find the module that holds the train: the visit's module
 	var v: Dictionary = train.get_meta("visit", {})
 	var head: Array = []
+	var back: Array = []
 	if v.has("module"):
 		var mo := v["module"] as PlatformModule
 		if mo.bend != null:
-			head = mo.bend.departure_segments(train.design_x, train.facing, train.track_z)       # (a curved platform: the track curves from where the train stands)
+			# a curved platform: the track curves from where the train stands, and behind it (where its rear cars are) it came along the same curve
+			head = mo.bend.departure_segments(train.design_x, train.facing, train.track_z)
+			back = mo.bend.arrival_segments(train.design_x, train.facing, train.track_z)
 	origin.trains.external[v.get("vkey", "")] = true
 	_mute(origin)
 	segment_started.emit(stops[k_from], stops[k_from + 1])
@@ -91,10 +99,13 @@ func start(p_game: Node3D, p_train: Train, p_run: int, p_k: int, p_origin: Stati
 	# a curved platform at the destination: the track curves for the last stretch before the train stops
 	var df: Dictionary = dest_plan.faces[dest_face_key]
 	var tail: Array = []
+	var after: Array = []
 	var dbend: Dictionary = dest_plan.modules[df["module"]].get("bend", {})
 	if not dbend.is_empty():
 		var db := Bend.new(float(dbend["kappa"]), float(dbend["x0"]), float(dbend["x1"]), 0.0)
-		tail = db.arrival_segments(0.0, dest_plan.canon_of(df), float(df["side"]) * (PlatformModule.GAP * 0.5 + float(df["pw"]) + PlatformModule.TRACK_TO_EDGE))
+		var dz := float(df["side"]) * (PlatformModule.GAP * 0.5 + float(df["pw"]) + PlatformModule.TRACK_TO_EDGE)
+		tail = db.arrival_segments(0.0, dest_plan.canon_of(df), dz)
+		after = db.departure_segments(0.0, dest_plan.canon_of(df), dz)          # (the rest of the platform ahead of the stopped train, where its front cars stand)
 	var head_end := 0.0
 	for g in head:
 		head_end += float(g[0])
@@ -102,8 +113,11 @@ func start(p_game: Node3D, p_train: Train, p_run: int, p_k: int, p_origin: Stati
 	for g in tail:
 		tail_len += float(g[0])
 	# the track between: straight at both stations (the platform and the stretch where the hand-overs happen), the line's real bends in between
-	path = TrackPath.between(id_a, id_b, dist, maxf(_origin_module_length() * 0.5 + 24.0, head_end + 12.0), maxf(dest_face_length * 0.5 + 26.0 + absf(car_offset) + 40.0, tail_len + 12.0), head, tail)
+	path = TrackPath.between(id_a, id_b, dist, maxf(_origin_module_length() * 0.5 + 24.0, head_end + 12.0), maxf(dest_face_length * 0.5 + 26.0 + absf(car_offset) + 40.0, tail_len + 12.0), head, tail, back, after)
 	_path_straight = path.is_straight() and train.bend == null
+	# the frame of the path in the world: the player's car is where it is, whatever shape the train has
+	p0 = ref_world * (train.car_pose_on_path(path, ref_car, 0.0) * Transform3D(Basis.IDENTITY, Vector3(0.0, PlatformModule.RAIL_Y, 0.0))).affine_inverse()
+	origin_p = p0.affine_inverse() * origin.global_transform
 
 
 func _solve_profile() -> void:
@@ -166,9 +180,9 @@ func _process(delta: float) -> void:
 	# subtle motion of the carriage
 	sway_t += delta * (0.4 + speed_now * 0.1)
 	# the world is placed so that the player's car stays where it is: the ride frame, moved back along the track by how far the car has gone
-	var world := _world(travelled + car_offset)
+	var world := _world(travelled)
 	if not _path_straight:
-		train.follow_path(path, travelled, travelled + car_offset, car_offset)           # (the cars swing round the bends)
+		train.follow_path(path, travelled, world)           # (the cars swing round the bends)
 	match phase:
 		Phase.DEPART:
 			# origin station slides backwards (along the track)
@@ -181,7 +195,7 @@ func _process(delta: float) -> void:
 		Phase.TUNNEL:
 			if tunnel:
 				tunnel.global_transform = world
-				tunnel.place(travelled + car_offset)
+				tunnel.place(travelled + float(train.car_x[ref_car]))
 			# start building the destination once well into the ride
 			if not _building and tau > minf(16.0, T * 0.35):
 				_building = true
@@ -198,9 +212,10 @@ func _process(delta: float) -> void:
 				_finish()
 
 
-## where the ride frame is in the world when the player's car is at distance s_car along the track: the car is fixed, so the frame is the one that puts the path's pose at s_car there
-func _world(s_car: float) -> Transform3D:
-	return p0 * Transform3D(Basis.IDENTITY, Vector3(car_offset, 0.0, 0.0)) * path.pose(s_car).affine_inverse()
+## where the path's frame is in the world when the train's middle is at path distance `travelled`: the player's car does not move, so it is the frame that puts that car's place on the path at its place in the world
+func _world(travelled: float) -> Transform3D:
+	var rail := Transform3D(Basis.IDENTITY, Vector3(0.0, PlatformModule.RAIL_Y, 0.0))
+	return ref_world * (train.car_pose_on_path(path, ref_car, travelled) * rail).affine_inverse()
 
 
 func _origin_module_length() -> float:
@@ -222,8 +237,8 @@ func _start_tunnel(travelled: float) -> void:
 	tunnel = TunnelRun.new()
 	game.add_child(tunnel)
 	tunnel.setup(path, train.door_side == "R")
-	tunnel.global_transform = _world(travelled + car_offset)
-	tunnel.place(travelled + car_offset)
+	tunnel.global_transform = _world(travelled)
+	tunnel.place(travelled + float(train.car_x[ref_car]))
 	if origin.crowd != null:
 		origin.crowd.finish_riders(train)            # riders appear a few per frame; the destination station takes over the complete cars
 		rider_state = origin.crowd.train_state.get(train, {})
@@ -294,14 +309,11 @@ func _start_arrive(remaining: float) -> void:
 	if module.bend != null:
 		slot = module.bend.pose(0.0, PlatformModule.RAIL_Y, tz) * turn
 	var mod_local := Transform3D(Basis.IDENTITY, dest_plan.modules[f["module"]]["pos"])
-	# the train's world transform (static) must equal dest.global * module_local * slot
-	var t_train := train.global_transform
-	t_train.basis = t_train.basis.orthonormalized()
 	var stand := mod_local * slot
-	dest_final = t_train * stand.affine_inverse()          # the destination in the world once the train has stopped
-	# ... and on the path: its platform lies where the track ends (the train's centre is there, rail head 0.9 m below the ride frame's platform level)
+	# the destination on the path: its platform lies where the track ends (the train's centre is there, rail head 0.9 m below the path frame's platform level) ...
 	dest_p = path.pose(dist) * Transform3D(Basis.IDENTITY, Vector3(0.0, PlatformModule.RAIL_Y, 0.0)) * stand.affine_inverse()
-	dest_station.global_transform = _world(dist - remaining + car_offset) * dest_p
+	dest_final = _world(dist) * dest_p                                  # ... and in the world once the train has stopped
+	dest_station.global_transform = _world(dist - remaining) * dest_p
 	_mute(dest_station)
 	dest_station.visible = true
 	if tunnel:
@@ -311,10 +323,12 @@ func _start_arrive(remaining: float) -> void:
 
 func _finish() -> void:
 	phase = Phase.DONE
+	finish_left = maxf(dist - s_now, 0.0)
+	var cars_before: Array = []          # (where the cars stand now, on the path)
+	for c in train.cars:
+		cars_before.append((c as Node3D).global_transform)
 	var f: Dictionary = dest_plan.faces[dest_face_key]
 	var module: PlatformModule = dest_station.modules[f["module"]]
-	# (how far the station was from where the train stops when it was handed over: a jump the player would see; tests keep an eye on it)
-	finish_error = Vector2(dest_station.global_position.distance_to(dest_final.origin), dest_station.global_basis.get_rotation_quaternion().angle_to(dest_final.basis.get_rotation_quaternion()))
 	dest_station.global_transform = dest_final
 	_unmute()
 	# adopt the train into the destination module at its slot
@@ -329,6 +343,18 @@ func _finish() -> void:
 	train.edge_z = signf(train.track_z) * (PlatformModule.GAP * 0.5 + float(module.meta["pw"]))
 	train.straighten()
 	train.place(0.0)
+	# The station was placed from the path, the cars are now set by the platform itself: the two differ by a few centimetres on a bend. The player's car must not move at all (the player is in it), so the
+	# whole station - with the train in it - is moved by the difference instead (a jump the player could see is `finish_error`, tests keep an eye on it).
+	var c_now := (train.cars[ref_car] as Node3D).global_transform
+	c_now.basis = c_now.basis.orthonormalized()
+	if ref_car == train.cars.size() - 1:
+		c_now.basis = c_now.basis * Basis(Vector3.UP, PI)
+	var fix := ref_world * c_now.affine_inverse()
+	finish_error = Vector2(ref_world.origin.distance_to(c_now.origin), fix.basis.get_rotation_quaternion().angle_to(Quaternion.IDENTITY))          # (how far the platform's idea of the player's car is from the path's, and how much the station turns about it)
+	dest_station.global_transform = fix * dest_station.global_transform
+	finish_cars = 0.0
+	for ci in train.cars.size():
+		finish_cars = maxf(finish_cars, (train.cars[ci] as Node3D).global_position.distance_to((cars_before[ci] as Transform3D).origin))
 	if dest_station.crowd != null:
 		dest_station.crowd.adopt_train(train, rider_state)
 	var svc := dest_station.trains

@@ -179,21 +179,42 @@ static func _bogie_pose(f: Vector3, r: Vector3) -> Transform3D:
 	return Transform3D(Basis(Vector3.UP, atan2(-d.z, d.x)), (f + r) * 0.5)
 
 
-## the cars follow the track `path` of a ride (TrackPath, distance of the train's middle `s_c`; the player's car, `co` ahead of the middle, is the one that stays put in the world and sits at path distance `s_ref`)
-func follow_path(path: TrackPath, s_c: float, s_ref: float, co: float) -> void:
+## the pose of car i on the track `path` of a ride when the middle of the train is at path distance `s_c`: in the platform-level frame of the path, on the bogies (and moved away from the platform edge
+## by the same shift it had at the station)
+func car_pose_on_path(path: TrackPath, i: int, s_c: float) -> Transform3D:
+	var half := _bogie_half(i)
+	var f := path.pose(s_c + float(car_x[i]) + half).origin
+	var r := path.pose(s_c + float(car_x[i]) - half).origin
+	var p := _bogie_pose(f, r)
+	if i < _shift.size() and _shift[i] > 0.0:
+		p.origin += p.basis * Vector3(0.0, 0.0, -_local_side() * _shift[i])
+	return p
+
+
+## the cars follow the track `path` of a ride: `world` is where the path's frame is in the world (Ride keeps the player's car fixed, so this moves), s_c the path distance of the train's middle.
+## The train's own node goes to the middle of the train, the cars to their places round it.
+func follow_path(path: TrackPath, s_c: float, world: Transform3D) -> void:
 	_articulated = not path.is_straight()
-	var inv := path.pose(s_ref).affine_inverse()
+	var rail := Transform3D(Basis.IDENTITY, Vector3(0.0, PlatformModule.RAIL_Y, 0.0))
+	var centre := path.pose(s_c) * rail
+	global_transform = world * centre
+	var inv := centre.affine_inverse()
 	for i in cars.size():
-		var half := _bogie_half(i)
-		var f := path.pose(s_c + float(car_x[i]) + half).origin
-		var r := path.pose(s_c + float(car_x[i]) - half).origin
-		var rel := inv * _bogie_pose(f, r)
-		if i < _shift.size() and _shift[i] > 0.0:
-			rel.origin += rel.basis * Vector3(0.0, 0.0, -_local_side() * _shift[i])
-		var t := Transform3D(Basis.IDENTITY, Vector3(co, 0.0, 0.0)) * rel
+		var t := inv * (car_pose_on_path(path, i, s_c) * rail)
 		if i == cars.size() - 1:
 			t.basis = t.basis * Basis(Vector3.UP, PI)
 		(cars[i] as Node3D).transform = t
+
+
+## the car a world point belongs to: the one whose walkable box holds it, else the nearest
+func car_containing(p: Vector3) -> int:
+	for i in cars.size():
+		var key := kind + ("_cab" if (i == 0 or i == cars.size() - 1) else "_mid")
+		var half := float(CAR_LEN[key]) * 0.5 + (0.2 if (i == 0 or i == cars.size() - 1) else 0.8)
+		var lp := (cars[i] as Node3D).to_local(p)
+		if lp.y >= 0.0 and lp.y <= 3.4 and absf(lp.z) <= 1.6 and absf(lp.x) < half:
+			return i
+	return car_index_at(p)
 
 
 ## the cars back in a straight line along the train
@@ -211,6 +232,13 @@ func car_design_x(i: int) -> float:
 	if bend == null:
 		return design_x + float(facing) * float(car_x[i])
 	return bend.advance_x(design_x, float(facing) * float(car_x[i]), track_z)
+
+
+## design x (module frame, along the straight platform of the plan) of the door at train-frame x `dx`: on a curve the cars stand a fixed distance apart along the track, which is not the same along x
+func door_design_x(dx: float) -> float:
+	if bend == null:
+		return design_x + float(facing) * dx
+	return bend.advance_x(design_x, float(facing) * dx, track_z)
 
 
 ## where the point (x, y, z) of the train's frame is in the world: the same as to_global for a straight train, but on a curve the car that holds x is turned off the train's axis, so the point is taken in that car's frame

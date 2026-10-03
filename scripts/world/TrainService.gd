@@ -129,7 +129,7 @@ func _edge_guard(v: Dictionary, open: bool) -> void:
 	var module: PlatformModule = v["module"]
 	var side: float = v["side"]
 	for dx in train.door_positions():
-		var mx: float = train.design_x + train.facing * dx
+		var mx: float = train.door_design_x(float(dx))          # (on a curved platform the doors are not where a straight train's would be)
 		module.set_edge_open(side, mx - 0.8, mx + 0.8, open)
 
 

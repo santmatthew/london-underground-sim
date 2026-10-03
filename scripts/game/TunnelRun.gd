@@ -54,7 +54,7 @@ func setup(p_path: TrackPath = null, p_mirror := false) -> void:
 		_shown[i] = -1
 	# the bent ones, for every curvature the path has
 	var seen := {}
-	for k in path.cell_count():
+	for k in range(path.k_first(), path.k_last() + 1):
 		var c := path.cell_class(k)
 		if c != 0 and not seen.has(c):
 			seen[c] = true
@@ -171,7 +171,7 @@ func place(s: float) -> void:
 			continue
 		_cells[i] = k
 		var mi: MeshInstance3D = segs[i]
-		var cls := path.cell_class(k) if k >= 0 else 0
+		var cls := path.cell_class(k)
 		var lit := posmod(k, 2) == 0
 		var v := (0 if lit else N_VAR) + posmod(k * 7 + (k >> 2), N_VAR)
 		var key := cls * 16 + v

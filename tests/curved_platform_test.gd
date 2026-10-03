@@ -10,6 +10,10 @@ func check(c: bool, what: String) -> void:
 		ok = false
 
 
+func half_w_of(t: Train) -> float:
+	return 1.31 if t.kind == "deep" else 1.5
+
+
 func run():
 	var nm := "Bank"
 	var want := "central:Eastbound"
@@ -131,6 +135,22 @@ func run():
 			check(off_track < 0.35, "the cars stand on the track (worst %.2f m off the centre line)" % off_track)
 			check(min_gap > 0.03 and max_gap < 0.7, "the gap to the platform edge stays between %.2f and %.2f m" % [min_gap, max_gap])
 			print("  info: gap between the door sills and the platform edge %.2f .. %.2f m, cars at most %.2f m off the track centre line" % [min_gap, max_gap, off_track])
+			# the doors are open: nothing of the edge guard may stand in front of any door (a rail the player cannot step across), whatever the bend
+			st.trains._process(0.1)
+			for i in 3:
+				await get_tree().physics_frame
+			var local_side := train.platform_side * (1.0 if train.facing > 0 else -1.0)
+			var blocked := 0
+			var doors_n := 0
+			for dx in train.door_positions():
+				doors_n += 1
+				var pa: Vector3 = train.slot_global(float(dx), 0.9, local_side * (half_w_of(train) + 1.4))
+				var pb: Vector3 = train.slot_global(float(dx), 0.9, local_side * (half_w_of(train) - 0.8))
+				var qd := PhysicsRayQueryParameters3D.create(pa, pb)
+				qd.collision_mask = 1 << 2
+				if not space.intersect_ray(qd).is_empty():
+					blocked += 1
+			check(train.doors_open and blocked == 0, "every open door is clear of the edge guard (%d of %d doors blocked, doors open: %s)" % [blocked, doors_n, str(train.doors_open)])
 			var aboard_mid := train.contains_world_point(train.cars[3].global_position + Vector3(0, 1.2, 0))
 			check(aboard_mid, "a point inside the middle of a car is aboard")
 			var far_ok := true
