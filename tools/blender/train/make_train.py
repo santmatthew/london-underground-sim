@@ -46,7 +46,7 @@ VARIANTS = {
 # an older interior (red moquette). The newer tube stock (Central, Northern, Jubilee, Victoria, Waterloo & City) and the sub-surface S stock keep their longitudinal seating.
 DEEP72 = dict(DEEP, stock='deep72', seating='mixed', moq_file='moquette_red_c.jpg', roof_n=3.7, cant=2.88, i_cant=2.84)         # (a boxy body: nearly flat roof, tight corners, flat front)
 # The 1992 stock (Central, Waterloo & City): a rounded body - the roof starts curving lower down and is much fuller (a near-elliptical section) - and a blunt, rounded nose in plan.
-DEEP92 = dict(DEEP, stock='deep92', roof_n=1.9, cant=2.60, door_top=2.58, i_cant=2.56, band=(2.34, 2.54), front_round=0.52)
+DEEP92 = dict(DEEP, stock='deep92', roof_n=1.8, cant=2.72, door_top=2.70, i_cant=2.68, band=(2.42, 2.64), front_round=0.52)          # (the doors stay as tall as the other tubes': the player's capsule is 1.72 m and the doorway 1.82 m above the floor, see door_clearance_test)
 VARIANTS['deep92_mid'] = dict(DEEP92, name='tube_car_deep92_mid', L=16.0, cab=False, doors=[-5.0, 0.0, 5.0])
 VARIANTS['deep92_cab'] = dict(DEEP92, name='tube_car_deep92_cab', L=16.5, cab=True, doors=[-5.4, -0.9, 3.6])
 VARIANTS['deep72_mid'] = dict(DEEP72, name='tube_car_deep72_mid', L=16.0, cab=False, doors=[-5.0, 0.0, 5.0])

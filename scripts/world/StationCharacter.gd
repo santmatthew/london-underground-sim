@@ -5,6 +5,7 @@ extends RefCounted
 ## are made by tools/gen_char_textures.py.
 
 const PATH := "res://data/station_character.json"
+const PATH_EL := "res://data/station_character_el.json"         # the Elizabeth line's outer stations (tools/author_el_outer.py): merged into open_styles / surface_overrides
 const DIR := "res://assets/textures/char/"
 const GIANT_PPM := 300.0          # pixels per metre of the giant lettering textures (tools/gen_char_textures.py)
 
@@ -20,6 +21,16 @@ static func _load() -> void:
 		var d = JSON.parse_string(FileAccess.get_file_as_string(PATH))
 		if d is Dictionary:
 			_data = d
+	if FileAccess.file_exists(PATH_EL):
+		var e = JSON.parse_string(FileAccess.get_file_as_string(PATH_EL))
+		if e is Dictionary:
+			for k in ["open_styles", "surface_overrides"]:
+				var tgt: Dictionary = _data.get(k, {})
+				tgt.merge(e.get(k, {}), true)
+				_data[k] = tgt
+			for k in ["elizabeth_heathrow", "elizabeth_bored"]:
+				if e.has(k):
+					_data[k] = e[k]
 
 
 ## width and height of a PNG file from its header, (0, 0) when the source file is not there or is not a PNG
@@ -70,7 +81,7 @@ static func _stripes(arr: Array) -> Array:
 static func platform_is_box(station_name: String, line_id: String, kind: String) -> bool:
 	_load()
 	if line_id == "elizabeth":
-		return not (short_name(station_name) in _data.get("elizabeth_vault", []))
+		return not (short_name(station_name) in _data.get("elizabeth_vault", []) or short_name(station_name) in _data.get("elizabeth_bored", []))
 	return kind != "deep"
 
 
@@ -98,9 +109,22 @@ static func platform(station_name: String, line_id: String, kind: String) -> Dic
 			if not vault:
 				out["ceil"] = "concrete"                 # (the box stations: bare concrete soffit, dark bronze wall panels)
 			return out
-		# the Heathrow stations are underground: covered white-tile platforms, not open air
+		# the Heathrow stations are underground: covered platforms (authored from photographs, tools/author_el_outer.py), not open air
 		if short_name(station_name) in _data.get("elizabeth_covered", []):
-			return _generic(station_name, line_id, "sub")
+			var hx: Dictionary = (_data.get("elizabeth_heathrow", {}) as Dictionary).get(short_name(station_name), {})
+			if hx.is_empty():
+				return _generic(station_name, line_id, "sub")
+			var hout := {"wall": String(hx.get("wall", "tile_white")), "stripes": _stripes(hx.get("stripes", [])), "frieze": false, "station_slug": slug(station_name), "floor": String(hx.get("floor", "floor_slab"))}
+			if hx.has("ceil"):
+				hout["ceil"] = String(hx["ceil"])
+			if hx.has("light"):
+				var hl: Array = hx["light"]
+				hout["light_color"] = Color(hl[0], hl[1], hl[2])
+			if hx.has("ribs"):
+				var rb: Dictionary = (hx["ribs"] as Dictionary).duplicate()
+				rb["col"] = color(String(rb.get("ink", "grey_mid")))
+				hout["ribs"] = rb
+			return hout
 		return _generic(station_name, line_id, "surface" if kind == "deep" else kind)
 	if kind != "deep":
 		return _generic(station_name, line_id, kind)

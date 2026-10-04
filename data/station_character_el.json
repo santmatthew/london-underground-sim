@@ -1,0 +1,905 @@
+{
+ "open_styles": {
+  "_comment": "Open-air platform styles of the Elizabeth line's outer stations, authored from private reference photographs by tools/author_el_outer.py (merged into open_styles by StationCharacter).",
+  "Acton Main Line": {
+   "floor": "floor_slab",
+   "front": "brick_stock",
+   "wall": "concrete",
+   "canopy": "slab",
+   "roof_h": 3.2,
+   "spans": [
+    [
+     0.03,
+     0.09
+    ]
+   ],
+   "col": "round",
+   "col_main": [
+    0.62,
+    0.64,
+    0.67
+   ],
+   "col_band": [
+    0.14,
+    0.24,
+    0.52
+   ],
+   "fascia": [
+    0.8,
+    0.82,
+    0.84
+   ],
+   "lamps": "cctv"
+  },
+  "West Ealing": {
+   "floor": "floor_slab",
+   "front": "brick_blue",
+   "wall": "concrete",
+   "canopy": "slab",
+   "roof_h": 3.8,
+   "spans": [
+    [
+     0.0,
+     0.42
+    ]
+   ],
+   "col": "round",
+   "col_main": [
+    0.62,
+    0.64,
+    0.67
+   ],
+   "col_band": [
+    0.45,
+    0.12,
+    0.16
+   ],
+   "fascia": [
+    0.8,
+    0.82,
+    0.84
+   ],
+   "lamps": "cctv"
+  },
+  "Hanwell": {
+   "floor": "floor_slab",
+   "front": "brick_blue",
+   "wall": "brick_red",
+   "canopy": "gable",
+   "valance": "none",
+   "rise": 0.8,
+   "roof_h": 3.3,
+   "spans": [
+    [
+     0.34,
+     0.41
+    ]
+   ],
+   "col": "iron",
+   "col_main": [
+    0.95,
+    0.93,
+    0.86
+   ],
+   "col_band": [
+    0.45,
+    0.16,
+    0.12
+   ],
+   "fascia": [
+    0.95,
+    0.93,
+    0.86
+   ],
+   "soffit": "flat:#d8cdb5",
+   "top": "flat:#4a3f3a",
+   "lamps": "victorian"
+  },
+  "Southall": {
+   "floor": "floor_slab",
+   "front": "brick_blue",
+   "wall": "brick_red",
+   "canopy": "valanced",
+   "valance": "scallop",
+   "roof_h": 3.9,
+   "spans": [
+    [
+     0.0,
+     0.52
+    ]
+   ],
+   "col": "iron",
+   "col_main": [
+    0.14,
+    0.14,
+    0.16
+   ],
+   "col_band": [
+    0.14,
+    0.14,
+    0.16
+   ],
+   "fascia": [
+    0.93,
+    0.93,
+    0.91
+   ],
+   "soffit": "timber_slab",
+   "lamps": "victorian"
+  },
+  "Hayes & Harlington": {
+   "floor": "floor_slab",
+   "front": "brick_blue",
+   "wall": "brick_blue",
+   "canopy": "gable",
+   "valance": "none",
+   "rise": 1.1,
+   "roof_h": 3.8,
+   "spans": [
+    [
+     0.03,
+     0.55
+    ]
+   ],
+   "col": "square",
+   "col_main": [
+    0.74,
+    0.76,
+    0.79
+   ],
+   "col_band": [
+    0.36,
+    0.38,
+    0.41
+   ],
+   "fascia": [
+    0.93,
+    0.93,
+    0.91
+   ],
+   "soffit": "flat:#e8e8e6",
+   "top": "flat:#c9ccd0",
+   "lamps": "cctv"
+  },
+  "West Drayton": {
+   "floor": "floor_slab",
+   "front": "brick_stock",
+   "wall": "brick_stock",
+   "canopy": "gable",
+   "valance": "none",
+   "rise": 1.2,
+   "roof_h": 4.4,
+   "spans": [
+    [
+     0.0,
+     0.16
+    ]
+   ],
+   "col": "iron",
+   "col_main": [
+    0.93,
+    0.93,
+    0.91
+   ],
+   "col_band": [
+    0.26,
+    0.27,
+    0.3
+   ],
+   "fascia": [
+    0.55,
+    0.58,
+    0.6
+   ],
+   "soffit": "flat:#d7d3c8",
+   "top": "flat:#6a6e72",
+   "lamps": "cctv"
+  },
+  "Iver": {
+   "floor": "floor_slab",
+   "front": "brick_blue",
+   "wall": "brick_stock",
+   "canopy": "gable",
+   "valance": "none",
+   "rise": 0.9,
+   "roof_h": 3.2,
+   "spans": [
+    [
+     0.07,
+     0.11
+    ],
+    [
+     0.3,
+     0.34
+    ]
+   ],
+   "col": "iron",
+   "col_main": [
+    0.93,
+    0.93,
+    0.91
+   ],
+   "col_band": [
+    0.93,
+    0.93,
+    0.91
+   ],
+   "fascia": [
+    0.93,
+    0.93,
+    0.91
+   ],
+   "soffit": "flat:#e6e3da",
+   "top": "flat:#7a7f84",
+   "lamps": "cctv"
+  },
+  "Langley": {
+   "floor": "floor_slab",
+   "front": "brick_stock",
+   "wall": "brick_red",
+   "canopy": "valanced",
+   "valance": "scallop",
+   "roof_h": 3.6,
+   "spans": [
+    [
+     0.04,
+     0.34
+    ]
+   ],
+   "col": "iron",
+   "col_main": [
+    0.95,
+    0.93,
+    0.86
+   ],
+   "col_band": [
+    0.95,
+    0.93,
+    0.86
+   ],
+   "fascia": [
+    0.95,
+    0.93,
+    0.86
+   ],
+   "soffit": "flat:#e9e5d6",
+   "top": "flat:#4c4a48",
+   "lamps": "victorian"
+  },
+  "Slough": {
+   "floor": "floor_slab",
+   "front": "brick_stock",
+   "wall": "brick_red",
+   "canopy": "slab",
+   "roof_h": 3.6,
+   "spans": [
+    [
+     0.0,
+     0.48
+    ]
+   ],
+   "col": "square",
+   "col_main": [
+    0.82,
+    0.84,
+    0.84
+   ],
+   "col_band": [
+    0.82,
+    0.84,
+    0.84
+   ],
+   "fascia": [
+    0.85,
+    0.86,
+    0.86
+   ],
+   "lamps": "cctv"
+  },
+  "Burnham": {
+   "floor": "floor_slab",
+   "front": "brick_stock",
+   "wall": "brick_red",
+   "canopy": "slab",
+   "roof_h": 3.0,
+   "spans": [
+    [
+     0.12,
+     0.2
+    ],
+    [
+     0.42,
+     0.48
+    ]
+   ],
+   "col": "round",
+   "col_main": [
+    0.26,
+    0.27,
+    0.3
+   ],
+   "col_band": [
+    0.26,
+    0.27,
+    0.3
+   ],
+   "fascia": [
+    0.62,
+    0.63,
+    0.66
+   ],
+   "lamps": "cctv"
+  },
+  "Taplow": {
+   "floor": "floor_slab",
+   "front": "brick_stock",
+   "wall": "brick_red",
+   "canopy": "gable",
+   "valance": "none",
+   "rise": 0.9,
+   "roof_h": 3.2,
+   "spans": [
+    [
+     0.3,
+     0.36
+    ]
+   ],
+   "col": "iron",
+   "col_main": [
+    0.93,
+    0.93,
+    0.91
+   ],
+   "col_band": [
+    0.93,
+    0.93,
+    0.91
+   ],
+   "fascia": [
+    0.93,
+    0.93,
+    0.91
+   ],
+   "soffit": "flat:#e6e3da",
+   "top": "flat:#5d5a58",
+   "lamps": "cctv"
+  },
+  "Maidenhead": {
+   "floor": "floor_slab",
+   "front": "brick_stock",
+   "wall": "brick_red",
+   "canopy": "valanced",
+   "valance": "saw",
+   "roof_h": 4.0,
+   "spans": [
+    [
+     0.0,
+     0.5
+    ]
+   ],
+   "col": "iron",
+   "col_main": [
+    0.9,
+    0.92,
+    0.95
+   ],
+   "col_band": [
+    0.12,
+    0.2,
+    0.42
+   ],
+   "fascia": [
+    0.93,
+    0.93,
+    0.91
+   ],
+   "soffit": "ceiling",
+   "lamps": "cctv"
+  },
+  "Twyford": {
+   "floor": "floor_slab",
+   "front": "brick_blue",
+   "wall": "brick_red",
+   "canopy": "slab",
+   "roof_h": 3.5,
+   "spans": [
+    [
+     0.0,
+     0.32
+    ]
+   ],
+   "col": "square",
+   "col_main": [
+    0.55,
+    0.58,
+    0.62
+   ],
+   "col_band": [
+    0.26,
+    0.27,
+    0.3
+   ],
+   "fascia": [
+    0.3,
+    0.32,
+    0.36
+   ],
+   "soffit": "flat:#4a4a4e",
+   "lamps": "cctv"
+  },
+  "Forest Gate": {
+   "floor": "floor_slab",
+   "front": "brick_blue",
+   "wall": "brick_red",
+   "canopy": "valanced",
+   "valance": "none",
+   "roof_h": 3.8,
+   "spans": [
+    [
+     0.0,
+     0.38
+    ]
+   ],
+   "col": "iron",
+   "col_main": [
+    0.72,
+    0.15,
+    0.11
+   ],
+   "col_band": [
+    0.14,
+    0.24,
+    0.52
+   ],
+   "fascia": [
+    0.93,
+    0.93,
+    0.91
+   ],
+   "soffit": "timber_slab",
+   "lamps": "cctv"
+  },
+  "Manor Park": {
+   "floor": "floor_slab",
+   "front": "brick_blue",
+   "wall": "concrete",
+   "canopy": "slab",
+   "roof_h": 3.2,
+   "spans": [
+    [
+     0.02,
+     0.1
+    ],
+    [
+     0.5,
+     0.58
+    ]
+   ],
+   "col": "round",
+   "col_main": [
+    0.8,
+    0.82,
+    0.84
+   ],
+   "col_band": [
+    0.8,
+    0.82,
+    0.84
+   ],
+   "fascia": [
+    0.93,
+    0.93,
+    0.91
+   ],
+   "lamps": "cctv"
+  },
+  "Ilford": {
+   "floor": "floor_slab",
+   "front": "brick_blue",
+   "wall": "brick_red",
+   "canopy": "valanced",
+   "valance": "saw",
+   "roof_h": 4.2,
+   "spans": [
+    [
+     0.0,
+     0.62
+    ]
+   ],
+   "col": "iron",
+   "col_main": [
+    0.88,
+    0.9,
+    0.94
+   ],
+   "col_band": [
+    0.2,
+    0.32,
+    0.62
+   ],
+   "fascia": [
+    0.9,
+    0.9,
+    0.9
+   ],
+   "soffit": "timber_slab",
+   "lamps": "cctv"
+  },
+  "Seven Kings": {
+   "floor": "floor_slab",
+   "front": "brick_blue",
+   "wall": "concrete",
+   "canopy": "slab",
+   "roof_h": 3.0,
+   "spans": [
+    [
+     0.38,
+     0.44
+    ]
+   ],
+   "col": "round",
+   "col_main": [
+    0.8,
+    0.82,
+    0.84
+   ],
+   "col_band": [
+    0.8,
+    0.82,
+    0.84
+   ],
+   "fascia": [
+    0.62,
+    0.64,
+    0.67
+   ],
+   "lamps": "cctv"
+  },
+  "Goodmayes": {
+   "floor": "floor_slab",
+   "front": "brick_stock",
+   "wall": "brick_red",
+   "canopy": "slab",
+   "roof_h": 3.0,
+   "spans": [
+    [
+     0.3,
+     0.34
+    ]
+   ],
+   "col": "round",
+   "col_main": [
+    0.62,
+    0.64,
+    0.67
+   ],
+   "col_band": [
+    0.62,
+    0.64,
+    0.67
+   ],
+   "fascia": [
+    0.8,
+    0.82,
+    0.84
+   ],
+   "planters": "box",
+   "lamps": "cctv"
+  },
+  "Chadwell Heath": {
+   "floor": "floor_slab",
+   "front": "brick_blue",
+   "wall": "brick_red",
+   "canopy": "valanced",
+   "valance": "scallop",
+   "roof_h": 3.8,
+   "spans": [
+    [
+     0.0,
+     0.46
+    ]
+   ],
+   "col": "iron",
+   "col_main": [
+    0.5,
+    0.62,
+    0.85
+   ],
+   "col_band": [
+    0.5,
+    0.62,
+    0.85
+   ],
+   "fascia": [
+    0.9,
+    0.9,
+    0.9
+   ],
+   "soffit": "ceiling",
+   "lamps": "cctv"
+  },
+  "Gidea Park": {
+   "floor": "floor_slab",
+   "front": "brick_blue",
+   "wall": "brick_stock",
+   "canopy": "slab",
+   "roof_h": 3.1,
+   "spans": [
+    [
+     0.12,
+     0.18
+    ],
+    [
+     0.56,
+     0.62
+    ]
+   ],
+   "col": "round",
+   "col_main": [
+    0.45,
+    0.5,
+    0.55
+   ],
+   "col_band": [
+    0.45,
+    0.5,
+    0.55
+   ],
+   "fascia": [
+    0.8,
+    0.82,
+    0.84
+   ],
+   "lamps": "cctv"
+  },
+  "Romford": {
+   "floor": "floor_slab",
+   "front": "brick_stock",
+   "wall": "brick_red",
+   "canopy": "slab",
+   "roof_h": 3.4,
+   "spans": [
+    [
+     0.0,
+     0.3
+    ]
+   ],
+   "col": "square",
+   "col_main": [
+    0.8,
+    0.82,
+    0.84
+   ],
+   "col_band": [
+    0.8,
+    0.82,
+    0.84
+   ],
+   "fascia": [
+    0.8,
+    0.82,
+    0.84
+   ],
+   "lamps": "cctv"
+  },
+  "Harold Wood": {
+   "floor": "floor_slab",
+   "front": "brick_blue",
+   "wall": "brick_red",
+   "canopy": "timber",
+   "valance": "scallop",
+   "roof_h": 3.2,
+   "spans": [
+    [
+     0.12,
+     0.2
+    ]
+   ],
+   "col": "iron",
+   "col_main": [
+    0.75,
+    0.2,
+    0.12
+   ],
+   "col_band": [
+    0.75,
+    0.2,
+    0.12
+   ],
+   "fascia": [
+    0.9,
+    0.88,
+    0.82
+   ],
+   "soffit": "timber_slab",
+   "lamps": "victorian"
+  },
+  "Brentwood": {
+   "floor": "floor_slab",
+   "front": "brick_stock",
+   "wall": "brick_red",
+   "canopy": "valanced",
+   "valance": "scallop",
+   "roof_h": 3.8,
+   "spans": [
+    [
+     0.0,
+     0.4
+    ]
+   ],
+   "col": "iron",
+   "col_main": [
+    0.15,
+    0.52,
+    0.58
+   ],
+   "col_band": [
+    0.15,
+    0.52,
+    0.58
+   ],
+   "fascia": [
+    0.9,
+    0.92,
+    0.9
+   ],
+   "soffit": "timber_slab",
+   "lamps": "victorian"
+  },
+  "Maryland": {
+   "floor": "floor_slab",
+   "front": "brick_blue",
+   "wall": "brick_red",
+   "canopy": "slab",
+   "roof_h": 3.5,
+   "spans": [
+    [
+     0.0,
+     0.34
+    ]
+   ],
+   "col": "round",
+   "col_main": [
+    0.82,
+    0.82,
+    0.8
+   ],
+   "col_band": [
+    0.82,
+    0.82,
+    0.8
+   ],
+   "fascia": [
+    0.93,
+    0.93,
+    0.91
+   ],
+   "lamps": "cctv"
+  },
+  "Shenfield": {
+   "floor": "floor_slab",
+   "front": "brick_blue",
+   "wall": "brick_red",
+   "canopy": "gable",
+   "valance": "none",
+   "rise": 0.9,
+   "roof_h": 3.9,
+   "spans": [
+    [
+     0.0,
+     0.36
+    ]
+   ],
+   "col": "iron",
+   "col_main": [
+    0.92,
+    0.92,
+    0.9
+   ],
+   "col_band": [
+    0.92,
+    0.92,
+    0.9
+   ],
+   "fascia": [
+    0.93,
+    0.93,
+    0.91
+   ],
+   "soffit": "flat:#e3e0d4",
+   "top": "flat:#c9ccd0",
+   "lamps": "cctv"
+  }
+ },
+ "surface_overrides": {
+  "Acton Main Line": "Acton Main Line",
+  "West Ealing": "West Ealing",
+  "Hanwell": "Hanwell",
+  "Southall": "Southall",
+  "Hayes & Harlington": "Hayes & Harlington",
+  "West Drayton": "West Drayton",
+  "Iver": "Iver",
+  "Langley": "Langley",
+  "Slough": "Slough",
+  "Burnham": "Burnham",
+  "Taplow": "Taplow",
+  "Maidenhead": "Maidenhead",
+  "Twyford": "Twyford",
+  "Forest Gate": "Forest Gate",
+  "Manor Park": "Manor Park",
+  "Ilford": "Ilford",
+  "Seven Kings": "Seven Kings",
+  "Goodmayes": "Goodmayes",
+  "Chadwell Heath": "Chadwell Heath",
+  "Gidea Park": "Gidea Park",
+  "Romford": "Romford",
+  "Harold Wood": "Harold Wood",
+  "Brentwood": "Brentwood",
+  "Maryland": "Maryland",
+  "Shenfield": "Shenfield"
+ },
+ "elizabeth_heathrow": {
+  "Heathrow Terminal 4": {
+   "bored": true,
+   "wall": "tile_sq_grey",
+   "floor": "floor_slab",
+   "stripes": [
+    [
+     0.0,
+     0.25,
+     "grey_dk",
+     0
+    ]
+   ],
+   "light": [
+    1.0,
+    0.94,
+    0.84
+   ],
+   "ribs": {
+    "ink": "grey_dk",
+    "every": 2.2,
+    "w": 0.55
+   }
+  },
+  "Heathrow Terminals 2 & 3": {
+   "bored": true,
+   "wall": "el_dark",
+   "floor": "floor_slab",
+   "stripes": [],
+   "light": [
+    1.35,
+    1.14,
+    0.92
+   ],
+   "ribs": {
+    "ink": "ink_brown",
+    "every": 1.8,
+    "w": 0.3
+   }
+  },
+  "Heathrow Terminal 5": {
+   "bored": false,
+   "wall": "panel_white",
+   "floor": "floor_stone",
+   "ceil": "concrete",
+   "stripes": [
+    [
+     0.0,
+     0.2,
+     "grey_dk",
+     0
+    ]
+   ],
+   "light": [
+    0.82,
+    0.8,
+    1.0
+   ]
+  }
+ },
+ "elizabeth_bored": [
+  "Heathrow Terminal 4",
+  "Heathrow Terminals 2 & 3"
+ ]
+}
