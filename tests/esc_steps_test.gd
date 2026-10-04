@@ -99,6 +99,15 @@ func run():
 				var v := body.constant_linear_velocity
 				check((v.x > 0.0) == (lanes[bi] > 0.0) and absf(v.length() - Escalator.SPEED) < 0.001, "%s lane %d: the slab carries a rider %s at %.2f m/s" % [tag, bi, "down" if lanes[bi] > 0.0 else "up", v.length()])
 			e.queue_free()
+	# the shaders live on: a second escalator (after the first has gone) uses the very same Shader resources, which are not compiled again
+	var e1 := Escalator.new()
+	e1.build(6.0, [1.0, -1.0])
+	var sh_steps: Shader = ((e1._steps_mesh() as ArrayMesh).surface_get_material(0) as ShaderMaterial).shader
+	e1.free()
+	var e2 := Escalator.new()
+	e2.build(7.0, [1.0, -1.0])
+	check(((e2._steps_mesh() as ArrayMesh).surface_get_material(0) as ShaderMaterial).shader == sh_steps and Escalator.shader("escalator_steps") == sh_steps, "the escalator shaders are kept between escalators (a fresh compile is 120 ms each)")
+	e2.free()
 	# fixed stairs have steps of their own
 	var st := Escalator.new()
 	st.build(5.0, [1.0, -1.0], "tile_white", true)

@@ -60,9 +60,22 @@ static func half_width(pw: float) -> float:
 	return GAP * 0.5 + pw + TRACK_TO_EDGE + TRACK_TO_WALL
 
 
+## a frame break between the big steps of a module's build when it is built in the background (the ride builds its destination while the player rides: no step may hold a frame for long)
+var _async_b := false          # (build() was called to run in the background: the big steps give the frame back, see _brk)
+
+
+func _brk(p_async: bool) -> void:
+	var st := get_parent() as Station
+	if p_async and is_inside_tree() and st != null:
+		await st._slice()          # (a frame only when the station's time slice for this stretch of the build is used up)
+	elif p_async and is_inside_tree():
+		await get_tree().process_frame
+
+
 ## spec: length, pw, wall ("tile_white"/"tile_cream"), faces:[{line,color,label}], openings_x:[...], spine_x0, spine_x1, name
 func build(p_spec: Dictionary, p_async := false) -> void:
 	spec = p_spec
+	_async_b = p_async
 	box = spec.get("style", "arch") == "box"
 	var L: float = spec.get("length", 110.0)
 	var pw: float = spec.get("pw", 3.0)
@@ -100,15 +113,17 @@ func build(p_spec: Dictionary, p_async := false) -> void:
 		var s := 1.0 if fi == 0 else -1.0       # +z tunnel is face A
 		var f: Dictionary = faces[fi]
 		var band: Color = f.get("color", Color(0.9, 0.1, 0.1))
-		_build_tunnel(s, x0, x1, zwall, zedge, ztrack, zfar, wall_mat, band, openings)
+		await _build_tunnel(s, x0, x1, zwall, zedge, ztrack, zfar, wall_mat, band, openings)
 		meta["faces"].append({
 			"index": fi, "side": s, "track_z": s * ztrack, "edge_z": s * zedge, "wall_z": s * zwall,
 			"x0": x0, "x1": x1, "rail_y": RAIL_Y, "label": f.get("label", ""), "line": f.get("line", ""),
 		})
+		await _brk(p_async)
 	if box:
 		_build_box_hall(x0, x1, zwall, zedge, ztrack, zfar, wall_mat, openings)
 	else:
 		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
+	await _brk(p_async)
 
 	var mats := {}
 	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "ped_glass", "stainless", "floor_cream", "brick_stock", "brick_red", "brick_blue", "ballast", "tactile_buff", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab", "tunnel_lining", "grass", "grass_dark", "earth", "gravel", "cable_black", "cable_grey", "cable_red", "el_panel", "el_dark", "ped_glass_dark", "el_stripe"]:
@@ -141,12 +156,15 @@ func build(p_spec: Dictionary, p_async := false) -> void:
 			kit.bend(bend, 3.0)
 		meta["bend_ms"] = (Time.get_ticks_usec() - tb) / 1000
 		meta["bend"] = bd
+	await _brk(p_async)
 	var mi := MeshInstance3D.new()
 	mi.mesh = kit.build(mats)
 	mi.name = "Shell"
 	add_child(mi)
+	await _brk(p_async)
 	_add_collision()
 	_add_lights()
+	await _brk(p_async)
 	if open:
 		var ztr := GAP * 0.5 + float(spec.get("pw", 3.0)) + TRACK_TO_EDGE + TRACK_TO_WALL
 		PlatformOpen.scenery(self, open_style, x0, x1, ztr)
@@ -262,6 +280,7 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 		for rx in recesses:
 			_recess(s, rx, zwall, String(character.get("recess", "plain")))
 
+	await _brk(_async_b)
 	# --- platform deck (y = 0) and edge ---
 	var zlo := minf(s * zwall, s * zedge)
 	var zhi := maxf(s * zwall, s * zedge)
@@ -320,6 +339,7 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 		PlatformOpen.track_wall(self, open_style, s, x0, x1, zfar, wall_mat)
 	elif box:
 		_box_track_wall(s, x0, x1, zfar, wall_mat)
+	await _brk(_async_b)
 	# --- wall stripes / dado (station style) on the track-side wall and the platform wall ---
 	var stripes: Array = spec.get("stripes", [{"y0": 1.15, "y1": 1.42, "color": band}])
 	var stripe_i := 0
@@ -341,6 +361,7 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	# (one low tray: real platforms carry the poster run down to platform level, see StationDressing._far_wall)
 	kit.box("metal", Vector3((x0 + x1) * 0.5, 0.10, s * (zfar - 0.15)), Vector3(x1 - x0, 0.08, 0.3), 0.0)
 
+	await _brk(_async_b)
 	# --- collision ---
 	var pcenter := Vector3((x0 + x1) * 0.5, -0.5, s * (zwall + zedge) * 0.5)
 	_cols.append([pcenter, Vector3(x1 - x0, 1.0, zedge - zwall)])                        # platform slab (top at y=0)

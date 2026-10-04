@@ -42,7 +42,14 @@ func build(p: StationPlan) -> void:
 
 
 var _chunk_us := 0
+
+
+## the stretches UG_ON=loadtime reports: over 60 ms, or over UG_CHUNK_MS
+static func _chunk_report_us() -> int:
+	var v := OS.get_environment("UG_CHUNK_MS")
+	return (int(v) if v != "" else 60) * 1000
 const SLICE_US := 25000         # a stretch of build work between two frames should not be much longer than this
+var slice_us := SLICE_US         # ... (a ride builds its destination in smaller ones: the frames are busy with the ride)
 
 
 ## Frame break between the big steps of the build (a no-op for the synchronous `build`)
@@ -50,7 +57,7 @@ func _yield() -> void:
 	if async_mode:
 		if Station.debug_on("loadtime"):        # which stretch of the build ran without a break for long: UG_ON=loadtime lists every stretch over 60 ms with the line that ended it
 			var now := Time.get_ticks_usec()
-			if _chunk_us != 0 and now - _chunk_us > 60000:
+			if _chunk_us != 0 and now - _chunk_us > _chunk_report_us():
 				var stk := get_stack()
 				var at: Dictionary = stk[2] if stk.size() > 2 and stk[1]["function"] == "_slice" else (stk[1] if stk.size() > 1 else {"function": "?", "line": 0})
 				print("LOAD     chunk %4d ms ends at %s:%d" % [(now - _chunk_us) / 1000, at["function"], at["line"]])
@@ -60,7 +67,7 @@ func _yield() -> void:
 
 ## Frame break inside a loop of small items: only when the stretch since the last break has used up its time slice
 func _slice() -> void:
-	if async_mode and Time.get_ticks_usec() - _chunk_us > SLICE_US:
+	if async_mode and Time.get_ticks_usec() - _chunk_us > slice_us:
 		await _yield()
 
 

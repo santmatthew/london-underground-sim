@@ -335,6 +335,7 @@ func _build_destination() -> void:
 	# a body appearing inside the player's capsule launches the player out of the train)
 	dest_station.global_position = Vector3(0.0, -5000.0, 0.0)
 	dest_station.visible = false
+	dest_station.slice_us = 8000          # (the frames of a ride are busy: the build goes on in small pieces - measured, tests/dest_build_test: half the frames over 33 ms)
 	await dest_station.build_async(dest_plan)
 	# The new station is built at the world origin, which can overlap the moving train. Until it is slid into place it must be far away
 	# and inert (colliders, its own service trains and triggers would otherwise hit the player inside the carriage).

@@ -54,7 +54,7 @@ func run(st: Station) -> void:
 	# (each part is a frame of its own when the station is built asynchronously: all of it at once is a stall of well over a second)
 	if not Station.debug_off("d_hall"):
 		for gl in plan.gatelines:
-			_hall(gl)
+			await _hall(gl)
 			await station._slice()
 	if not Station.debug_off("d_rooms"):
 		for rm in plan.rooms:
@@ -64,7 +64,7 @@ func run(st: Station) -> void:
 				await station._slice()
 	if not Station.debug_off("d_plat"):
 		for mi in plan.modules.size():
-			_platform(mi)
+			await _platform(mi)
 			await station._slice()
 	for k in _kits:
 		var mi := PosterKit.finish(_kits[k], root, "Posters_" + String(k))
@@ -306,7 +306,7 @@ func wall_prop(rm: Dictionary, side: String, name: String, width: float, y_origi
 # ---------------------------------------------------------------------------------------------------
 # ticket halls
 # ---------------------------------------------------------------------------------------------------
-func _hall(gl: Dictionary) -> void:
+func _hall(gl: Dictionary) -> void:          # (a coroutine: breaks between its parts when the station is built in the background)
 	var r: Array = gl.get("rect", plan.hall["rect"])
 	var hall_room := _room_for_rect(r)
 	var h: float = StationPlan.HALL_H
@@ -319,6 +319,7 @@ func _hall(gl: Dictionary) -> void:
 	if medium:
 		_retail(hall_room, r, gz, imp)
 	_ticket_machines(hall_room, r, gz, 2 if not medium else (3 if imp < 2.2 else 4))
+	await station._slice()
 	# floor furniture that lives by the walls: info totem, help point
 	_entrance_clutter(hall_room, r, gz, imp)
 	wall_node(hall_room, "W", PropKit.help_point_disc(), 0.6, 1.3, 0.95, 1.65, gz - 2.8)
@@ -339,6 +340,7 @@ func _hall(gl: Dictionary) -> void:
 					zpl += 3.0
 				else:
 					zpl += 0.8
+	await station._slice()
 	wall_node(hall_room, "E", PropKit.help_point_disc(), 0.6, 1.3, 0.95, 1.65, gz + 3.0)
 	# wall furniture on free wall: clock high on a paid-side wall, a fire cabinet
 	StationClocks.register(station, wall_prop(hall_room, "E", "clock", 0.6, 3.0, 2.6, 3.4, gz + 2.5))
@@ -350,6 +352,7 @@ func _hall(gl: Dictionary) -> void:
 		put_wall(root, "cctv_dome", Vector3(cx, h, cz), Vector3(0, 0, 1))
 	for k in 3:
 		put_wall(root, "pa_speaker", Vector3(lerpf(r[0] + 4.0, r[1] - 4.0, k / 2.0), h - 0.6, (r[2] + r[3]) * 0.5), Vector3(0, 0, 1))
+	await station._slice()
 	# TfL information: a Tube map (Quad Royal) beside the gateline on the unpaid side, a cluster of Double Royal frames (customer information)
 	# next to the ticket machines; commercial 6-sheets on the paid-side walls, on whatever wall is still free
 	for side in ["W", "E"]:
@@ -496,7 +499,7 @@ func floor_node(parent: Node3D, n: Node3D, pos: Vector3, dir: Vector3, half: Vec
 # ---------------------------------------------------------------------------------------------------
 # platforms
 # ---------------------------------------------------------------------------------------------------
-func _platform(mi: int) -> void:
+func _platform(mi: int) -> void:          # (a coroutine: it breaks for a frame between its parts when the station is built in the background)
 	var pm: PlatformModule = station.modules[mi]
 	var m: Dictionary = plan.modules[mi]
 	var spec: Dictionary = m["spec"]
@@ -519,10 +522,13 @@ func _platform(mi: int) -> void:
 				_far_wall(kit, s, zfar, L)
 				if pm.box and pm.character.get("frieze_far", false):
 					_frieze_far(kit, pm, s, zfar, L, pm.character)
+				await station._slice()
 			if not pm.box:
 				_platform_wall(kit, pm, s, zwall, L, ox)       # (island box halls have no platform-side wall: nothing to hang on)
+		await station._slice()          # (a break between the parts, when the station is built in the background)
 		if not Station.debug_off("furniture"):
 			_platform_furniture(holder, pm, s, zwall, zedge, zfar, L, ox)
+		await station._slice()
 	var mi_node := PosterKit.finish(kit, holder, "Posters")
 	if mi_node != null:
 		mi_node.visibility_range_end = 60.0

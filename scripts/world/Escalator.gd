@@ -274,6 +274,23 @@ const RAIL_H := 0.985              # the handrail's centre line, along the norma
 const RAIL_W := 0.085
 const RAIL_T := 0.045
 const RAIL_OFF := 0.075            # how far from the middle of the balustrade each lane's rail lies, toward its lane
+## The shaders are kept for good: a Shader resource that nothing refers to is freed with the station that used it, and loading it again (the next station, built in the background while a ride goes on) means
+## compiling it again - 120 - 150 ms each, three of them for the first escalator of every station (measured 2026-10-04)
+static var _shaders: Dictionary = {}
+
+
+static func shader(nm: String) -> Shader:
+	if not _shaders.has(nm):
+		_shaders[nm] = load("res://shaders/%s.gdshader" % nm)
+	return _shaders[nm]
+
+
+## load all of them now (while the menu is up)
+static func preload_shaders() -> void:
+	for nm in ["escalator_steps", "escalator_plate", "escalator_handrail"]:
+		shader(nm)
+
+
 const STEP_PITCH := 0.4            # arc length between neighbouring steps (a 0.2 m riser at 30 degrees)
 const STEP_SINK := 0.07
 
@@ -284,7 +301,7 @@ func _steps_mesh() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var slope_len := run / cos(ANGLE)
 	var n := int(ceil((slope_len + 2.0 * STEP_PITCH) / STEP_PITCH)) + 1
-	var shader := load("res://shaders/escalator_steps.gdshader") as Shader
+	var sh := shader("escalator_steps")
 	for li in lanes.size():
 		var z0 := lane_z(li) - LANE_W * 0.5
 		var z1 := lane_z(li) + LANE_W * 0.5
@@ -319,7 +336,7 @@ func _steps_mesh() -> ArrayMesh:
 		arrays[Mesh.ARRAY_INDEX] = idx
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		var m := ShaderMaterial.new()
-		m.shader = shader
+		m.shader = sh
 		m.set_shader_parameter("speed", SPEED * float(lanes[li]))
 		m.set_shader_parameter("pitch", STEP_PITCH)
 		m.set_shader_parameter("loop_len", float(n) * STEP_PITCH)
@@ -370,7 +387,7 @@ func _rail_path() -> Array:
 func _handrails_mesh() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var path := _rail_path()
-	var shader := load("res://shaders/escalator_handrail.gdshader") as Shader
+	var sh := shader("escalator_handrail")
 	for li in lanes.size():
 		var verts := PackedVector3Array()
 		var norms := PackedVector3Array()
@@ -409,7 +426,7 @@ func _handrails_mesh() -> ArrayMesh:
 		arrays[Mesh.ARRAY_INDEX] = idx
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		var m := ShaderMaterial.new()
-		m.shader = shader
+		m.shader = sh
 		m.set_shader_parameter("speed", SPEED * float(lanes[li]))
 		mesh.surface_set_material(li, m)
 	return mesh
@@ -420,7 +437,7 @@ func _finish() -> void:
 	for k in kit.surfaces.keys():
 		if k.begins_with("esc_plate_"):
 			var pm := ShaderMaterial.new()
-			pm.shader = load("res://shaders/escalator_plate.gdshader")
+			pm.shader = shader("escalator_plate")
 			pm.set_shader_parameter("edge_x", PLATE if k.ends_with("top") else PLATE + run)
 			pm.set_shader_parameter("side", 1.0 if k.ends_with("top") else -1.0)
 			mats[k] = pm
