@@ -1,0 +1,153 @@
+{
+ "_comment": "Where the platforms of these stations really are, against the rule in tools/build_network.py (deep tube lines 'deep', zone 1-2 sub-surface 'sub', the rest 'surface'). Found by comparing each station with the track around it in OpenStreetMap (tools/audit_station_kinds.py) and the platform depth; each setting then checked against Wikipedia and other sources by a research pass (confidence noted where it was only medium). surface = open to the sky (cutting, embankment, viaduct or ground level), sub = covered shallow box, deep = tube tunnels.",
+ "940GZZLUBSC": {
+  "name": "Barons Court",
+  "kind": "surface",
+  "why": "open shallow cutting with canopies"
+ },
+ "940GZZLUBTX": {
+  "name": "Brent Cross",
+  "kind": "surface",
+  "why": "embankment"
+ },
+ "940GZZLUCGT": {
+  "name": "Canning Town",
+  "kind": "surface",
+  "why": "ground level (Jubilee Line Extension surface section)"
+ },
+ "940GZZLUDOH": {
+  "name": "Dollis Hill",
+  "kind": "surface",
+  "why": "embankment (medium confidence)"
+ },
+ "940GZZLUEAN": {
+  "name": "East Acton",
+  "kind": "surface",
+  "why": "low embankment"
+ },
+ "940GZZLUEFY": {
+  "name": "East Finchley",
+  "kind": "surface",
+  "why": "raised, canopies, portal just south"
+ },
+ "940GZZLUFYR": {
+  "name": "Finchley Road",
+  "kind": "surface",
+  "why": "cutting under a single glass and metal canopy (Wikipedia)"
+ },
+ "940GZZLUGGN": {
+  "name": "Golders Green",
+  "kind": "surface",
+  "why": "ground/raised, portal just south"
+ },
+ "940GZZLUHCL": {
+  "name": "Hendon Central",
+  "kind": "surface",
+  "why": "open cutting, twin tunnels just north (Wikipedia)"
+ },
+ "940GZZLUKBN": {
+  "name": "Kilburn",
+  "kind": "surface",
+  "why": "viaduct"
+ },
+ "940GZZLUNDN": {
+  "name": "Neasden",
+  "kind": "surface",
+  "why": "open, below the road bridge (medium)"
+ },
+ "940GZZLUNAN": {
+  "name": "North Acton",
+  "kind": "surface",
+  "why": "open, a road bridge above (medium)"
+ },
+ "940GZZLUQPS": {
+  "name": "Queen's Park",
+  "kind": "surface",
+  "why": "ground level, shared with the Overground"
+ },
+ "940GZZLUSTD": {
+  "name": "Stratford",
+  "kind": "surface",
+  "why": "Central and Jubilee at ground level with canopies"
+ },
+ "940GZZLUTNG": {
+  "name": "Turnham Green",
+  "kind": "surface",
+  "why": "viaduct"
+ },
+ "940GZZLUWHM": {
+  "name": "West Ham",
+  "kind": "surface",
+  "why": "District raised, Jubilee at ground level"
+ },
+ "940GZZLUWHP": {
+  "name": "West Hampstead",
+  "kind": "surface",
+  "why": "open cutting under the West End Lane bridge (medium-high)"
+ },
+ "940GZZLUWCY": {
+  "name": "White City",
+  "kind": "surface",
+  "why": "deep brick-sided cutting (Wikipedia)"
+ },
+ "940GZZLUWIG": {
+  "name": "Willesden Green",
+  "kind": "surface",
+  "why": "open cutting with canopies (medium)"
+ },
+ "940GZZLUWJN": {
+  "name": "Willesden Junction",
+  "kind": "surface",
+  "why": "low-level platforms shared with the Overground"
+ },
+ "940GZZLUBDS": {
+  "name": "Bounds Green",
+  "kind": "deep",
+  "why": "Holden deep-level tube station (1932 extension)"
+ },
+ "940GZZLUGTH": {
+  "name": "Gants Hill",
+  "kind": "deep",
+  "why": "tube platforms either side of the vaulted concourse"
+ },
+ "940GZZLUSGT": {
+  "name": "Southgate",
+  "kind": "deep",
+  "why": "Holden deep-level station"
+ },
+ "940GZZLUTPN": {
+  "name": "Turnpike Lane",
+  "kind": "deep",
+  "why": "Holden deep-level station"
+ },
+ "940GZZLUWSD": {
+  "name": "Wanstead",
+  "kind": "deep",
+  "why": "deep-level Central line extension station"
+ },
+ "940GZZLUWOG": {
+  "name": "Wood Green",
+  "kind": "deep",
+  "why": "Holden deep-level station"
+ },
+ "940GZZLUHNX": {
+  "name": "Hatton Cross",
+  "kind": "sub",
+  "why": "cut-and-cover tunnel (Wikipedia)"
+ },
+ "940GZZLUHWT": {
+  "name": "Hounslow West",
+  "kind": "sub",
+  "why": "1975 underground platforms, cut and cover (Wikipedia)"
+ },
+ "940GZZLURBG": {
+  "name": "Redbridge",
+  "kind": "sub",
+  "why": "cut-and-cover box about 5-8 m down, tube tunnels at both ends (Wikipedia)"
+ },
+ "940GZZLUWYC": {
+  "name": "Wembley Central",
+  "kind": "sub",
+  "why": "track-level platforms under a 1965 concrete raft (Wikipedia)"
+ }
+}

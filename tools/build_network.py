@@ -72,6 +72,10 @@ from elizabeth_ids import EL_MERGE
 EL_SKIP_ROUTES = ("Shenfield &harr; London Liverpool Street",)
 # how an Elizabeth-line-only station is built: Woolwich is a deep box under the Royal Arsenal, the rest are rail stations at ground level
 KIND_OVERRIDE = {"910GWOLWXR": "sub"}
+# where the platforms of a station really are (the rule above - deep tube lines are "deep", zone 1-2 sub-surface stations "sub", the rest "surface" - is wrong for a few dozen): data/station_kind_overrides.json,
+# {NaPTAN: {"kind": "surface" | "sub" | "deep", "why": ...}}, found by comparing the stations with the track around them in OpenStreetMap (tools/audit_station_kinds.py) and checked against the platform depths and the literature
+_kf = os.path.join(ROOT, "data", "station_kind_overrides.json")
+KIND_FIX = {k: v["kind"] for k, v in json.load(open(_kf)).items() if not k.startswith("_")} if os.path.exists(_kf) else {}
 stops = {}
 for lid, dd in raw.items():
     for d, data in dd.items():
@@ -154,6 +158,8 @@ for sid, s in stations.items():
         s["kind"] = "sub" if s["zone"] <= 2 else "surface"
     if sid in KIND_OVERRIDE:
         s["kind"] = KIND_OVERRIDE[sid]
+    if sid in KIND_FIX:
+        s["kind"] = KIND_FIX[sid]
     s["platforms"] = dict(sorted(s["platforms"].items()))
 
 # in-complex links between separate station nodes (seconds of walking, incl. interchange overhead)

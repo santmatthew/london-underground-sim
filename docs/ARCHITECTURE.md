@@ -113,6 +113,12 @@ per hop, `"sec": [[code, metres], ...]` - 0 open, 1 tunnel, 2 cutting, 3 embankm
 - Known limits: the platform of a station the sim draws as deep (an arch) where the real one is in a cutting (Willesden Green ...) shows a tunnel mouth right after the platform; hops between two open stations that the data says run in tunnel show the mouth where the data puts it;
   the near side of the open scenery is flat ground (no second track), the single-track cells have it and the island platform's module has the other track 12.9 m away.
 
+### Where the platforms really are: station kinds corrected (2026-10-04)
+`tools/build_network.py` classifies a station's platforms as `deep` (vaulted tube), `sub` (covered shallow box) or `surface` (open to the sky) by line and zone, which is wrong for about 30 stations. `tools/audit_station_kinds.py` compares each station with the track at its ends in OpenStreetMap and the FOI platform depth; the settings that were then checked
+against Wikipedia and other sources (a research pass; a few are medium confidence, marked in the file) are in `data/station_kind_overrides.json` and applied by `build_network.py`: 20 stations drawn as deep arches are open (Golders Green, East Finchley, Brent Cross, Kilburn, Willesden Green, White City, North/East Acton, Stratford, West Ham ...), Bounds Green, Gants Hill, Southgate, Turnpike Lane, Wanstead and Wood Green
+are tubes (they had sky and trees at 11-19 m down), Hatton Cross, Hounslow West, Redbridge and Wembley Central are covered boxes. Hammersmith (H&C), Wood Lane, Edgware Road (Circle), Paddington (H&C) and High Street Kensington were added to `open_sub`. The FOI depth alone is not a safe rule: stations in cuttings under road bridges show 5-9 m. Known approximation: Finchley Road,
+Bayswater and Notting Hill Gate (Circle/District) are cuttings under glazed roofs, drawn as open stations with canopies.
+
 ## Rolling stock per line
 `Train.stock_of_line(lid)` picks the car model family of a line: the Bakerloo (1972 stock) and the Piccadilly (1973 stock) run `deep72` - a boxy body, transverse seating bays at the car ends, longitudinal seats between the
 doors, red moquette (`make_train.py`, `seating='mixed'`) - the Central and Waterloo & City lines (1992 stock) `deep92` - a rounded body and a blunt rounded nose (`roof_n`, `front_round`) - the other tubes `deep`, the Circle, District, Hammersmith & City and Metropolitan lines and the Elizabeth line `ss` (S-stock-style, walk-through).

@@ -162,7 +162,7 @@
     "Abbey Wood": "rail_modern", "Custom House": "rail_modern", "Reading": "rail_modern", "Heathrow Terminal 5": "rail_modern"
   },
   "open_sub": ["Bayswater", "Westbourne Park", "Ladbroke Grove", "Latimer Road", "Goldhawk Road", "Shepherd's Bush Market", "Royal Oak", "West Kensington", "Ravenscourt Park",
-               "Stamford Brook", "West Brompton", "Parsons Green", "Putney Bridge", "East Putney", "Kensington (Olympia)", "Bromley-by-Bow", "Bow Road", "Stepney Green"],
+               "Stamford Brook", "West Brompton", "Parsons Green", "Putney Bridge", "East Putney", "Kensington (Olympia)", "Bromley-by-Bow", "Bow Road", "Stepney Green", "Hammersmith", "Wood Lane", "Edgware Road", "Paddington", "High Street Kensington"],
   "victoria_motifs": {
     "Brixton": "bricks",
     "Stockwell": "swan",
