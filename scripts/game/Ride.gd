@@ -120,6 +120,25 @@ func start(p_game: Node3D, p_train: Train, p_run: int, p_k: int, p_origin: Stati
 	origin_p = p0.affine_inverse() * origin.global_transform
 
 
+## what the player hears of the surroundings: {"open": 0..1 how open the track is round the player's car (daylight stretches 1, a cutting 0.7, tunnels 0, blended over a few cells so the portals fade), "box": 0..1 how much of
+## it is the brick box of a cut-and-cover tunnel}
+func ambience() -> Dictionary:
+	if path == null or train == null:
+		return {"open": 0.0, "box": 0.0}
+	var s := s_now + float(train.car_x[ref_car])
+	var kc := int(roundf(s / TrackPath.CELL))
+	var w := 0.0
+	var bx := 0.0
+	var tot := 0.0
+	for dk in range(-2, 3):
+		var wt := 3.0 - absf(float(dk))
+		var prof := path.cell_scene(kc + dk) & 7
+		w += wt * RunScenery.open_weight(prof)
+		bx += wt * (1.0 if prof == RunScenery.BOX else 0.0)
+		tot += wt
+	return {"open": w / tot, "box": bx / tot}
+
+
 func _solve_profile() -> void:
 	var T := t_arr - t_dep
 	var k := 1.0 / (2.0 * A_ACC) + 1.0 / (2.0 * A_DEC)

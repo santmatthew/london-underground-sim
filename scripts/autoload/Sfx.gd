@@ -300,8 +300,9 @@ func _set_layer(name: String, key: String, db: float) -> void:
 	l["target"] = db + (volume(key) if key != "" else 0.0)
 
 
-## zones: "street", "hall", "corridor", "escalator", "platform", "train_idle", "train_run"; density 0..1 (crowd); speed m/s for train_run
-func set_zone(zone: String, density: float, speed := 0.0) -> void:
+## zones: "street", "hall", "corridor", "escalator", "platform", "train_idle", "train_run"; density 0..1 (crowd); speed m/s for train_run; in a train, `outdoors` 0..1 is how open the surroundings are (the
+## outdoor bed comes up and the tunnel rumble goes down) and `boxy` 0..1 how much of the track is the brick box of a cut-and-cover tunnel (a closer, louder rumble than the bored tube's)
+func set_zone(zone: String, density: float, speed := 0.0, outdoors := 0.0, boxy := 0.0) -> void:
 	if not enabled:
 		return
 	_zone = zone
@@ -335,18 +336,24 @@ func set_zone(zone: String, density: float, speed := 0.0) -> void:
 			_set_layer("tunnel", "", -60.0)
 			_set_layer("train", "", -60.0)
 		"train_idle":
-			_set_layer("base", "", -60.0)
+			_set_layer("base", _outdoor_bed() if outdoors > 0.02 else "", -17.0 - (1.0 - clampf(outdoors, 0.0, 1.0)) * 20.0)
 			_set_layer("crowd", crowd_key, -9.0 - (1.0 - density) * 10.0)
 			_set_layer("tunnel", "", -60.0)
 			_set_layer("train", "train_interior_idle_loop", -3.0)
 		"train_run":
-			_set_layer("base", "", -60.0)
+			# through the windows: the outdoors comes up where the track is in the open (a cutting's banks muffle it, see Ride.ambience), the bore's rumble goes down, a box tunnel's is closer and louder
+			var o := clampf(outdoors, 0.0, 1.0)
+			_set_layer("base", _outdoor_bed() if o > 0.02 else "", -12.0 - (1.0 - o) * 22.0)
 			_set_layer("crowd", crowd_key, -13.0 - (1.0 - density) * 10.0)
-			_set_layer("tunnel", "tunnel_rumble_loop", -14.0)
+			_set_layer("tunnel", "tunnel_rumble_loop", -14.0 - o * 13.0 + clampf(boxy, 0.0, 1.0) * 3.5)
 			_set_layer("train", "train_interior_run_fast_loop" if speed > 13.0 else "train_interior_run_slow_loop", -2.0 - clampf(1.0 - speed / 20.0, 0.0, 1.0) * 8.0)
 		_:
 			for n in _layers:
 				_set_layer(n, "", -60.0)
+
+
+func _outdoor_bed() -> String:
+	return "outdoor_day_loop" if PlatformOpen.daylight() > 0.25 else "outdoor_night_loop"
 
 
 func silence() -> void:

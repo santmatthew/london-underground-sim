@@ -48,6 +48,13 @@ static func profile_of(code: int, ss: bool) -> int:
 	return OPEN
 
 
+## how much of the outdoors a passenger hears (1 in the open, on a viaduct or an embankment; the banks of a cutting muffle it)
+static func open_weight(p: int) -> float:
+	if enclosed(p):
+		return 0.0
+	return 0.7 if p == CUTTING else 1.0
+
+
 static func enclosed(p: int) -> bool:
 	return p == BORE or p == BOX
 

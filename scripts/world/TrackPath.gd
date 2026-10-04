@@ -56,7 +56,7 @@ static func between(a: String, b: String, dist: float, fade_in: float, fade_out:
 	var kmax := int(ceil((dist + 6.0) / CELL)) + AHEAD
 	tp.ss = p_ss
 	tp._set_scenes(a, b, dist, kmin, kmax, h)
-	tp._plan_pitch = tp._plan_grade(dist, fade_in, fade_out, kmin, kmax)
+	tp._plan_pitch = tp._plan_grade(a, b, dist, fade_in, fade_out, kmin, kmax)
 	var n := kmax - kmin + 1
 	var ks := PackedFloat32Array()
 	ks.resize(n)
@@ -163,22 +163,25 @@ func _set_scenes(a: String, b: String, dist: float, kmin: int, kmax: int, prof: 
 	plan_scenes(secs, ss, pair_seed(a, b), kmin, kmax)
 
 
-## The vertical profile: stations lie on a hump and the tubes between them dip, so a train drops away from one platform and climbs into the next (real tubes: about 1 : 30 for a few hundred metres,
-## 2 to 4 m deep for a mile-long hop). Not surveyed: a typical dish, the same depth at both ends (the data has no heights), over the stretches of tunnel; none in the sub-surface lines' shallow
-## tunnels, in the open or on the platform and the stretch where the hand-overs happen. UG_GRADE=off switches it off, UG_GRADE=<metres> forces that depth over the whole ride (tests).
+## The vertical profile. Two parts. The REAL one: the platform levels of the two stations (data/platform_levels.json, TfL FOI depth table via tubedepths, metres above Ordnance Datum) give how far the track
+## climbs or falls between them ("dz" in data/line_geometry.json), spread over the stretch between the hand-over zones. On top of it a TYPICAL one (not surveyed): stations lie on a hump and the tubes
+## between them dip - about 1 : 30 for a few hundred metres, 2 to 4 m deep for a mile-long hop - over the stretches of tunnel of the deep lines (none in the sub-surface lines' shallow tunnels or in the open).
+## Both are zero over the platform and the stretch where the hand-overs happen; if the two together would be steeper than MAX_GRADE the whole profile is scaled down to fit.
+## UG_GRADE=off switches both off, UG_GRADE=<metres> forces that dish depth (no real climb) over the whole ride (tests).
 ## Returns the climb per cell (radians) for the cells kmin..kmax.
-func _plan_grade(dist: float, fade_in: float, fade_out: float, kmin: int, kmax: int) -> PackedFloat32Array:
+func _plan_grade(a: String, b: String, dist: float, fade_in: float, fade_out: float, kmin: int, kmax: int) -> PackedFloat32Array:
 	var n := kmax - kmin + 1
 	var out := PackedFloat32Array()
 	out.resize(n)
 	var forced := OS.get_environment("UG_GRADE")
-	if forced == "off" or (ss and forced == ""):
+	if forced == "off":
 		return out
 	var w_int := dist - fade_in - fade_out
 	if w_int < 120.0:
 		return out
 	var vr := clampf(w_int * 0.35, 40.0, 140.0)
-	var depth := clampf(w_int * 0.006, 0.5, 3.2)
+	var depth := 0.0 if ss else clampf(w_int * 0.006, 0.5, 3.2)
+	var rise := rise_between(a, b) if forced == "" else 0.0
 	if forced != "":
 		depth = forced.to_float()
 	# where the track is in a tunnel
@@ -190,24 +193,40 @@ func _plan_grade(dist: float, fade_in: float, fade_out: float, kmin: int, kmax: 
 		pos += float(r[1])
 	if forced != "":
 		tun = [[0.0, dist]]
-	if tun.is_empty():
+	if tun.is_empty() or depth == 0.0:
+		depth = 0.0
+	if depth == 0.0 and absf(rise) < 0.05:
 		return out
 	var ys := PackedFloat32Array()
 	ys.resize(n + 1)
+	var worst := 0.0
 	for j in n + 1:
 		var sj := float(kmin + j) * CELL - CELL * 0.5
 		# the share of the stretch round sj (vr wide) that lies in a tunnel
-		var lo := sj - vr * 0.5
-		var hi := sj + vr * 0.5
 		var cover := 0.0
 		for t in tun:
-			cover += maxf(0.0, minf(hi, t[1]) - maxf(lo, t[0]))
+			cover += maxf(0.0, minf(sj + vr * 0.5, t[1]) - maxf(sj - vr * 0.5, t[0]))
 		var m := cover / vr
 		var wn := smoothstep(fade_in, fade_in + vr, sj) * (1.0 - smoothstep(dist - fade_out - vr, dist - fade_out, sj))
-		ys[j] = -depth * m * wn
+		ys[j] = rise * smoothstep(fade_in, dist - fade_out, sj) - depth * m * wn
+		if j > 0:
+			worst = maxf(worst, absf(ys[j] - ys[j - 1]) / CELL)
+	var fit := 1.0 if worst <= MAX_GRADE * 0.93 else MAX_GRADE * 0.93 / worst
 	for i in n:
-		out[i] = asin(clampf((ys[i + 1] - ys[i]) / CELL, -MAX_GRADE, MAX_GRADE))
+		out[i] = asin(clampf(fit * (ys[i + 1] - ys[i]) / CELL, -MAX_GRADE, MAX_GRADE))
 	return out
+
+
+## how far the platform at station `b` lies above the one at `a` (metres, from data/platform_levels.json via the hop's "dz"); 0 where the data has none
+static func rise_between(a: String, b: String) -> float:
+	var pairs: Dictionary = data().get("pairs", {})
+	var e: Dictionary = pairs.get(a + ">" + b, {})
+	if e.has("dz"):
+		return float(e["dz"])
+	e = pairs.get(b + ">" + a, {})
+	if e.has("dz"):
+		return -float(e["dz"])
+	return 0.0
 
 
 ## the same for either direction of a pair of stations (which cuttings are brick-walled is chosen from it)

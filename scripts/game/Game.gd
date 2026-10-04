@@ -1022,7 +1022,8 @@ func _update_audio_zone() -> void:
 	if riding:
 		var sp: float = ride.speed_now if ride else 0.0
 		player.sway = clampf(sp / 12.0, 0.0, 1.6) * (0.0 if bool(Settings.get_v("access", "reduce_sway")) else 1.0)
-		Sfx.set_zone("train_run" if sp > 1.0 else "train_idle", dens, sp)
+		var amb: Dictionary = ride.ambience() if ride else {}
+		Sfx.set_zone("train_run" if sp > 1.0 else "train_idle", dens, sp, float(amb.get("open", 0.0)), float(amb.get("box", 0.0)))
 		player.surface = "rubber"
 		return
 	player.sway = 0.0
@@ -1031,7 +1032,11 @@ func _update_audio_zone() -> void:
 	# inside a train at a platform?
 	for v in station.trains.visits.values():
 		if (v["train"] as Train).contains_world_point(player.global_position):
-			Sfx.set_zone("train_idle", dens)
+			var open_stn := false
+			for m in station.modules:
+				if (m as PlatformModule).open:
+					open_stn = true
+			Sfx.set_zone("train_idle", dens, 0.0, 0.5 if open_stn else 0.0)
 			announcer.tick("train_idle", dens, 0.5)
 			player.surface = "rubber"
 			return

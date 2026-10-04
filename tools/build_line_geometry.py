@@ -7,7 +7,7 @@ For every stop the heading change across the platform (PLAT_SPAN metres centred 
 
   data/line_geometry.json = {
     "step": 20,
-    "pairs": {"<from NaPTAN>><to NaPTAN>": {"len": metres, "h": [heading x10 at 0, STEP, 2 STEP ... , len], "sec": [[kind, metres], ...]}},   # sec: what the track runs through, in order (tools/fetch_line_sections.py)
+    "pairs": {"<from NaPTAN>><to NaPTAN>": {"len": metres, "h": [heading x10 at 0, STEP, 2 STEP ... , len], "sec": [[kind, metres], ...], "dz": metres}},   # dz: how far the next station's platform lies above this one's (data/platform_levels.json); sec: what the track runs through, in order (tools/fetch_line_sections.py)
     "platforms": {"<NaPTAN>": {"<next NaPTAN>": {"dh": degrees over PLAT_SPAN (+ = turns left in the direction of travel), "line": "central"}}}
   }
 Only derived numbers are stored (OpenStreetMap contributors, ODbL; see CREDITS.md).
@@ -290,6 +290,77 @@ def supplement_elizabeth(net, sxy, pairs, secs):
     return added
 
 
+SS_LINES = ("district", "metropolitan", "hammersmith-city", "circle")
+EUSTON_CITY = ("Mornington Crescent", "King's Cross St. Pancras")
+
+
+def _dir_index(pid):
+    d = pid.split(":")[-1].lower() if pid else ""
+    if d.startswith(("north", "east")):
+        return 0
+    if d.startswith(("south", "west")):
+        return 1
+    return None
+
+
+def _level(levels, net, sid, line, pid, other_name):
+    """platform level (m above Ordnance Datum) of `line`'s platform `pid` at station `sid`, None without data"""
+    ent = levels.get(sid)
+    if not ent:
+        return None
+    lines = ent["lines"]
+    key = line
+    if net["stations"][sid]["name"] == "Euston" and line == "northern":
+        key = "northern" if other_name in EUSTON_CITY else "northern_cx"
+    pair = lines.get(key)
+    if pair is None and line in SS_LINES:
+        got = [v for k, v in lines.items() if k in SS_LINES]
+        if got:
+            pair = [sum(v[0] for v in got) / len(got), sum(v[1] for v in got) / len(got)]
+    if pair is None:
+        return None
+    i = _dir_index(pid)
+    return pair[i] if i is not None else (pair[0] + pair[1]) / 2.0
+
+
+def add_levels(net, pairs):
+    """"dz": how far the platform of the next station is above (+) the platform here, from the platform levels of data/platform_levels.json (tools/build_platform_levels.py)"""
+    fp = os.path.join(ROOT, "data", "platform_levels.json")
+    if not os.path.exists(fp):
+        return 0
+    levels = json.load(open(fp))
+    n = 0
+    odd = []
+    for k, e in pairs.items():
+        a, b = k.split(">")
+        line = e.get("line")
+        if line not in net["lines"]:
+            continue
+        pa = pb = None
+        for svc in net["lines"][line]["services"]:
+            st = svc["stops"]
+            for i in range(len(st) - 1):
+                if st[i] == a and st[i + 1] == b:
+                    pa, pb = svc["plat_fwd"][i], svc["plat_fwd"][i + 1]
+                elif st[i] == b and st[i + 1] == a:
+                    pa, pb = svc["plat_bwd"][i + 1], svc["plat_bwd"][i]
+                if pa:
+                    break
+            if pa:
+                break
+        la = _level(levels, net, a, line, pa, net["stations"][b]["name"])
+        lb = _level(levels, net, b, line, pb, net["stations"][a]["name"])
+        if la is None or lb is None:
+            continue
+        e["dz"] = round(lb - la, 1)
+        n += 1
+        if abs(e["dz"]) > 0.05 * e["len"] and abs(e["dz"]) > 4.0:
+            odd.append("%s -> %s (%s): %+.1f m over %.0f m" % (net["stations"][a]["name"], net["stations"][b]["name"], line, e["dz"], e["len"]))
+    for o in odd:
+        print("  steep:", o)
+    return n
+
+
 def load_platforms():
     """every platform outline in Greater London (tools/fetch_line_geometry.py): [(bounding box, polyline)]"""
     fp = os.path.join(GEOM, "platforms_london.json")
@@ -445,6 +516,7 @@ def main():
             ent = plats.setdefault(sid, {}).setdefault(nxt, {"line": line})
             ent["dh"] = round(math.degrees(dh), 1)
     stats["el_added"] = supplement_elizabeth(net, sxy, pairs, secs)
+    stats["dz"] = add_levels(net, pairs)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     json.dump({"step": STEP, "span": PLAT_SPAN, "pairs": pairs, "platforms": plats}, open(OUT, "w"), separators=(",", ":"))
     print(stats, "pairs:", len(pairs), "platform entries:", sum(len(v) for v in plats.values()), "bytes:", os.path.getsize(OUT))
