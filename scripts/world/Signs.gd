@@ -261,6 +261,7 @@ static func ring_color(line_id: String) -> Color:
 
 static func roundel(station_name: String, scale_m := 1.0, black_bar := false, ring_col := RED) -> Node3D:
 	var root := Node3D.new()
+	root.set_meta("roundel", true)
 	var bar_w := maxf(1.7, 0.10 * station_name.length() + 0.55) * scale_m
 	var bar_h := 0.32 * scale_m
 	var ring_r := 0.46 * scale_m

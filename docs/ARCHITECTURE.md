@@ -125,6 +125,7 @@ doors, red moquette (`make_train.py`, `seating='mixed'`) - the Central and Water
 `Train.kind` stays the size class (`deep` / `ss`: platform gaps, door positions, clearances), `Train.stock` is the model. `stock_test` checks the seats, their facing, the standing spots and the aisle of each line's cars.
 
 ## Signage
+- Station-name roundels (`Signs.roundel`) are one-sided plates (the ring and the label are visible from behind, the plate and bar are not), so every one must hang on something and face away from it: the plates flagged out from the columns of open-air platforms faced INTO the column (rotation sign), so from outside only the ring showed, with the text of the opposite plate behind it. `roundel_audit_test` (a sample of stations in the suite, `--all` for the 13 000 roundels of the network) casts a ray behind and in front of each.
 Every sign is tagged (`meta "sign"`, `meta "size"`), hung through `StationSigns.hang_room / hang_blade / mount_wall` and fitted by
 `PlatformModule.ceiling_at / fit_blade` (roof arch, walls, columns, headroom `HEAD` = 2.15 m). `tests/sign_audit_test.gd` checks every sign of
 a list of stations against the real colliders and the analytic roof. Real Tube proportions: blades/indicators ~1-2.6 m wide on short stems,

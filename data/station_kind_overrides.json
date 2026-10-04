@@ -149,5 +149,20 @@
   "name": "Wembley Central",
   "kind": "sub",
   "why": "track-level platforms under a 1965 concrete raft (Wikipedia)"
+ },
+ "940GZZLUHR4": {
+  "name": "Heathrow Terminal 4",
+  "kind": "deep",
+  "why": "platforms in a tube tunnel (photographs of the T4 platforms; the Piccadilly line's 1986 loop station is underground)"
+ },
+ "940GZZLUHR5": {
+  "name": "Heathrow Terminal 5",
+  "kind": "sub",
+  "why": "underground box station (photographs of the T5 platforms)"
+ },
+ "940GZZLUHRC": {
+  "name": "Heathrow Terminals 2 & 3",
+  "kind": "sub",
+  "why": "underground cut-and-cover box (photographs of the T2&3 platforms) - medium confidence"
  }
 }

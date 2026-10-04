@@ -467,7 +467,7 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 				for dxs in [-1.0, 1.0]:
 					var rdc := Signs.roundel(short_name, 0.62, false, Signs.ring_color(f2["line"]))
 					rdc.position = Vector3(cxx + dxs * half_c, 1.85, s * cz if pm.column_zs.size() != 1 else cz)
-					rdc.rotation.y = -PI * 0.5 * dxs
+					rdc.rotation.y = PI * 0.5 * dxs          # (the plate on the +x side of the column faces +x, the one on the -x side faces -x: each readable along the platform, its back against the column)
 					pm.add_child(rdc)
 		for k in seps.size():
 			var x: float = seps[k]
