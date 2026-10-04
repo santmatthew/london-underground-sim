@@ -1,0 +1,77 @@
+extends Node3D
+## The escalators have real steps: one moving mesh a lane (a tread and a riser per step, put on the track by shaders/escalator_steps.gdshader), the steps run the way the lane goes and as fast as its collision
+## slab carries a rider, the loop closes (a whole number of steps, long enough to wrap out of sight under the plates), the mesh is given a culling box, and fixed stairs have none.
+var ok := true
+
+
+func check(c: bool, what: String) -> void:
+	if not c:
+		print("  FAIL ", what)
+		ok = false
+
+
+func run():
+	for rise in [3.2, 11.5, 24.0]:
+		for lanes in [[1.0, -1.0, 1.0], [-1.0, -1.0], [1.0]]:
+			var e := Escalator.new()
+			e.build(rise, lanes)
+			add_child(e)
+			var tag := "rise %.1f lanes %s" % [rise, str(lanes)]
+			var mi := e.get_node_or_null("Steps") as MeshInstance3D
+			check(mi != null, "%s: has a Steps mesh" % tag)
+			if mi == null:
+				continue
+			var mesh := mi.mesh as ArrayMesh
+			check(mesh.get_surface_count() == lanes.size(), "%s: a surface a lane (%d)" % [tag, mesh.get_surface_count()])
+			var slope := e.run / cos(Escalator.ANGLE)
+			for li in mesh.get_surface_count():
+				var m := mesh.surface_get_material(li) as ShaderMaterial
+				var arrays := mesh.surface_get_arrays(li)
+				var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+				var uv2: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV2]
+				var n := verts.size() / 8
+				var pitch: float = m.get_shader_parameter("pitch")
+				var loop_len: float = m.get_shader_parameter("loop_len")
+				check(verts.size() == n * 8 and n >= 3, "%s lane %d: a tread and a riser (8 vertices) a step (%d steps)" % [tag, li, n])
+				check(absf(loop_len - float(n) * pitch) < 0.0001, "%s lane %d: the loop is a whole number of steps (%.2f m of %d)" % [tag, li, loop_len, n])
+				# the loop has room for the slope and for a step to go in under each plate and come out of the other
+				check(loop_len >= slope + 2.0 * pitch, "%s lane %d: the loop (%.1f m) covers the slope (%.1f m) and the hidden stretch" % [tag, li, loop_len, slope])
+				check(loop_len <= slope + 2.0 * pitch + 2.5 * pitch + 0.001, "%s lane %d: ... without many more steps than that" % [tag, li])
+				# the hidden stretch stays under the plate (a plate is Escalator.PLATE long)
+				check(loop_len - slope - pitch <= Escalator.PLATE, "%s lane %d: the steps out of sight fit under the landing plate" % [tag, li])
+				check(float(m.get_shader_parameter("speed")) == Escalator.SPEED * float(lanes[li]), "%s lane %d: the steps go %s at the slab's speed" % [tag, li, "down" if lanes[li] > 0.0 else "up"])
+				check(absf(float(m.get_shader_parameter("l_vis")) - slope) < 0.0001 and is_equal_approx(float(m.get_shader_parameter("x0")), Escalator.PLATE), "%s lane %d: the track runs along the slope the slab does" % [tag, li])
+				check(is_equal_approx(float(m.get_shader_parameter("rise")), rise) and is_equal_approx(float(m.get_shader_parameter("run")), e.run), "%s lane %d: ... down to the same bottom" % [tag, li])
+				# every step index once, as a tread and as a riser; the local coordinates are what the shader expects
+				var seen := {}
+				var bad := 0
+				for i in verts.size():
+					var k := int(uv2[i].x)
+					seen[k] = seen.get(k, 0) + 1
+					if verts[i].x < -0.001 or verts[i].x > 1.001 or verts[i].y < -0.001 or verts[i].y > 1.001:
+						bad += 1
+				check(seen.size() == n and bad == 0, "%s lane %d: steps 0..%d, local coordinates in 0..1" % [tag, li, n - 1])
+				# the lane's width: the steps are as wide as the lane
+				var z0 := 1e9
+				var z1 := -1e9
+				for v in verts:
+					z0 = minf(z0, v.z)
+					z1 = maxf(z1, v.z)
+				check(absf((z1 - z0) - Escalator.LANE_W) < 0.001 and absf((z0 + z1) * 0.5 - e.lane_z(li)) < 0.001, "%s lane %d: as wide as the lane and on it" % [tag, li])
+			# the culling box holds the shaft (the vertices the engine sees are not where they are drawn)
+			var box := mesh.custom_aabb
+			check(box.has_point(Vector3(0.0, 0.0, 0.0)) and box.has_point(Vector3(e.length, -rise, 0.0)) and box.has_point(Vector3(e.length * 0.5, -rise * 0.5, e.width * 0.5)), "%s: the culling box holds the shaft" % tag)
+			# the slab that carries the rider moves the same way as the steps (its velocity is set once the node is in the tree)
+			await get_tree().process_frame
+			for bi in lanes.size():
+				var body := e.get_node("Tread%d" % bi) as AnimatableBody3D
+				var v := body.constant_linear_velocity
+				check((v.x > 0.0) == (lanes[bi] > 0.0) and absf(v.length() - Escalator.SPEED) < 0.001, "%s lane %d: the slab carries a rider %s at %.2f m/s" % [tag, bi, "down" if lanes[bi] > 0.0 else "up", v.length()])
+			e.queue_free()
+	# fixed stairs have steps of their own
+	var st := Escalator.new()
+	st.build(5.0, [1.0, -1.0], "tile_white", true)
+	add_child(st)
+	check(st.get_node_or_null("Steps") == null, "fixed stairs have no moving steps")
+	st.queue_free()
+	print("OK" if ok else "FAILED")

@@ -135,7 +135,7 @@ func _norm(k: String) -> String:
 
 
 func _collect(root: Node, n: Node, out: Array) -> void:
-	if n is MeshInstance3D and (n as MeshInstance3D).mesh is ArrayMesh and (n as MeshInstance3D).visible:
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh is ArrayMesh and (n as MeshInstance3D).visible and not n.has_meta("shader_placed"):          # (shader_placed: the vertices are local coordinates the shader turns into places, e.g. the escalator steps)
 		var mi := n as MeshInstance3D
 		var xf := mi.global_transform
 		var path := String(root.get_path_to(mi))

@@ -97,16 +97,9 @@ func build(p_rise: float, p_lanes: Array, p_wall_mat := "tile_white", p_stairs :
 		var z0 := zc - LANE_W * 0.5
 		var z1 := zc + LANE_W * 0.5
 		# plates (flat comb plates) top and bottom
-		kit.horiz("metal", ax, PLATE, z0, z1, 0.0, true, floor_y)
-		kit.horiz("metal", PLATE + run, bx, z0, z1, -rise, true, floor_y)
-		# sloped treads: material index by lane
-		var mname := "esc_step_%d" % li
-		var sa := Vector3(PLATE, 0.0, z0)
-		var sb := Vector3(PLATE, 0.0, z1)
-		var sc := Vector3(PLATE + run, -rise, z1)
-		var sd := Vector3(PLATE + run, -rise, z0)
-		# CCW seen from above: sa (top,-z), sb (top,+z), sc (bottom,+z), sd (bottom,-z); UV.y along slope
-		kit.quad(mname, sd, sa, sb, sc, floor_y, Vector2.ZERO, 0.0, true)
+		kit.horiz("esc_plate_top", ax, PLATE, z0, z1, 0.0, true, floor_y)
+		kit.horiz("esc_plate_bot", PLATE + run, bx, z0, z1, -rise, true, floor_y)
+		# (the steps between the plates are the moving mesh of _steps_mesh)
 		# balustrade + handrail at each lane edge (shared between lanes)
 	for bi in lanes.size() + 1:
 		var zb := (bi - lanes.size() * 0.5) * PITCH
@@ -278,15 +271,77 @@ func _guard_slab(z: float, thick: float) -> void:
 	_slabs.append(pts)
 
 
+const STEP_PITCH := 0.4            # arc length between neighbouring steps (a 0.2 m riser at 30 degrees)
+const STEP_SINK := 0.07
+
+
+## The moving steps, one surface per lane. Every step is built once (a tread quad and the riser under its front edge, in local coordinates); shaders/escalator_steps.gdshader puts them on the track
+## each frame, so nothing is updated on the CPU. The mesh holds enough steps to cover the slope and wrap round under the plates.
+func _steps_mesh() -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	var slope_len := run / cos(ANGLE)
+	var n := int(ceil((slope_len + 2.0 * STEP_PITCH) / STEP_PITCH)) + 1
+	var shader := load("res://shaders/escalator_steps.gdshader") as Shader
+	for li in lanes.size():
+		var z0 := lane_z(li) - LANE_W * 0.5
+		var z1 := lane_z(li) + LANE_W * 0.5
+		var verts := PackedVector3Array()
+		var norms := PackedVector3Array()
+		var uvs := PackedVector2Array()
+		var uv2s := PackedVector2Array()
+		var idx := PackedInt32Array()
+		for k in n:
+			# tread: u along it (0 back .. 1 front), a quad facing up
+			var b := verts.size()
+			verts.append_array(PackedVector3Array([Vector3(0, 0, z0), Vector3(1, 0, z0), Vector3(1, 0, z1), Vector3(0, 0, z1)]))
+			uvs.append_array(PackedVector2Array([Vector2(0, 0), Vector2(0, 1), Vector2(1, 1), Vector2(1, 0)]))
+			for _i in 4:
+				norms.append(Vector3.UP)
+				uv2s.append(Vector2(float(k), 0.0))
+			idx.append_array(PackedInt32Array([b, b + 1, b + 2, b, b + 2, b + 3]))          # (Godot's front faces are the clockwise ones: this faces up)
+			# riser under the front edge: w from the tread (0) down to the next step's tread (1), facing downhill
+			b = verts.size()
+			verts.append_array(PackedVector3Array([Vector3(1, 0, z0), Vector3(1, 0, z1), Vector3(1, 1, z1), Vector3(1, 1, z0)]))
+			uvs.append_array(PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]))
+			for _i in 4:
+				norms.append(Vector3.RIGHT)
+				uv2s.append(Vector2(float(k), 1.0))
+			idx.append_array(PackedInt32Array([b, b + 2, b + 1, b, b + 3, b + 2]))          # (... and this one downhill)
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		arrays[Mesh.ARRAY_NORMAL] = norms
+		arrays[Mesh.ARRAY_TEX_UV] = uvs
+		arrays[Mesh.ARRAY_TEX_UV2] = uv2s
+		arrays[Mesh.ARRAY_INDEX] = idx
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var m := ShaderMaterial.new()
+		m.shader = shader
+		m.set_shader_parameter("speed", SPEED * float(lanes[li]))
+		m.set_shader_parameter("pitch", STEP_PITCH)
+		m.set_shader_parameter("loop_len", float(n) * STEP_PITCH)
+		m.set_shader_parameter("x0", PLATE)
+		m.set_shader_parameter("run", run)
+		m.set_shader_parameter("rise", rise)
+		m.set_shader_parameter("cos_t", cos(ANGLE))
+		m.set_shader_parameter("sin_t", sin(ANGLE))
+		m.set_shader_parameter("l_vis", slope_len)
+		m.set_shader_parameter("sink", STEP_SINK)
+		mesh.surface_set_material(li, m)
+	# (the vertices are placed by the shader: the box the engine culls by has to be given)
+	mesh.custom_aabb = AABB(Vector3(-0.5, -rise - 1.0, -width * 0.5 - 0.5), Vector3(length + 1.0, rise + 2.0, width + 1.0))
+	return mesh
+
+
 func _finish() -> void:
 	var mats := {}
 	for k in kit.surfaces.keys():
-		if k.begins_with("esc_step_"):
-			var li := int(k.substr(9))
-			var m := ShaderMaterial.new()
-			m.shader = load("res://shaders/escalator_step.gdshader")
-			m.set_shader_parameter("speed", SPEED * float(lanes[li]))
-			mats[k] = m
+		if k.begins_with("esc_plate_"):
+			var pm := ShaderMaterial.new()
+			pm.shader = load("res://shaders/escalator_plate.gdshader")
+			pm.set_shader_parameter("edge_x", PLATE if k.ends_with("top") else PLATE + run)
+			pm.set_shader_parameter("side", 1.0 if k.ends_with("top") else -1.0)
+			mats[k] = pm
 		elif k.begins_with("flat:"):
 			mats[k] = Mats.flat(Color.html(k.substr(5)), 0.4)
 		elif k.begins_with("tex:"):
@@ -305,6 +360,13 @@ func _finish() -> void:
 	mi.mesh = kit.build(mats)
 	mi.name = "Mesh"
 	add_child(mi)
+	if not stairs:
+		var steps := MeshInstance3D.new()
+		steps.mesh = _steps_mesh()
+		steps.name = "Steps"
+		steps.set_meta("shader_placed", true)          # (its vertices are not where they are drawn: audits that read the mesh skip it)
+		steps.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(steps)
 	var body := StaticBody3D.new()
 	body.name = "Collision"
 	for c in _cols:
