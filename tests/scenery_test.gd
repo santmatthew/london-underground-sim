@@ -85,15 +85,16 @@ func run():
 		RunScenery.EMBANK | (3 << 3) | (3 << 5), RunScenery.EMBANK | (1 << 3) | (2 << 5) | (1 << 7), RunScenery.VIADUCT | (3 << 3) | (3 << 5) | (1 << 7),
 		RunScenery.OPEN | (1 << 8) | (1 << 9), RunScenery.CUTTING | (3 << 3) | (3 << 5) | (1 << 8), RunScenery.EMBANK | (3 << 3) | (3 << 5) | (1 << 9) | (1 << 11),
 	]
-	# (the open ones also with the other track of the pair)
+	# (the open ones also with the other track of the pair, on either side)
 	for sc0: int in scenes_t.duplicate():
 		if not RunScenery.enclosed(sc0 & 7):
 			scenes_t.append(sc0 | RunScenery.PAIR)
+			scenes_t.append(sc0 | RunScenery.PAIR | RunScenery.PAIR_RIGHT)
 	var worst := 0
 	for scene in scenes_t:
 		for v in 2 * TunnelRun.N_VAR:
 			for cls in [0, 5]:
-				var kit: MeshKit = run_node._cell_kit(((cls + 16) << 24) | (scene << 3) | v)
+				var kit: MeshKit = run_node._cell_kit(((cls + 16) << 25) | (scene << 3) | v)
 				worst = maxi(worst, kit.triangle_count())
 				if (scene & RunScenery.PAIR) != 0 and cls == 0:
 					# the other track lies on the platform side, a full track spacing off: rails there, ground out to either side
@@ -104,9 +105,14 @@ func run():
 						for pv in (kit.surfaces[mk]["v"] as PackedVector3Array):
 							zlo = minf(zlo, pv.z)
 							zhi = maxf(zhi, pv.z)
-							if String(mk) == "rail" and absf(pv.z - (PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE) * -1.0) < 0.5:
+							var want_far := (PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE) * (3.0 if (scene & RunScenery.PAIR_RIGHT) != 0 else -1.0)
+							if String(mk) == "rail" and absf(pv.z - want_far) < 0.5:
 								rails_far += 1
-					check(zlo < -RunScenery.GW * 0.9 and zhi > RunScenery.GW * 0.9, "scene %x variant %d with its pair: ground out to both sides (z %.1f .. %.1f)" % [scene, v, zlo, zhi])
+					var zt0 := PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE
+					var right_pair: bool = (int(scene) & RunScenery.PAIR_RIGHT) != 0
+					var lo_want := (zt0 if right_pair else -zt0) - RunScenery.GW * 0.9
+					var hi_want := (zt0 + RunScenery.TRACK_SPACING if right_pair else zt0) + RunScenery.GW * 0.9
+					check(zlo < lo_want and zhi > hi_want, "scene %x variant %d with its pair: ground out beyond both tracks (z %.1f .. %.1f, wanted past %.1f and %.1f)" % [scene, v, zlo, zhi, lo_want, hi_want])
 					check(rails_far > 0, "scene %x variant %d with its pair: rails of the other track at -z" % [scene, v])
 				var mesh := TunnelRun._finish(kit)
 				for si in mesh.get_surface_count():
@@ -266,7 +272,7 @@ func run():
 	# a bent cell keeps the other track beside this one (the whole cell bends about the track, its stub and headwalls with it)
 	for cls_b in [5, -5, 14]:
 		for scene_b in [RunScenery.OPEN | RunScenery.PAIR, RunScenery.CUTTING | RunScenery.PAIR | (3 << 3) | (3 << 5) | (1 << 8), RunScenery.EMBANK | RunScenery.PAIR | (3 << 3) | (3 << 5) | (1 << 9) | (1 << 11)]:
-			var kb: MeshKit = TunnelRun._cell_kit(((cls_b + 16) << 24) | (scene_b << 3) | 1)
+			var kb: MeshKit = TunnelRun._cell_kit(((cls_b + 16) << 25) | (scene_b << 3) | 1)
 			var zp := 0.0
 			var np := 0
 			var zm := 0.0
@@ -281,6 +287,27 @@ func run():
 			var sep := zp / maxf(float(np), 1.0) - zm / maxf(float(nm), 1.0)
 			check(np > 0 and nm > 0 and absf(sep - RunScenery.TRACK_SPACING) < 1.0, "class %d, scene %x: the other track is %.1f m from this one (%.1f)" % [cls_b, scene_b, RunScenery.TRACK_SPACING, sep])
 			check(TunnelRun._finish(kb).get_surface_count() > 0, "class %d, scene %x with its pair builds a mesh" % [cls_b, scene_b])
+	# the other track on the right: its rails lie the spacing to the +z side, the main track's tunnel mouth is the bore's own (platform side wide, on the -z side), whichever side the pair is on
+	for right in [false, true]:
+		var sc_r := RunScenery.OPEN | RunScenery.PAIR | (1 << 8) | (RunScenery.PAIR_RIGHT if right else 0)
+		var kr: MeshKit = TunnelRun._cell_kit((16 << 25) | (sc_r << 3) | 1)
+		var zt := PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE
+		var got_l := false
+		var got_r := false
+		for pv in (kr.surfaces["brick_stock"]["v"] as PackedVector3Array):
+			if absf(pv.x + TunnelRun.SEG_LEN * 0.5) < 0.001:
+				if absf(pv.z - (zt - RunScenery.NEAR)) < 0.002:
+					got_l = true
+				if absf(pv.z - (zt + RunScenery.FAR)) < 0.002:
+					got_r = true
+		check(got_l and got_r, "pair %s: the main track's tunnel mouth is the bore's (opening from %.2f to %.2f)" % ["on the right" if right else "on the left", zt - RunScenery.NEAR, zt + RunScenery.FAR])
+		var rz := 0.0
+		var rn := 0
+		for pv in (kr.surfaces["rail"]["v"] as PackedVector3Array):
+			if (pv.z > zt + 4.0) == right and absf(pv.z - zt) > 4.0:
+				rz += pv.z
+				rn += 1
+		check(rn > 0 and ((rz / float(rn)) > zt) == right, "pair %s: the other track's rails lie on that side (mean z %.1f, track at %.1f)" % ["on the right" if right else "on the left", rz / maxf(float(rn), 1.0), zt])
 	# the other track's rails are where the spacing says (a cell at the line's spacing, a cell at the station's)
 	for lv in [0, 15]:
 		var kit_l := MeshKit.new()

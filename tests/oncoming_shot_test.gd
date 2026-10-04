@@ -48,7 +48,8 @@ func run():
 					n += 1
 					var path := "res://build/oncoming_%02d.png" % n
 					get_viewport().get_texture().get_image().save_png(path)
-					print("SNAP ", path, " train at ", snappedf(rel, 1.0), " m, s_p ", snappedf(s_p, 1.0), " of ", snappedf(r.dist, 1.0))
+					var lat_local: float = r.train.to_local(tr.global_position).z          # (+z is the right-hand side of the player's train)
+					print("SNAP ", path, " train at ", snappedf(rel, 1.0), " m, s_p ", snappedf(s_p, 1.0), " of ", snappedf(r.dist, 1.0), "; doors ", r.train.door_side, ", the oncoming train is on the ", "RIGHT" if lat_local > 0.0 else "LEFT", " (", snappedf(lat_local, 0.1), " m)")
 					next_mark += 1
 					break
 		elif n > 0 and not g.riding:

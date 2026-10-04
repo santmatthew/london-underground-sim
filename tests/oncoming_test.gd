@@ -32,7 +32,7 @@ func _extras(t0: float) -> void:
 	for ln in ["district", "piccadilly"]:
 		var o := Oncoming.new()
 		add_child(o)
-		o.setup(path_h, false, ih, ibc, t0, t0 + 900.0, 700.0, ln)
+		o.setup(path_h, ih, ibc, t0, t0 + 900.0, 700.0, ln)
 		var grp: String = Net.lines[ln]["group"]
 		var all_same := true
 		for e in o.entries:
@@ -43,7 +43,7 @@ func _extras(t0: float) -> void:
 		o.queue_free()
 	var o_all := Oncoming.new()
 	add_child(o_all)
-	o_all.setup(path_h, false, ih, ibc, t0, t0 + 900.0, 700.0)
+	o_all.setup(path_h, ih, ibc, t0, t0 + 900.0, 700.0)
 	check(o_all.entries.size() >= int(counts["district"]) + int(counts["piccadilly"]), "without a line, trains of both lines are counted (%d >= %d + %d)" % [o_all.entries.size(), counts["district"], counts["piccadilly"]])
 	check(int(counts["district"]) > 0 and int(counts["piccadilly"]) > 0, "both lines run Barons Court - Hammersmith the other way (%d, %d)" % [counts["district"], counts["piccadilly"]])
 	o_all.queue_free()
@@ -59,7 +59,7 @@ func _extras(t0: float) -> void:
 	check(not any_pair, "a single track has no second track in its scenery")
 	var oc := Oncoming.new()
 	add_child(oc)
-	oc.setup(path_c, false, ica, ic, t0, t0 + 900.0, 6000.0, "metropolitan")
+	oc.setup(path_c, ica, ic, t0, t0 + 900.0, 6000.0, "metropolitan")
 	check(oc.entries.is_empty(), "nothing comes the other way on a single track")
 	oc.queue_free()
 	check(not TrackPath.between(idh, idb, 700.0, 120.0, 120.0).single, "a double track is not single")
@@ -95,9 +95,9 @@ func _hop(na: String, nb: String, mirror: bool, cam_s: float, t0: float) -> void
 		check(float(f["arr"]) > float(f["dep"]), "run %d: arrives after it leaves" % int(f["run"]))
 	var onc := Oncoming.new()
 	add_child(onc)
-	onc.setup(path, mirror, ia, ib, t0, t1, dist)
+	onc.setup(path, ia, ib, t0, t1, dist)
 	check(onc.entries.size() > 0, "%s -> %s: the ride has oncoming trains" % [na, nb])
-	check(is_equal_approx(onc.side, 1.0 if mirror else -1.0), "the second track is on the platform side (%s)" % ("right" if mirror else "left"))
+	check(Oncoming.SIDE == 1.0, "the trains run on the right of the path")
 	# --- each goes from the destination to the origin in its run's time
 	var last_s := 1e9
 	for e in onc.entries:
@@ -154,7 +154,7 @@ func _hop(na: String, nb: String, mirror: bool, cam_s: float, t0: float) -> void
 	if zn > 0:
 		var zmean := zsum / float(zn)
 		var want_sp := path.spacing_at(float(kc) * 12.0)
-		check(signf(zmean) == onc.side and absf(absf(zmean) - want_sp) < 1.5, "the trains run on the side the scenery has the second track, at its spacing (rails at %.1f m, trains at %.1f m)" % [zmean, onc.side * want_sp])
+		check(signf(zmean) == Oncoming.SIDE and absf(absf(zmean) - want_sp) < 1.5, "the second track of the scenery is on the right (whatever side the doors are on) and the trains run on it, at its spacing (rails at %.1f m, trains at %.1f m)" % [zmean, Oncoming.SIDE * want_sp])
 	var worst_lat := 0.0
 	var worst_dir := -1.0
 	var shown_max := 0
@@ -193,7 +193,7 @@ func _hop(na: String, nb: String, mirror: bool, cam_s: float, t0: float) -> void
 			var p := path.pose(sc)
 			var local := p.affine_inverse() * car.global_position
 			# a car stands on the second track (a bend moves the middle of a long car off the chord by a few centimetres)
-			worst_lat = maxf(worst_lat, absf(local.z - onc.side * path.spacing_at(sc)))
+			worst_lat = maxf(worst_lat, absf(local.z - Oncoming.SIDE * path.spacing_at(sc)))
 			check(absf(local.y - (PlatformModule.RAIL_Y)) < 0.9, "car %d stands at rail level (y %.2f)" % [i, local.y])
 			var fwd := car.global_transform.basis.x * (-1.0 if i == tr.cars.size() - 1 else 1.0)
 			worst_dir = maxf(worst_dir, fwd.dot(p.basis.x))
@@ -209,7 +209,7 @@ func _hop(na: String, nb: String, mirror: bool, cam_s: float, t0: float) -> void
 	# --- the hand-over: a train in view when the scenery takes over stays out, one far ahead comes
 	var onc2 := Oncoming.new()
 	add_child(onc2)
-	onc2.setup(path, mirror, ia, ib, t0, t1, dist)
+	onc2.setup(path, ia, ib, t0, t1, dist)
 	var e_in: Dictionary = {}
 	var e_far: Dictionary = {}
 	var tn := t_pass - 3.0

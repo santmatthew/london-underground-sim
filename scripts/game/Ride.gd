@@ -310,7 +310,7 @@ func _start_tunnel(travelled: float) -> void:
 	if not Station.debug_off("oncoming"):          # (UG_OFF=oncoming: no trains on the second track, for A/B frame-time runs)
 		oncoming = Oncoming.new()
 		add_child(oncoming)
-		oncoming.setup(path, train.door_side == "R", stops[k_from], stops[k_from + 1], t_dep, t_arr, dist, train.line_id)
+		oncoming.setup(path, stops[k_from], stops[k_from + 1], t_dep, t_arr, dist, train.line_id)
 		oncoming.begin(travelled + float(train.car_x[ref_car]), Clock.now)
 	if origin.crowd != null:
 		origin.crowd.finish_riders(train)            # riders appear a few per frame; the destination station takes over the complete cars

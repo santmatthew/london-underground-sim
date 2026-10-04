@@ -95,11 +95,20 @@ static func _store(key: int, kit: MeshKit) -> void:
 	_cache[key] = _finish(kit)
 
 
+## the scene of cell k as this ride builds it: the other track of the pair lies on the right of the train whatever side its doors are on (British trains keep left and meet the others on the right), which
+## in the cross-section built with the platform on the left (-z) is the +z side, and in the mirrored one (the platform on the right) the side the mirror brings to the right, the -z side the pair is built on by default
+func _scene_of(k: int) -> int:
+	var sc := path.cell_scene(k)
+	if not mirror and (sc & RunScenery.PAIR) != 0:
+		sc |= RunScenery.PAIR_RIGHT
+	return sc
+
+
 ## the mesh key of cell k: curvature class (bits 24-), scene (RunScenery, bits 3-23) and variant
 ## (a mirrored ride - the platform on the right - flips the cells across the track, so they are bent the other way to start with)
 func _key_of(k: int) -> int:
 	var cls := path.cell_class(k) * (-1 if mirror else 1)
-	var sc := path.cell_scene(k)
+	var sc := _scene_of(k)
 	var lit := posmod(k, 2) == 0
 	var v: int
 	if sc == RunScenery.BORE:
@@ -108,14 +117,14 @@ func _key_of(k: int) -> int:
 		v = (0 if lit else N_VAR) + posmod(k, N_VAR)        # (a box tunnel: lamps in the lit ones)
 	else:
 		v = posmod(k, N_VAR)                                  # (in the open: the backdrops repeat every three cells, nothing else to vary)
-	return ((cls + 16) << 24) | (sc << 3) | v
+	return ((cls + 16) << 25) | (sc << 3) | v
 
 
 ## the cell of mesh key `key` as a MeshKit with the track at z = _ztrack; bent about the cell's entry when its class is not 0
 static func _cell_kit(key: int) -> MeshKit:
 	var v := key & 7
-	var sc := (key >> 3) & 0x1fffff
-	var cls := (key >> 24) - 16
+	var sc := (key >> 3) & 0x3fffff
+	var cls := (key >> 25) - 16
 	var zfar := PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE + PlatformModule.TRACK_TO_WALL
 	var ztrack := zfar - PlatformModule.TRACK_TO_WALL
 	var zwall_run := zfar - (PlatformModule.TRACK_TO_WALL + PlatformModule.TRACK_TO_EDGE + PlatformModule.PW_RUN)
@@ -210,7 +219,7 @@ func place(s: float) -> void:
 	var any_open := false
 	for k in range(kc - N_SEG / 2, kc + N_SEG / 2):
 		var i := posmod(k, N_SEG)
-		var sc := path.cell_scene(k)
+		var sc := _scene_of(k)
 		if not RunScenery.enclosed(sc & 7):
 			any_open = true
 		if _cells[i] == k:
@@ -224,11 +233,11 @@ func place(s: float) -> void:
 			_request(key)
 			# (not built yet: the same scene straight, else the bore)
 			var v := key & 7
-			var alt := (16 << 24) | (sc << 3) | v
+			var alt := (16 << 25) | (sc << 3) | v
 			cls = 0
-			key = alt if _cache.has(alt) else ((16 << 24) | (RunScenery.BORE << 3) | v)
+			key = alt if _cache.has(alt) else ((16 << 25) | (RunScenery.BORE << 3) | v)
 			if not _cache.has(key):
-				key = (16 << 24) | (RunScenery.BORE << 3) | (v % N_VAR)
+				key = (16 << 25) | (RunScenery.BORE << 3) | (v % N_VAR)
 				if not _cache.has(key):
 					_store(key, _cell_kit(key))
 		mi.mesh = _cache[key]

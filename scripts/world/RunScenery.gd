@@ -149,6 +149,7 @@ static func add(kit: MeshKit, prof: int, x0: float, x1: float, t: float, o: Dict
 # ---------------------------------------------------------------------------------------------------------------------------------------
 
 const CELL := 12.0
+const PAIR_RIGHT := 1 << 21     # scene bit (a ride sets it, never the data): the other track lies to the +z side of this one (a ride whose train has its doors on the left runs on the left and meets its trains on the right); without it, to the -z side
 const PAIR := 1 << 12          # scene bit: the other track of the pair lies beside this one (12.9 m off, on the platform side, the same distance as the two tracks of a station): in the open the line is double track
 
 const TRACK_SPACING := 2.0 * (PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE)          # (the two tracks of a station module)
@@ -283,22 +284,27 @@ static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int, dist
 static func add_scene(kit: MeshKit, scene: int, v: int, x0: float, x1: float, t: float, o: Dictionary = {}) -> void:
 	var pair := (scene & PAIR) != 0 and not enclosed(scene & 7)
 	var oo := o.duplicate()
-	var da := 0.0          # how far the other track has come toward this one from the station's spacing, at x0 and at x1
-	var db := 0.0
+	var ns := 1.0 if (scene & PAIR_RIGHT) != 0 else -1.0          # which side the other track is on
+	var sh0 := 0.0          # where the other track's copy ends up (see below), at x0 and at x1
+	var sh1 := 0.0
 	if pair:
-		da = TRACK_SPACING - spacing_of_level((scene >> 13) & 15)
-		db = TRACK_SPACING - spacing_of_level((scene >> 17) & 15)
-		oo["flat0"] = da * 0.5          # (the ground between the tracks ends half way)
-		oo["flat1"] = db * 0.5
+		var s0 := spacing_of_level((scene >> 13) & 15)          # the spacing of the two tracks at x0 and at x1
+		var s1 := spacing_of_level((scene >> 17) & 15)
+		oo["ns"] = ns
+		oo["flat0"] = t + ns * s0 * 0.5          # (the ground between the tracks ends half way)
+		oo["flat1"] = t + ns * s1 * 0.5
+		sh0 = 2.0 * t + ns * s0
+		sh1 = 2.0 * t + ns * s1
 	_scene_kit(kit, scene, v, x0, x1, t, oo, pair, false)
 	if pair:
+		# the other track is the mirror image of this one across the line half way between them: built beside this one's own frame, reflected (z -> -z), then moved to its place (z -> 2 t + ns * spacing - z)
 		var other := MeshKit.new()
 		other.seed_rng(11 + v)
 		_scene_kit(other, scene, v, x0, x1, t, oo, true, true)          # (the same variant: a station's other face has the main face's, so the signals stand level)
 		track(other, x0, x1, t)
 		other.mirror_z()
-		if da != 0.0 or db != 0.0:
-			other.shear_z(x0, x1, da, db)
+		if absf(sh0) > 0.0001 or absf(sh1) > 0.0001:
+			other.shear_z(x0, x1, sh0, sh1)
 		kit.merge(other)
 
 
@@ -378,7 +384,7 @@ static func _backdrops(kit: MeshKit, x0: float, x1: float, t: float, o: Dictiona
 	var u0: float = o.get("u0", x0)
 	var near_flat: bool = o.get("near_flat", false)
 	for sg: float in [1.0, -1.0]:
-		if sg < 0.0 and near_flat:
+		if sg == float(o.get("ns", -1.0)) and near_flat:
 			continue
 		_backdrop(kit, "trees", x0, x1, t + sg * trees_dz, ya, yb, u0)
 		_backdrop(kit, "houses", x0, x1, t + sg * houses_dz, ya, yb, u0 + 7.0)
@@ -390,8 +396,8 @@ static func _flat(o: Dictionary) -> Vector2:
 
 
 ## is there ground (not just touching formations) between the edge of this track's formation, at z = edge, and the line half way to the other track?
-static func _gap(fl: Vector2, edge: float) -> bool:
-	return fl.x < edge - 0.05 and fl.y < edge - 0.05
+static func _gap(fl: Vector2, edge: float, ns: float) -> bool:
+	return ns * (fl.x - edge) > 0.05 and ns * (fl.y - edge) > 0.05
 
 
 ## ballast across the formation
@@ -402,16 +408,17 @@ static func _formation(kit: MeshKit, x0: float, x1: float, t: float, half := 2.9
 ## lineside furniture by variant: a signal post on the track-side, or an equipment cabinet and a cable trough
 static func _lineside(kit: MeshKit, x0: float, x1: float, t: float, v: int, dz: float, y: float) -> void:
 	var xm := (x0 + x1) * 0.5
+	var sg := signf(dz)          # (dz < 0: the furniture is on the -z side, facing +z)
 	match v % 3:
 		1:
 			kit.box("steel", Vector3(xm - 2.0, y + 1.5, t + dz), Vector3(0.12, 3.0, 0.12), y)
-			kit.box("light_emissive_red", Vector3(xm - 2.0, y + 2.6, t + dz - 0.1), Vector3(0.22, 0.22, 0.05), y)
-			kit.box("light_emissive_green", Vector3(xm - 2.0, y + 2.25, t + dz - 0.1), Vector3(0.22, 0.22, 0.05), y)
+			kit.box("light_emissive_red", Vector3(xm - 2.0, y + 2.6, t + dz - 0.1 * sg), Vector3(0.22, 0.22, 0.05), y)
+			kit.box("light_emissive_green", Vector3(xm - 2.0, y + 2.25, t + dz - 0.1 * sg), Vector3(0.22, 0.22, 0.05), y)
 		2:
-			kit.box("concrete", Vector3(xm + 1.0, y + 0.75, t + dz + 0.6), Vector3(2.2, 1.5, 0.9), y)
-			kit.box("steel", Vector3(xm + 1.0, y + 1.56, t + dz + 0.6), Vector3(2.3, 0.1, 1.0), y)
+			kit.box("concrete", Vector3(xm + 1.0, y + 0.75, t + dz + 0.6 * sg), Vector3(2.2, 1.5, 0.9), y)
+			kit.box("steel", Vector3(xm + 1.0, y + 1.56, t + dz + 0.6 * sg), Vector3(2.3, 0.1, 1.0), y)
 	# the cable trough beside the ballast, the whole stretch
-	kit.box("concrete", Vector3(xm, PlatformModule.BED_Y + 0.14, t + 2.35), Vector3(x1 - x0, 0.28, 0.4), PlatformModule.BED_Y)
+	kit.box("concrete", Vector3(xm, PlatformModule.BED_Y + 0.14, t + 2.35 * sg), Vector3(x1 - x0, 0.28, 0.4), PlatformModule.BED_Y)
 
 
 # --- open railway land --------------------------------------------------------------------------------------------------------------------
@@ -419,23 +426,25 @@ static func _lineside(kit: MeshKit, x0: float, x1: float, t: float, v: int, dz: 
 static func _open(kit: MeshKit, x0: float, x1: float, t: float, o: Dictionary) -> void:
 	var v: int = o.get("v", 0)
 	var near_flat: bool = o.get("near_flat", false)
+	var ns: float = float(o.get("ns", -1.0))          # (the side the other track is on)
 	var fl := _flat(o)
-	var gap := near_flat and _gap(fl, t - 2.9)
+	var gap := near_flat and _gap(fl, t + ns * 2.9, ns)
 	_formation(kit, x0, x1, t)
 	# the ground, a step above the ballast
 	for sg: float in [1.0, -1.0]:
-		if sg < 0.0 and near_flat:
+		if sg == ns and near_flat:
 			if gap:
-				_strip(kit, "grass", x0, x1, t - 2.9, G, t - 2.9, G, fl.x, G, fl.y, G)
+				_strip(kit, "grass", x0, x1, t + ns * 2.9, G, t + ns * 2.9, G, fl.x, G, fl.y, G)
 			else:
 				continue          # (the formations of the two tracks touch)
 		else:
 			_strip(kit, "grass", x0, x1, t + sg * 2.9, G, t + sg * 2.9, G, t + sg * GW, G, t + sg * GW, G)
 		_wallq(kit, "ballast", Vector3(x0, G, t + sg * 2.9), Vector3(x0, PlatformModule.BED_Y, t + sg * 2.9), Vector3(x1, PlatformModule.BED_Y, t + sg * 2.9), Vector3(x1, G, t + sg * 2.9), Vector3(0, 0, -sg))
-	_lineside(kit, x0, x1, t, v, FAR + 0.6, G)
-	if not near_flat:
+	_lineside(kit, x0, x1, t, v, (FAR + 0.6) * -ns, G)
+	if not (near_flat and ns < 0.0):
 		_fence(kit, x0, x1, t - 7.0, G, G)
-	_fence(kit, x0, x1, t + 7.0, G, G)
+	if not (near_flat and ns > 0.0):
+		_fence(kit, x0, x1, t + 7.0, G, G)
 	_backdrops(kit, x0, x1, t, o, 13.0, 32.0, G, G)
 
 
@@ -449,14 +458,15 @@ static func _cutting(kit: MeshKit, x0: float, x1: float, t: float, o: Dictionary
 	var ha := CUT_H * la
 	var hb := CUT_H * lb
 	var near_flat: bool = o.get("near_flat", false)
+	var ns: float = float(o.get("ns", -1.0))
 	var fl := _flat(o)
-	var gap := near_flat and _gap(fl, t - 2.9)
+	var gap := near_flat and _gap(fl, t + ns * 2.9, ns)
 	var brick: bool = int(o.get("seed", 0)) % 3 == 0
 	_formation(kit, x0, x1, t)
 	for sg: float in [1.0, -1.0]:
-		if sg < 0.0 and near_flat:
+		if sg == ns and near_flat:
 			if gap:
-				_strip(kit, "grass", x0, x1, t - 2.9, G, t - 2.9, G, fl.x, G, fl.y, G)
+				_strip(kit, "grass", x0, x1, t + ns * 2.9, G, t + ns * 2.9, G, fl.x, G, fl.y, G)
 			continue
 		if brick:
 			var wz := 5.2 if sg < 0.0 else 3.4          # (the platform side of the running tunnel is wider: the walls clear it)
@@ -481,8 +491,8 @@ static func _cutting(kit: MeshKit, x0: float, x1: float, t: float, o: Dictionary
 			if ha + hb > 1.0:
 				_fence(kit, x0, x1, t + sg * (CUT_H * SLOPE + SHOULDER + 0.6), G + ha, G + hb)
 			_backdrops_side(kit, x0, x1, t, sg, o, CUT_H * SLOPE + SHOULDER + 8.0, CUT_H * SLOPE + SHOULDER + 26.0, G + ha, G + hb)
-		if sg > 0.0:
-			_lineside(kit, x0, x1, t, v, FAR + 0.3, G)
+		if sg == -ns:
+			_lineside(kit, x0, x1, t, v, (FAR + 0.3) * sg, G)
 
 
 static func _backdrops_side(kit: MeshKit, x0: float, x1: float, t: float, sg: float, o: Dictionary, trees_dz: float, houses_dz: float, ya: float, yb: float) -> void:
@@ -500,13 +510,14 @@ static func _embank(kit: MeshKit, x0: float, x1: float, t: float, o: Dictionary)
 	var ha := hmax * float(o.get("la", 3)) / 3.0
 	var hb := hmax * float(o.get("lb", 3)) / 3.0
 	var near_flat: bool = o.get("near_flat", false)
+	var ns: float = float(o.get("ns", -1.0))
 	var fl := _flat(o)
-	var gap := near_flat and _gap(fl, t - 2.9)
+	var gap := near_flat and _gap(fl, t + ns * 2.9, ns)
 	_formation(kit, x0, x1, t)
 	for sg: float in [1.0, -1.0]:
-		if sg < 0.0 and near_flat:
+		if sg == ns and near_flat:
 			if gap:
-				_strip(kit, "grass", x0, x1, t - 2.9, G, t - 2.9, G, fl.x, G, fl.y, G)
+				_strip(kit, "grass", x0, x1, t + ns * 2.9, G, t + ns * 2.9, G, fl.x, G, fl.y, G)
 			continue
 		var za := SHOULDER + 0.4 + ha * 1.6
 		var zb := SHOULDER + 0.4 + hb * 1.6
@@ -516,17 +527,18 @@ static func _embank(kit: MeshKit, x0: float, x1: float, t: float, o: Dictionary)
 		_strip(kit, "grass", x0, x1, t + sg * za, G - ha, t + sg * zb, G - hb, t + sg * GW, G - ha, t + sg * GW, G - hb)
 		_fence(kit, x0, x1, t + sg * (SHOULDER + 0.2), G, G, 1.1)
 		_backdrops_side(kit, x0, x1, t, sg, o, zfoot + 6.0, zfoot + 24.0, G - ha, G - hb)
-	_lineside(kit, x0, x1, t, v, FAR + 0.3, G)
+	_lineside(kit, x0, x1, t, v, (FAR + 0.3) * -ns, G)
 
 
 # --- viaduct ------------------------------------------------------------------------------------------------------------------------------
 
 static func _viaduct(kit: MeshKit, x0: float, x1: float, t: float, o: Dictionary) -> void:
 	var near_flat: bool = o.get("near_flat", false)
+	var ns: float = float(o.get("ns", -1.0))
 	var gy := G - VIA_H
 	kit.horiz("ballast", x0, x1, t - VIA_HALF, t + VIA_HALF, PlatformModule.BED_Y, true, PlatformModule.BED_Y)
 	for sg: float in [1.0, -1.0]:
-		if sg < 0.0 and near_flat:
+		if sg == ns and near_flat:
 			continue          # (a flat deck out to the other track, below)
 		var zp := t + sg * VIA_HALF
 		# parapet: inner face, outer face, coping
@@ -535,8 +547,8 @@ static func _viaduct(kit: MeshKit, x0: float, x1: float, t: float, o: Dictionary
 		_q(kit, "concrete", Vector3(x0, G + PARAPET, zp), Vector3(x1, G + PARAPET, zp), Vector3(x1, G + PARAPET, zp + sg * 0.45), Vector3(x0, G + PARAPET, zp + sg * 0.45), Vector3.UP)
 		_strip(kit, "grass", x0, x1, zp + sg * 0.45, gy, zp + sg * 0.45, gy, t + sg * GW, gy, t + sg * GW, gy)
 	var fl := _flat(o)
-	if near_flat and _gap(fl, t - VIA_HALF):
-		_strip(kit, "ballast", x0, x1, fl.x, PlatformModule.BED_Y, fl.y, PlatformModule.BED_Y, t - VIA_HALF, PlatformModule.BED_Y, t - VIA_HALF, PlatformModule.BED_Y)
+	if near_flat and _gap(fl, t + ns * VIA_HALF, ns):
+		_strip(kit, "ballast", x0, x1, fl.x, PlatformModule.BED_Y, fl.y, PlatformModule.BED_Y, t + ns * VIA_HALF, PlatformModule.BED_Y, t + ns * VIA_HALF, PlatformModule.BED_Y)
 	_backdrops(kit, x0, x1, t, o, VIA_HALF + 12.0, VIA_HALF + 28.0, gy, gy)
 
 
@@ -604,8 +616,13 @@ static func portal(kit: MeshKit, bore: int, open_prof: int, x: float, dir: int, 
 			pr = pl
 			top = G + CUT_H
 	var near_flat: bool = o.get("near_flat", false)
+	var ns: float = float(o.get("ns", -1.0))
 	if near_flat:
-		pl = t - float(o.get("flat0" if dir > 0 else "flat1", 0.0))          # (the other track of the pair lies on the platform side: this headwall stops half way to it, the other one takes over from there)
+		var mid := float(o.get("flat0" if dir > 0 else "flat1", 0.0))
+		if ns < 0.0:
+			pl = t - mid
+		else:
+			pr = mid - t          # (the other track of the pair lies on the platform side: this headwall stops half way to it, the other one takes over from there)
 	var hint := Vector3(float(dir), 0, 0)
 	var zl := t - NEAR
 	var zr := t + FAR
@@ -631,7 +648,7 @@ static func portal(kit: MeshKit, bore: int, open_prof: int, x: float, dir: int, 
 	_q(kit, "concrete", Vector3(x, top, t - pl), Vector3(x, top, t + pr), Vector3(x + dir * 0.4, top, t + pr), Vector3(x + dir * 0.4, top, t - pl), Vector3.UP)
 	if open_prof != CUTTING:
 		for sg: float in [-1.0, 1.0]:
-			if sg < 0.0 and near_flat:
+			if sg == ns and near_flat:
 				continue
 			var zw := t - pl if sg < 0.0 else t + pr
 			var xe := x + dir * 7.0

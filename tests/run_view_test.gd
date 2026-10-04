@@ -1,14 +1,14 @@
 extends Node3D
 ## The scenery of a ride (TunnelRun) seen from a camera on the track, without a train: the other track of the pair, the cuttings and the mouths.
 ## args --a=Name --b=Name [--line=piccadilly] [--trains --cam=s --offsets=-4,-2,0,1.5] (the trains of the other track: shots around the moment the first one passes the camera at path distance s) --at=s1,s2,.. (path distance) --look=left|right|ahead|back [--mirror] [--hour=H] [--out=res://build/run_view] [--eye=1.6] [--fov=75]
-## output: <out>_<n>.png per position. "left" is the platform side of the unmirrored cross-section (the other track of the pair lies there; with --mirror, on the right).
+## output: <out>_<n>.png per position. "right" is the side of the path the other track of the pair lies on, whatever the door side (--mirror: the train has its doors on the right).
 func _ready() -> void:
 	var out := "res://build/run_view"
 	var na := "Amersham"
 	var nb := "Chalfont & Latimer"
 	var line := ""
 	var ats := [300.0]
-	var look := "left"
+	var look := "right"
 	var mirror := false
 	var trains := false
 	var cam_s := 600.0
@@ -63,7 +63,7 @@ func _ready() -> void:
 		var t0 := Clock.now
 		var onc := Oncoming.new()
 		add_child(onc)
-		onc.setup(path, mirror, ia, ib, t0, t0 + 900.0, dist)
+		onc.setup(path, ia, ib, t0, t0 + 900.0, dist)
 		print("oncoming trains in the next 15 min: ", onc.entries.size())
 		if onc.entries.is_empty():
 			get_tree().quit()
@@ -98,7 +98,6 @@ func _ready() -> void:
 			var up0 := Vector3(0.0, eye, 0.0)
 			var dirs0 := {"left": Vector3(0, 0, -12), "right": Vector3(0, 0, 12), "ahead": Vector3(40, 0, 0), "back": Vector3(-40, 0, 0)}
 			var d0: Vector3 = dirs0.get(look, dirs0["left"])
-			d0.z *= (-1.0 if mirror else 1.0)
 			cam.global_transform = Transform3D(pose0.basis, pose0.origin + pose0.basis * up0)
 			cam.look_at(pose0.origin + pose0.basis * (up0 + d0))
 			Clock.now = t_pass + off
@@ -124,8 +123,6 @@ func _ready() -> void:
 		var up := Vector3(0.0, eye, 0.0)
 		var dirs := {"left": Vector3(0, 0, -20), "right": Vector3(0, 0, 20), "ahead": Vector3(40, 0, 0), "back": Vector3(-40, 0, 0)}
 		var d: Vector3 = dirs.get(look, dirs["left"])
-		var sgn := -1.0 if mirror else 1.0
-		d.z *= sgn
 		cam.global_transform = Transform3D(pose.basis, pose.origin + pose.basis * up)
 		cam.look_at(pose.origin + pose.basis * (up + d))
 		for _i in 10:

@@ -62,7 +62,7 @@ func _ready() -> void:
 	if not Station.debug_off("oncoming"):
 		onc = Oncoming.new()
 		add_child(onc)
-		onc.setup(path, false, ia, ib, t0, t0 + 1800.0, dist, line)
+		onc.setup(path, ia, ib, t0, t0 + 1800.0, dist, line)
 		# a train meets the camera `meet` seconds in
 		var e: Dictionary = {}
 		for e2 in onc.entries:

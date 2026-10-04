@@ -35,7 +35,7 @@ func run():
 				var key: int = t._key_of(k)
 				if not t._cache.has(key):
 					continue
-				var kc := ((key >> 24) - 16)
+				var kc := ((key >> 25) - 16)
 				var local_exit := Vector3(TunnelRun.SEG_LEN * 0.5, 0.0, ztrack)
 				if kc != 0:
 					local_exit = Bend.new(float(kc) * TrackPath.Q, -TunnelRun.SEG_LEN * 0.5, TunnelRun.SEG_LEN * 0.5, ztrack).map(local_exit)
