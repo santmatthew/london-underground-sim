@@ -149,6 +149,9 @@ static func add(kit: MeshKit, prof: int, x0: float, x1: float, t: float, o: Dict
 # ---------------------------------------------------------------------------------------------------------------------------------------
 
 const CELL := 12.0
+const PAIR := 1 << 12          # scene bit: the other track of the pair lies beside this one (12.9 m off, on the platform side, the same distance as the two tracks of a station): in the open the line is double track
+
+const TRACK_SPACING := 2.0 * (PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE)          # (the two tracks of a station module)
 
 
 static func scene_prof(sc: int) -> int:
@@ -234,12 +237,26 @@ static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int) -> P
 				la = 3
 			if pb == 1 and (code == 2 or code >= 3):
 				lb = 3
-		out[k - k0] = prof | (la << 3) | (lb << 5) | (tall << 7) | (pa << 8) | (pb << 9) | (brick << 10) | ((1 if ss else 0) << 11)
+		out[k - k0] = prof | (la << 3) | (lb << 5) | (tall << 7) | (pa << 8) | (pb << 9) | (brick << 10) | ((1 if ss else 0) << 11) | (0 if enclosed(prof) else PAIR)
 	return out
 
 
-## the cell `scene` (variant v) between x0 and x1 for the track at z = t. o: u0, near_flat as for `add`
+## the cell `scene` (variant v) between x0 and x1 for the track at z = t. o: u0, near_flat as for `add`.
+## With the PAIR bit the other track of the line is built too: the same scene mirrored across the spine (z = 0, where t = ztrack of a module), rails and sleepers included - a station module builds that
+## track itself (its other face), so it clears the bit there.
 static func add_scene(kit: MeshKit, scene: int, v: int, x0: float, x1: float, t: float, o: Dictionary = {}) -> void:
+	var pair := (scene & PAIR) != 0 and not enclosed(scene & 7)
+	_scene_kit(kit, scene, v, x0, x1, t, o, pair, false)
+	if pair:
+		var other := MeshKit.new()
+		other.seed_rng(11 + v)
+		_scene_kit(other, scene, (v + 1) % 3, x0, x1, t, o, true, true)
+		track(other, x0, x1, t)
+		other.mirror_z()
+		kit.merge(other)
+
+
+static func _scene_kit(kit: MeshKit, scene: int, v: int, x0: float, x1: float, t: float, o: Dictionary, near_flat: bool, stub: bool) -> MeshKit:
 	var prof := scene & 7
 	var ss := ((scene >> 11) & 1) == 1
 	var oo := o.duplicate()
@@ -248,12 +265,26 @@ static func add_scene(kit: MeshKit, scene: int, v: int, x0: float, x1: float, t:
 	oo["tall"] = ((scene >> 7) & 1) == 1
 	oo["seed"] = 0 if ((scene >> 10) & 1) == 1 else 1
 	oo["v"] = v
+	if near_flat:
+		oo["near_flat"] = true
+	oo["stub"] = stub          # (the other track's tunnel mouth shows a few metres of its tunnel: the cell next door does not hold it)
 	add(kit, prof, x0, x1, t, oo)
 	var bore := BOX if ss else BORE
 	if ((scene >> 8) & 1) == 1:
 		portal(kit, bore, prof, x0, 1, t, oo)
 	if ((scene >> 9) & 1) == 1:
 		portal(kit, bore, prof, x1, -1, t, oo)
+	return kit
+
+
+## the rails (two running rails, the centre and the outer one) and the sleepers of the track at z = t between x0 and x1
+static func track(kit: MeshKit, x0: float, x1: float, t: float) -> void:
+	var xm := (x0 + x1) * 0.5
+	for dz in [-0.7175, 0.7175]:
+		kit.box("rail", Vector3(xm, PlatformModule.RAIL_Y - 0.08, t + dz), Vector3(x1 - x0, 0.16, 0.07), PlatformModule.BED_Y)
+	kit.box("rail", Vector3(xm, PlatformModule.RAIL_Y - 0.07, t), Vector3(x1 - x0, 0.10, 0.06), PlatformModule.BED_Y)
+	kit.box("rail", Vector3(xm, PlatformModule.RAIL_Y - 0.07, t - 1.05), Vector3(x1 - x0, 0.10, 0.06), PlatformModule.BED_Y)
+	kit.horiz("track_sleepers", x0, x1, t - 1.3, t + 1.3, PlatformModule.BED_Y + 0.004, true, PlatformModule.BED_Y)
 
 
 # --- helpers -----------------------------------------------------------------------------------------------------------------------------
@@ -504,6 +535,9 @@ static func portal(kit: MeshKit, bore: int, open_prof: int, x: float, dir: int, 
 			pl = CUT_H * SLOPE + SHOULDER
 			pr = pl
 			top = G + CUT_H
+	var near_flat: bool = o.get("near_flat", false)
+	if near_flat:
+		pl = t          # (the other track of the pair lies on the platform side: this headwall stops at the spine, the other one takes over from there)
 	var hint := Vector3(float(dir), 0, 0)
 	var zl := t - NEAR
 	var zr := t + FAR
@@ -523,13 +557,46 @@ static func portal(kit: MeshKit, bore: int, open_prof: int, x: float, dir: int, 
 			var a := pts[i]
 			var b := pts[i + 1]
 			_wallq(kit, "brick_stock", Vector3(x, top, a.x), Vector3(x, a.y, a.x), Vector3(x, b.y, b.x), Vector3(x, top, b.x), hint)
+	if o.get("stub", false):
+		_stub(kit, bore, x, dir, t)
 	# a coping on the top, and wing walls splaying out along the ground
 	_q(kit, "concrete", Vector3(x, top, t - pl), Vector3(x, top, t + pr), Vector3(x + dir * 0.4, top, t + pr), Vector3(x + dir * 0.4, top, t - pl), Vector3.UP)
 	if open_prof != CUTTING:
 		for sg: float in [-1.0, 1.0]:
+			if sg < 0.0 and near_flat:
+				continue
 			var zw := t - pl if sg < 0.0 else t + pr
 			var xe := x + dir * 7.0
 			var ze := zw + sg * 2.5
 			for face: int in [0, 1]:
 				var h := Vector3(0, 0, -sg if face == 0 else sg)
 				_wallq(kit, "brick_stock", Vector3(x, top, zw), Vector3(x, low if low < G else G, zw), Vector3(xe, low if low < G else G, ze), Vector3(xe, (low if low < G else G) + 1.2, ze), h)
+
+
+## a few metres of the tunnel behind a headwall at plane x (the open air toward dir), closed by a dark plane: for the other track of a pair, whose tunnel the neighbouring cell does not hold
+const STUB := 18.0
+
+
+static func _stub(kit: MeshKit, bore: int, x: float, dir: int, t: float) -> void:
+	var bed := PlatformModule.BED_Y
+	var xi := x - float(dir) * STUB
+	var a := minf(x, xi)
+	var b := maxf(x, xi)
+	var zl := t - NEAR
+	var zr := t + FAR
+	if bore == BOX:
+		_box(kit, a, b, t, {"v": 3})
+	else:
+		var pr := arch_points(zl, zr)
+		pr.append(Vector2(zr, bed))
+		kit.sweep_x("tunnel_lining", pr, a, b, 0.0, false, STUB)
+		kit.wall("tunnel_lining", Vector3(a, 0, zl), Vector3(b, 0, zl), bed, PlatformModule.SPRING_Y, 0.0)
+		kit.horiz("trackbed", a, b, zl, zr, bed, true, bed)
+	var p0 := Vector3(xi, PlatformModule.SPRING_Y + PlatformModule.RISE, zl)
+	var p1 := Vector3(xi, PlatformModule.SPRING_Y + PlatformModule.RISE, zr)
+	var p2 := Vector3(xi, bed, zr)
+	var p3 := Vector3(xi, bed, zl)
+	if dir > 0:
+		kit.quad("tunnel_dark", p0, p3, p2, p1, 0.0)          # (the tunnel lies toward -x: the plane faces +x)
+	else:
+		kit.quad("tunnel_dark", p0, p1, p2, p3, 0.0)

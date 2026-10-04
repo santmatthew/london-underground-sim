@@ -243,7 +243,7 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 				var tmp := MeshKit.new()
 				tmp.seed_rng(5 + int(r[5]))
 				var kk: int = r[5]
-				RunScenery.add_scene(tmp, int(r[0]), (0 if posmod(kk, 2) == 0 else 3) + posmod(kk, 3), float(r[3]), float(r[4]), ztrack, {"u0": float(r[3]), "near_flat": two_faces})
+				RunScenery.add_scene(tmp, int(r[0]) & ~(RunScenery.PAIR if two_faces else 0), (0 if posmod(kk, 2) == 0 else 3) + posmod(kk, 3), float(r[3]), float(r[4]), ztrack, {"u0": float(r[3]), "near_flat": two_faces})
 				if west:
 					tmp.mirror_x()
 				if s < 0.0:

@@ -15,7 +15,11 @@ func run():
 	var checked := 0
 	var worst := 9.0
 	var kinds := {}
-	for scene in [RunScenery.BORE, RunScenery.BOX | (1 << 11), RunScenery.OPEN, RunScenery.CUTTING | (3 << 3) | (3 << 5), RunScenery.EMBANK | (3 << 3) | (3 << 5), RunScenery.VIADUCT | (3 << 3) | (3 << 5), RunScenery.OPEN | (1 << 8) | (1 << 9), RunScenery.CUTTING | (3 << 3) | (3 << 5) | (1 << 8), RunScenery.CUTTING | (3 << 3) | (3 << 5) | (1 << 9) | (1 << 10), RunScenery.EMBANK | (3 << 3) | (3 << 5) | (1 << 8) | (1 << 7), RunScenery.VIADUCT | (3 << 3) | (3 << 5) | (1 << 9) | (1 << 7)]:
+	var scenes_c: Array = [RunScenery.BORE, RunScenery.BOX | (1 << 11), RunScenery.OPEN, RunScenery.CUTTING | (3 << 3) | (3 << 5), RunScenery.EMBANK | (3 << 3) | (3 << 5), RunScenery.VIADUCT | (3 << 3) | (3 << 5), RunScenery.OPEN | (1 << 8) | (1 << 9), RunScenery.CUTTING | (3 << 3) | (3 << 5) | (1 << 8), RunScenery.CUTTING | (3 << 3) | (3 << 5) | (1 << 9) | (1 << 10), RunScenery.EMBANK | (3 << 3) | (3 << 5) | (1 << 8) | (1 << 7), RunScenery.VIADUCT | (3 << 3) | (3 << 5) | (1 << 9) | (1 << 7)]
+	for sc0: int in scenes_c.duplicate():
+		if not RunScenery.enclosed(sc0 & 7):
+			scenes_c.append(sc0 | RunScenery.PAIR)          # (with the other track of the pair beside it: its furniture must stay out of this one's way too)
+	for scene in scenes_c:
 		for v in 2 * TunnelRun.N_VAR:                 # (bending keeps every offset from the track: the straight cell is the one to measure)
 			var kit: MeshKit = run._cell_kit((16 << 18) | (scene << 3) | v)
 			for mat in kit.surfaces:

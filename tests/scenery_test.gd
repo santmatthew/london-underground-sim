@@ -85,12 +85,29 @@ func run():
 		RunScenery.EMBANK | (3 << 3) | (3 << 5), RunScenery.EMBANK | (1 << 3) | (2 << 5) | (1 << 7), RunScenery.VIADUCT | (3 << 3) | (3 << 5) | (1 << 7),
 		RunScenery.OPEN | (1 << 8) | (1 << 9), RunScenery.CUTTING | (3 << 3) | (3 << 5) | (1 << 8), RunScenery.EMBANK | (3 << 3) | (3 << 5) | (1 << 9) | (1 << 11),
 	]
+	# (the open ones also with the other track of the pair)
+	for sc0: int in scenes_t.duplicate():
+		if not RunScenery.enclosed(sc0 & 7):
+			scenes_t.append(sc0 | RunScenery.PAIR)
 	var worst := 0
 	for scene in scenes_t:
 		for v in 2 * TunnelRun.N_VAR:
 			for cls in [0, 5]:
 				var kit: MeshKit = run_node._cell_kit(((cls + 16) << 18) | (scene << 3) | v)
 				worst = maxi(worst, kit.triangle_count())
+				if (scene & RunScenery.PAIR) != 0 and cls == 0:
+					# the other track lies on the platform side, a full track spacing off: rails there, ground out to either side
+					var zlo := 1e9
+					var zhi := -1e9
+					var rails_far := 0
+					for mk in kit.surfaces.keys():
+						for pv in (kit.surfaces[mk]["v"] as PackedVector3Array):
+							zlo = minf(zlo, pv.z)
+							zhi = maxf(zhi, pv.z)
+							if String(mk) == "rail" and absf(pv.z - (PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE) * -1.0) < 0.5:
+								rails_far += 1
+					check(zlo < -RunScenery.GW * 0.9 and zhi > RunScenery.GW * 0.9, "scene %x variant %d with its pair: ground out to both sides (z %.1f .. %.1f)" % [scene, v, zlo, zhi])
+					check(rails_far > 0, "scene %x variant %d with its pair: rails of the other track at -z" % [scene, v])
 				var mesh := TunnelRun._finish(kit)
 				for si in mesh.get_surface_count():
 					if mesh.surface_get_material(si) == null:

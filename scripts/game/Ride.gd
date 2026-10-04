@@ -21,11 +21,13 @@ var dest_station: Station
 var dest_plan: StationPlan
 var dest_ready := false
 var tunnel: TunnelRun
+var oncoming: Oncoming               # the trains that come the other way on the second track (only while the scenery is in view)
 var phase := Phase.DEPART
 var t_dep := 0.0
 var t_arr := 0.0
 var dist := 0.0                     # segment length (m)
 var v_cruise := 0.0
+var _pr: Dictionary = {}            # (solve_profile)
 var t_acc := 0.0
 var t_dec := 0.0
 var dest_face_key := ""
@@ -147,37 +149,55 @@ func ambience() -> Dictionary:
 
 
 func _solve_profile() -> void:
-	var T := t_arr - t_dep
+	var pr := solve_profile(t_arr - t_dep, dist)
+	_pr = pr
+	v_cruise = pr["v"]
+	t_acc = pr["ta"]
+	t_dec = pr["td"]
+	dist = pr["dist"]
+
+
+## The speed profile of a run of `p_dist` metres in `T` seconds: accelerate, cruise, brake. {"v": cruise speed, "ta", "td": seconds accelerating / braking, "dist": the length it covers - stretched or shrunk when the
+## timetable cannot be met with a cruise speed between 6 and 30 m/s}
+static func solve_profile(T: float, p_dist: float) -> Dictionary:
 	var k := 1.0 / (2.0 * A_ACC) + 1.0 / (2.0 * A_DEC)
-	var disc := T * T - 4.0 * dist * k
+	var d := p_dist
+	var disc := T * T - 4.0 * d * k
 	if disc < 0.0:
 		# infeasible: stretch distance so it fits (shouldn't happen with the timetable's own run times)
-		dist = T * T / (4.0 * k) * 0.98
-		disc = T * T - 4.0 * dist * k
-	v_cruise = (T - sqrt(maxf(disc, 0.0))) / (2.0 * k)
-	v_cruise = clampf(v_cruise, 6.0, 30.0)
-	t_acc = v_cruise / A_ACC
-	t_dec = v_cruise / A_DEC
+		d = T * T / (4.0 * k) * 0.98
+		disc = T * T - 4.0 * d * k
+	var v := (T - sqrt(maxf(disc, 0.0))) / (2.0 * k)
+	v = clampf(v, 6.0, 30.0)
+	var ta := v / A_ACC
+	var td := v / A_DEC
 	# rescale distance to exactly fit with clamped speed: recompute cruise length
-	var d_acc := 0.5 * A_ACC * t_acc * t_acc
-	var d_dec := 0.5 * A_DEC * t_dec * t_dec
-	var t_cr := maxf(0.0, T - t_acc - t_dec)
-	dist = d_acc + d_dec + v_cruise * t_cr
+	var d_acc := 0.5 * A_ACC * ta * ta
+	var d_dec := 0.5 * A_DEC * td * td
+	var t_cr := maxf(0.0, T - ta - td)
+	return {"v": v, "ta": ta, "td": td, "dist": d_acc + d_dec + v * t_cr}
+
+
+## distance travelled after `tau` seconds of a run of `T` seconds with the profile `pr` (solve_profile)
+static func profile_s(pr: Dictionary, T: float, tau: float) -> float:
+	if tau <= 0.0:
+		return 0.0
+	var v: float = pr["v"]
+	var ta: float = pr["ta"]
+	var td: float = pr["td"]
+	if tau < ta:
+		return 0.5 * A_ACC * tau * tau
+	var d_acc := 0.5 * A_ACC * ta * ta
+	var t_cr := maxf(0.0, T - ta - td)
+	if tau < ta + t_cr:
+		return d_acc + v * (tau - ta)
+	var u := minf(tau - ta - t_cr, td)
+	return d_acc + v * t_cr + v * u - 0.5 * A_DEC * u * u
 
 
 ## distance travelled after tau seconds since departure
 func s_at(tau: float) -> float:
-	var T := t_arr - t_dep
-	if tau <= 0.0:
-		return 0.0
-	if tau < t_acc:
-		return 0.5 * A_ACC * tau * tau
-	var d_acc := 0.5 * A_ACC * t_acc * t_acc
-	var t_cr := maxf(0.0, T - t_acc - t_dec)
-	if tau < t_acc + t_cr:
-		return d_acc + v_cruise * (tau - t_acc)
-	var u := minf(tau - t_acc - t_cr, t_dec)
-	return d_acc + v_cruise * t_cr + v_cruise * u - 0.5 * A_DEC * u * u
+	return profile_s(_pr, t_arr - t_dep, tau)
 
 
 func speed_at(tau: float) -> float:
@@ -233,6 +253,8 @@ func _process(delta: float) -> void:
 			if tunnel:
 				tunnel.global_transform = world
 				tunnel.place(travelled + float(train.car_x[ref_car]))
+			if oncoming != null:
+				oncoming.update(travelled + float(train.car_x[ref_car]), now, world, speed_now)
 			# start building the destination once well into the ride
 			if not _building and tau > minf(16.0, T * 0.35):
 				_building = true
@@ -276,6 +298,11 @@ func _start_tunnel(travelled: float) -> void:
 	tunnel.setup(path, train.door_side == "R", travelled + float(train.car_x[ref_car]))
 	tunnel.global_transform = _world(travelled)
 	tunnel.place(travelled + float(train.car_x[ref_car]))
+	var stops: PackedInt32Array = Timetable.run_stops[run]
+	oncoming = Oncoming.new()
+	add_child(oncoming)
+	oncoming.setup(path, train.door_side == "R", stops[k_from], stops[k_from + 1], t_dep, t_arr, dist)
+	oncoming.begin(travelled + float(train.car_x[ref_car]), Clock.now)
 	if origin.crowd != null:
 		origin.crowd.finish_riders(train)            # riders appear a few per frame; the destination station takes over the complete cars
 		rider_state = origin.crowd.train_state.get(train, {})
@@ -357,6 +384,9 @@ func _start_arrive(remaining: float) -> void:
 	if tunnel:
 		tunnel.queue_free()
 		tunnel = null
+	if oncoming != null:
+		oncoming.queue_free()
+		oncoming = null
 
 
 func _finish() -> void:

@@ -495,6 +495,30 @@ func visits_between(gp: int, t0: float, t1: float) -> Array:
 	return out
 
 
+## The trains that run from station `b` to station `a` (the opposite way to a train going a -> b) while some part of [t0, t1] is on that stretch: [{"run", "k" (the stop index of a in the run), "line", "dep" (leaves b),
+## "arr" (reaches a), "dest"}, ...] by departure time. They are the ones a rider of the a -> b train meets coming the other way.
+func oncoming(a_idx: int, b_idx: int, t0: float, t1: float) -> Array:
+	var out: Array = []
+	if not built or a_idx < 0 or a_idx >= plat_index.size():
+		return out
+	var seen := {}
+	for gp in (plat_index[a_idx] as Dictionary).values():
+		# (arrivals at a from t0 on, up to the time the slowest of those has been on the track: they left b before t1)
+		for info in visits_between(gp, t0 - 30.0, t1 + 600.0):
+			var r: int = info["run"]
+			var k: int = info["k"]
+			if k <= 0 or (run_stops[r] as PackedInt32Array)[k - 1] != b_idx or seen.has(r):
+				continue
+			seen[r] = true
+			var dep_b: float = (run_dep[r] as PackedFloat32Array)[k - 1]
+			var arr_a: float = (run_arr[r] as PackedFloat32Array)[k]
+			if arr_a < t0 or dep_b > t1:
+				continue
+			out.append({"run": r, "k": k, "line": run_line[r], "dep": dep_b, "arr": arr_a, "dest": run_dest[r], "via": run_via[r], "final": k == (run_stops[r] as PackedInt32Array).size() - 1})
+	out.sort_custom(func(x, y): return x["dep"] < y["dep"])
+	return out
+
+
 func run_stop_count(r: int) -> int:
 	return (run_stops[r] as PackedInt32Array).size()
 
