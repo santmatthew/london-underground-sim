@@ -57,6 +57,12 @@ func _process(_delta: float) -> void:
 		stop()
 
 
+## a named moment in the log (seconds since it started), printed as `FPS_MARK name t`, so a run can be cut into phases afterwards
+func mark(what: String) -> void:
+	if running:
+		print("FPS_MARK %s %.3f" % [what, float(Time.get_ticks_usec() - _t0_us) / 1e6])
+
+
 func frames() -> int:
 	return _rows.size() / COLS.size()
 

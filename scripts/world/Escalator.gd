@@ -360,7 +360,7 @@ func _finish() -> void:
 	mi.mesh = kit.build(mats)
 	mi.name = "Mesh"
 	add_child(mi)
-	if not stairs:
+	if not stairs and not Station.debug_off("escsteps"):          # (UG_OFF=escsteps: for A/B frame-time runs)
 		var steps := MeshInstance3D.new()
 		steps.mesh = _steps_mesh()
 		steps.name = "Steps"

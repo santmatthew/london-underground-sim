@@ -90,6 +90,7 @@ func start(p_game: Node3D, p_train: Train, p_run: int, p_k: int, p_origin: Stati
 			head = mo.bend.departure_segments(train.design_x, train.facing, train.track_z)
 			back = mo.bend.arrival_segments(train.design_x, train.facing, train.track_z)
 	origin.trains.external[v.get("vkey", "")] = true
+	_mark("depart")
 	_mute(origin)
 	segment_started.emit(stops[k_from], stops[k_from + 1])
 	# destination station is built in the background while riding
@@ -291,18 +292,26 @@ func _dest_length() -> float:
 var dest_face_length := 120.0
 
 
+func _mark(what: String) -> void:
+	var fl = game.get("_frame_log")
+	if fl != null:
+		(fl as FrameLog).mark(what)
+
+
 func _start_tunnel(travelled: float) -> void:
 	phase = Phase.TUNNEL
+	_mark("tunnel")
 	tunnel = TunnelRun.new()
 	game.add_child(tunnel)
 	tunnel.setup(path, train.door_side == "R", travelled + float(train.car_x[ref_car]))
 	tunnel.global_transform = _world(travelled)
 	tunnel.place(travelled + float(train.car_x[ref_car]))
 	var stops: PackedInt32Array = Timetable.run_stops[run]
-	oncoming = Oncoming.new()
-	add_child(oncoming)
-	oncoming.setup(path, train.door_side == "R", stops[k_from], stops[k_from + 1], t_dep, t_arr, dist, train.line_id)
-	oncoming.begin(travelled + float(train.car_x[ref_car]), Clock.now)
+	if not Station.debug_off("oncoming"):          # (UG_OFF=oncoming: no trains on the second track, for A/B frame-time runs)
+		oncoming = Oncoming.new()
+		add_child(oncoming)
+		oncoming.setup(path, train.door_side == "R", stops[k_from], stops[k_from + 1], t_dep, t_arr, dist, train.line_id)
+		oncoming.begin(travelled + float(train.car_x[ref_car]), Clock.now)
 	if origin.crowd != null:
 		origin.crowd.finish_riders(train)            # riders appear a few per frame; the destination station takes over the complete cars
 		rider_state = origin.crowd.train_state.get(train, {})
@@ -364,6 +373,7 @@ func _unmute() -> void:
 
 func _start_arrive(remaining: float) -> void:
 	phase = Phase.ARRIVE
+	_mark("arrive")
 	var f: Dictionary = dest_plan.faces[dest_face_key]
 	var module: PlatformModule = dest_station.modules[f["module"]]
 	# where the train stands inside the module for this face (canonical arrival direction); on a curved platform the pose the track has at the stop

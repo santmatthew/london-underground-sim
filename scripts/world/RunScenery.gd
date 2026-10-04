@@ -221,6 +221,7 @@ static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int, dist
 		var ri: int = run_at.call(float(k) * CELL)
 		return profile_of(int(secs[ri][0]), ss)
 	# the spacing level of the two tracks at every cell boundary (boundary j lies between cells j - 1 and j): only for a ride (`dist` >= 0); a station's running track keeps the station's spacing
+	single = single or Station.debug_off("pair")          # (UG_OFF=pair: no second track, for A/B frame-time runs)
 	var lv := PackedInt32Array()
 	if dist >= 0.0:
 		var m0 := k0 - 18
