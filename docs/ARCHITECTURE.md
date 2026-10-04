@@ -44,6 +44,7 @@ layout -> `data/tube_diagram.json` (~42 KB). The layout is cached in `build/diag
   they slide (`_mute`/`_unmute`), and only restores them (`_finish`) once the destination has stopped in its final place.
 - A service-driven train is only solid while it stands at the platform (`Train.set_solid`, driven by `TrainService`): approaching/departing
   trains pass straight through landings and corridors that share their tunnel line.
+- The timetable's headways on dense lines are short (Leyton, Central line: the next train is due 12 s after the previous one leaves), so the *next* train arrives at the platform through the rear cars of the one that is still leaving. While the origin slides away `Ride` makes the station's other trains non-solid (`ride_muted`, honoured by `Train.set_solid`, re-checked every 0.2 s because the service spawns them as it goes): a solid one shoved a rider in the rear car out of the train (found by a hub journey, reproduced by `ride_stand_test`). The overlap is still *visible* for a moment; the real fix would be a minimum platform headway in `Timetable`.
 - `TrainService.x_at` places a train from the timetable; when a ride ends slightly early/late, `Ride._finish` widens the visit's `arr`/`dep`
   so the player's train is held at the platform instead of teleporting away from under the player.
 - World-space assumptions break after a ride (the destination is placed with an arbitrary rotation/offset): use `station.to_global/to_local`
