@@ -9,17 +9,15 @@ extends Node3D
 const SEG_LEN := 12.0
 const N_SEG := 22
 const N_VAR := 3
-const MAX_CACHE := 500
+const MAX_TRIS := 1500000             # the shared mesh cache is cleared when it holds more triangles than this (a long session: start afresh rather than keep every curve of every line)
 
 var path: TrackPath
 var mirror := false                  # the platform is on the RIGHT of the train (the cross-section is built with it on the left): the scenery is mirrored across the track
 var segs: Array = []                 # the MeshInstance3D of cell k at index posmod(k, N_SEG)
 var _lamps: Array = []               # the OmniLight3D of each instance
 var _cells: PackedInt32Array = PackedInt32Array()
-var _shown: PackedInt32Array = PackedInt32Array()      # the mesh key each instance shows
 var _dome: MeshInstance3D
 var _day := 1.0
-var _bd_tick := 0
 var _zfar := 0.0
 var _ztrack := 0.0
 var _zwall_run := 0.0
@@ -27,9 +25,11 @@ var _zwall_run := 0.0
 static var _cache: Dictionary = {}          # key (see _key) -> ArrayMesh (shared by every ride)
 static var _pending: Dictionary = {}        # key -> true while a worker builds it
 static var _jobs: Array = []                # [task id, key, [MeshKit]] of the workers that are building them
+static var _cache_tris := 0                 # triangles in _cache
 
 
-func setup(p_path: TrackPath = null, p_mirror := false) -> void:
+## `s_start`: the path distance of the player's car, where the cells are first wanted (the ones round it are built at once, the rest as they come into view)
+func setup(p_path: TrackPath = null, p_mirror := false, s_start := 0.0) -> void:
 	path = p_path if p_path != null else TrackPath.new()
 	mirror = p_mirror
 	_zfar = PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE + PlatformModule.TRACK_TO_WALL
@@ -37,10 +37,10 @@ func setup(p_path: TrackPath = null, p_mirror := false) -> void:
 	_zwall_run = _zfar - (PlatformModule.TRACK_TO_WALL + PlatformModule.TRACK_TO_EDGE + PlatformModule.PW_RUN)
 	_day = PlatformOpen.daylight()
 	RunScenery.refresh_day()
-	if _cache.size() > MAX_CACHE:
-		_cache.clear()                    # (a long session: start afresh rather than keep every curve of every line)
+	if _cache_tris > MAX_TRIS:
+		_cache.clear()
+		_cache_tris = 0
 	_cells.resize(N_SEG)
-	_shown.resize(N_SEG)
 	for i in N_SEG:
 		var mi := MeshInstance3D.new()
 		add_child(mi)
@@ -55,7 +55,6 @@ func setup(p_path: TrackPath = null, p_mirror := false) -> void:
 		mi.add_child(o)
 		_lamps.append(o)
 		_cells[i] = -1000000
-		_shown[i] = -1
 	# the sky over the open stretches
 	_dome = MeshInstance3D.new()
 	var sm := SphereMesh.new()
@@ -68,29 +67,52 @@ func setup(p_path: TrackPath = null, p_mirror := false) -> void:
 	_dome.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_dome.visible = false
 	add_child(_dome)
-	# the cells round the start at once (straight, at hand-over from a station), the rest as they come into view
-	for k in range(-N_SEG / 2, N_SEG / 2):
+	# the cells round the player's car at once (straight ones: at hand-over from a station the track is straight), the rest as they come into view
+	var kc0 := int(roundf(s_start / SEG_LEN))
+	for k in range(kc0 - N_SEG / 2, kc0 + N_SEG / 2):
 		var key := _key_of(k)
 		if path.cell_class(k) == 0 and not _cache.has(key):
-			_cache[key] = _finish(_cell_kit(key), 0)
-	place(0.0)
+			_store(key, _cell_kit(key))
+	place(s_start)
+
+
+func _exit_tree() -> void:
+	drain()
+
+
+## Every worker task must be waited for (the engine corrupts memory at exit otherwise): when the last ride's scenery goes, so do the jobs that were still building cells; their meshes are kept
+static func drain() -> void:
+	for j in _jobs:
+		WorkerThreadPool.wait_for_task_completion(j[0])
+		if j[2][0] != null:
+			_store(j[1], j[2][0])
+		_pending.erase(j[1])
+	_jobs.clear()
+
+
+static func _store(key: int, kit: MeshKit) -> void:
+	_cache_tris += kit.triangle_count()
+	_cache[key] = _finish(kit)
 
 
 ## the mesh key of cell k: curvature class, scene (RunScenery) and variant
+## (a mirrored ride - the platform on the right - flips the cells across the track, so they are bent the other way to start with)
 func _key_of(k: int) -> int:
-	var cls := path.cell_class(k)
+	var cls := path.cell_class(k) * (-1 if mirror else 1)
 	var sc := path.cell_scene(k)
 	var lit := posmod(k, 2) == 0
 	var v: int
 	if sc == RunScenery.BORE:
 		v = (0 if lit else N_VAR) + posmod(k * 7 + (k >> 2), N_VAR)
+	elif RunScenery.enclosed(sc & 7):
+		v = (0 if lit else N_VAR) + posmod(k, N_VAR)        # (a box tunnel: lamps in the lit ones)
 	else:
-		v = (0 if lit else N_VAR) + posmod(k, N_VAR)        # (the backdrops repeat every three cells)
+		v = posmod(k, N_VAR)                                  # (in the open: the backdrops repeat every three cells, nothing else to vary)
 	return ((cls + 16) << 18) | (sc << 3) | v
 
 
 ## the cell of mesh key `key` as a MeshKit with the track at z = _ztrack; bent about the cell's entry when its class is not 0
-func _cell_kit(key: int) -> MeshKit:
+static func _cell_kit(key: int) -> MeshKit:
 	var v := key & 7
 	var sc := (key >> 3) & 0x7fff
 	var cls := (key >> 18) - 16
@@ -101,7 +123,8 @@ func _cell_kit(key: int) -> MeshKit:
 	kit.seed_rng(3 + v)
 	var prof := sc & 7
 	if prof == RunScenery.BORE:
-		var pr := _profile(zwall_run, zfar)
+		var pr := RunScenery.arch_points(zwall_run, zfar)
+		pr.append(Vector2(zfar, PlatformModule.BED_Y))
 		kit.sweep_x("tunnel_lining", pr, -SEG_LEN * 0.5, SEG_LEN * 0.5, 0.0, false, SEG_LEN)
 		kit.wall("tunnel_lining", Vector3(-SEG_LEN * 0.5, 0, zwall_run), Vector3(SEG_LEN * 0.5, 0, zwall_run), PlatformModule.BED_Y, PlatformModule.SPRING_Y, 0.0)
 		kit.horiz("trackbed", -SEG_LEN * 0.5, SEG_LEN * 0.5, zwall_run, zfar, PlatformModule.BED_Y, true, PlatformModule.BED_Y)
@@ -128,7 +151,7 @@ func _cell_kit(key: int) -> MeshKit:
 
 
 ## the mesh of a kit (materials looked up on the main thread)
-func _finish(kit: MeshKit, _cls: int) -> ArrayMesh:
+static func _finish(kit: MeshKit) -> ArrayMesh:
 	var mats := {}
 	for k in kit.surfaces.keys():
 		if k.begins_with("light_emissive_"):
@@ -146,7 +169,7 @@ func _request(key: int) -> void:
 	if _cache.has(key) or _pending.has(key):
 		return
 	var box: Array = [null]
-	var id := WorkerThreadPool.add_task(func(): box[0] = _cell_kit(key), false, "tunnel cell")
+	var id := WorkerThreadPool.add_task(func(): box[0] = TunnelRun._cell_kit(key), false, "tunnel cell")
 	_pending[key] = true
 	_jobs.append([id, key, box])
 
@@ -158,7 +181,8 @@ func _collect() -> void:
 	for j in _jobs:
 		if WorkerThreadPool.is_task_completed(j[0]):
 			WorkerThreadPool.wait_for_task_completion(j[0])
-			_cache[j[1]] = _finish(j[2][0], 0)
+			if j[2][0] != null:
+				_store(j[1], j[2][0])
 			_pending.erase(j[1])
 			any = true
 		else:
@@ -172,23 +196,6 @@ func _collect() -> void:
 func busy() -> bool:
 	_collect()
 	return not _jobs.is_empty()
-
-
-func _profile(za: float, zb: float) -> PackedVector2Array:
-	var pts := PackedVector2Array()
-	var chord := zb - za
-	var r := (chord * chord / 4.0 + PlatformModule.RISE * PlatformModule.RISE) / (2.0 * PlatformModule.RISE)
-	var zc := (za + zb) * 0.5
-	var yc := PlatformModule.SPRING_Y + PlatformModule.RISE - r
-	var a0 := atan2(PlatformModule.SPRING_Y - yc, za - zc)
-	var a1 := atan2(PlatformModule.SPRING_Y - yc, zb - zc)
-	pts.append(Vector2(za, PlatformModule.SPRING_Y))
-	for i in range(1, 16):
-		var a := lerpf(a0, a1, float(i) / 16.0)
-		pts.append(Vector2(zc + r * cos(a), yc + r * sin(a)))
-	pts.append(Vector2(zb, PlatformModule.SPRING_Y))
-	pts.append(Vector2(zb, PlatformModule.BED_Y))
-	return pts
 
 
 ## show the cells round the point `s` of the path (the player's car)
@@ -223,9 +230,8 @@ func place(s: float) -> void:
 			if not _cache.has(key):
 				key = (16 << 18) | (RunScenery.BORE << 3) | (v % N_VAR)
 				if not _cache.has(key):
-					_cache[key] = _finish(_cell_kit(key), 0)
+					_store(key, _cell_kit(key))
 		mi.mesh = _cache[key]
-		_shown[i] = key
 		var lamp := _lamps[i] as OmniLight3D
 		var outdoors := not RunScenery.enclosed(sc & 7)
 		if outdoors:

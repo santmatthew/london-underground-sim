@@ -15,19 +15,21 @@ func run():
 	var checked := 0
 	var worst := 9.0
 	var kinds := {}
-	for scene in [RunScenery.BORE, RunScenery.BOX | (1 << 11), RunScenery.OPEN, RunScenery.CUTTING | (3 << 3) | (3 << 5), RunScenery.EMBANK | (3 << 3) | (3 << 5), RunScenery.VIADUCT | (3 << 3) | (3 << 5)]:
+	for scene in [RunScenery.BORE, RunScenery.BOX | (1 << 11), RunScenery.OPEN, RunScenery.CUTTING | (3 << 3) | (3 << 5), RunScenery.EMBANK | (3 << 3) | (3 << 5), RunScenery.VIADUCT | (3 << 3) | (3 << 5), RunScenery.OPEN | (1 << 8) | (1 << 9), RunScenery.CUTTING | (3 << 3) | (3 << 5) | (1 << 8), RunScenery.CUTTING | (3 << 3) | (3 << 5) | (1 << 9) | (1 << 10), RunScenery.EMBANK | (3 << 3) | (3 << 5) | (1 << 8) | (1 << 7), RunScenery.VIADUCT | (3 << 3) | (3 << 5) | (1 << 9) | (1 << 7)]:
 		for v in 2 * TunnelRun.N_VAR:                 # (bending keeps every offset from the track: the straight cell is the one to measure)
 			var kit: MeshKit = run._cell_kit((16 << 18) | (scene << 3) | v)
 			for mat in kit.surfaces:
 				if mat in ["tunnel_lining", "trackbed", "rail", "track_sleepers", "ballast"]:
 					continue
 				for p in kit.surfaces[mat]["v"]:
+					if mat == "brick_stock" and absf(absf(p.x) - TunnelRun.SEG_LEN * 0.5) < 0.001:
+						continue          # (a headwall's edge round the mouth is the bore's own lining, which this test leaves out: the arch is no wider than a deep-tube car needs)
 					checked += 1
 					var d := absf(p.z - ztrack)
-					if p.y > y0 and p.y < y1 and d < half_w + 0.02 and p.z > ztrack - 0.5 * 0.0:
+					if p.y > y0 and p.y < y1 and d < half_w + 0.02:
 						inside += 1
 						kinds[mat] = int(kinds.get(mat, 0)) + 1
-					if p.y > y0 and p.y < y1 and p.z > ztrack:
+					if p.y > y0 and p.y < y1:
 						worst = minf(worst, d)
 	print("  info: %d vertices checked, the nearest piece of equipment is %.2f m from the track centre (the cars are %.2f m wide each side)" % [checked, worst, half_w])
 	if inside > 0:

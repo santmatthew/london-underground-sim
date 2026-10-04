@@ -38,6 +38,11 @@ func run():
 	check(y_min < -0.8, "the track dips (deepest %.2f m)" % y_min)
 	check(g_max <= TrackPath.MAX_GRADE + 0.005, "no steeper than %.1f %% (%.2f %%)" % [TrackPath.MAX_GRADE * 100.0, g_max * 100.0])
 	print("  info: Bank -> Liverpool Street dips %.2f m, steepest %.2f %%" % [-y_min, g_max * 100.0])
+	# the climb changes gently from cell to cell (cells are rigid: a kink opens a crack in the lining)
+	var kink := 0.0
+	for k in range(tp.k_first(), tp.k_last()):
+		kink = maxf(kink, absf(tp.pitch[k + 1 - tp.k_first()] - tp.pitch[k - tp.k_first()]))
+	check(kink < 0.02, "no cell is more than %.3f rad off the one before (%.4f)" % [0.02, kink])
 	# the pose is continuous across the cells, and its pitch is the slope
 	var worst := 0.0
 	for i in range(-20, int(dist) + 40):

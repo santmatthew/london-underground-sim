@@ -91,7 +91,7 @@ func run():
 			for cls in [0, 5]:
 				var kit: MeshKit = run_node._cell_kit(((cls + 16) << 18) | (scene << 3) | v)
 				worst = maxi(worst, kit.triangle_count())
-				var mesh := run_node._finish(kit, 0)
+				var mesh := TunnelRun._finish(kit)
 				for si in mesh.get_surface_count():
 					if mesh.surface_get_material(si) == null:
 						check(false, "scene %x variant %d: surface %s has no material" % [scene, v, mesh.surface_get_name(si)])
@@ -139,4 +139,48 @@ func run():
 				for si in shell.mesh.get_surface_count():
 					check(shell.mesh.surface_get_material(si) != null, "%s: surface %s has a material" % [nm, shell.mesh.surface_get_name(si)])
 		st.queue_free()
+	# --- the ride and the stations agree on what lies where near the two ends of a hop (the ride's length is clamped and re-solved from the timetable, so it differs from the real one: the sections are
+	# kept where the stations put them near both ends), within a cell where a stretch changes
+	var hops := 0
+	var bad_hops := 0
+	var cells_cmp := 0
+	var pairs: Dictionary = TrackPath.data().get("pairs", {})
+	var keys: Array = pairs.keys()
+	keys.sort()
+	var n_keys := keys.size()
+	var step := maxi(1, n_keys / 40)
+	var ki := 0
+	while ki < n_keys:
+		var key: String = keys[ki]
+		ki += step
+		var ab: PackedStringArray = key.split(">")
+		var e: Dictionary = pairs[key]
+		var real_m: float = float(e["len"])
+		if real_m < 900.0 or not e.has("sec"):
+			continue
+		for factor in [0.88, 1.12]:
+			var dist: float = real_m * float(factor)
+			var tpx := TrackPath.between(ab[0], ab[1], dist, 100.0, 130.0)
+			var ssx := tpx.ss
+			var sec_o := TrackPath.sections(ab[0], ab[1])
+			var sec_d := TrackPath.sections(ab[1], ab[0])
+			var st_o := RunScenery.cell_scenes(sec_o, ssx, TrackPath.pair_seed(ab[0], ab[1]), 0, 30)
+			var st_d := RunScenery.cell_scenes(sec_d, ssx, TrackPath.pair_seed(ab[0], ab[1]), 0, 30)
+			var mism := 0
+			for j in range(6, 26):                       # (80 m to 300 m from the stop)
+				var here := _prof(st_o[j])
+				var steady := _prof(st_o[j - 1]) == here and _prof(st_o[j + 1]) == here
+				cells_cmp += 1
+				if steady and _prof(tpx.cell_scene(j)) != here:
+					mism += 1
+				var jd := int(roundf((dist - float(j) * 12.0) / 12.0))
+				var herd := _prof(st_d[j])
+				var steady_d := _prof(st_d[j - 1]) == herd and _prof(st_d[j + 1]) == herd
+				if steady_d and _prof(tpx.cell_scene(jd)) != herd and _prof(tpx.cell_scene(jd - 1)) != herd and _prof(tpx.cell_scene(jd + 1)) != herd:
+					mism += 1
+			hops += 1
+			if mism > 0:
+				bad_hops += 1
+				print("    %s -> %s at %.2f x the real length: %d cells differ" % [Net.stations[Net.station_ids.find(ab[0])]["name"], Net.stations[Net.station_ids.find(ab[1])]["name"], factor, mism])
+	check(bad_hops == 0, "the ride's scenery agrees with the stations' at both ends of %d hop lengths (%d cells compared, %d hops disagree)" % [hops, cells_cmp, bad_hops])
 	print("OK" if ok else "FAILED")

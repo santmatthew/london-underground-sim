@@ -54,5 +54,16 @@ func run():
 					tried += 1
 					zz -= 0.1
 		check(blocked == 0, "%s: the capsule passes every doorway (%d of %d positions blocked)" % [key, blocked, tried])
+		# a control: the same probe pushed into the side wall between two doors must hit something that is not a sliding door (or "no hit" would prove nothing)
+		var mid_x: float = (float(Train.DOOR_X[base][0]) + float(Train.DOOR_X[base][1])) * 0.5
+		var qc := PhysicsShapeQueryParameters3D.new()
+		qc.shape = cap
+		qc.transform = Transform3D(Basis.IDENTITY, Vector3(mid_x, fl + 0.86 + 0.03, 1.31 if kind == "deep" else 1.5) + Vector3(0, 0, 40.0 * float(i)))
+		qc.collision_mask = 0xFFFFFFFF
+		var wall_hits := 0
+		for h in space.intersect_shape(qc, 8):
+			if not str((h["collider"] as Node).name).begins_with("DoorBlock"):
+				wall_hits += 1
+		check(wall_hits > 0, "%s: a probe in the side wall between two doors does hit it (the test can fail)" % key)
 		i += 1
 	print("OK" if ok else "FAILED")

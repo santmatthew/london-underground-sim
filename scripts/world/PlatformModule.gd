@@ -442,8 +442,8 @@ func _ext_runs(s: float, west: bool, a: float, b: float) -> Array:
 		var c0: Array = cells[0]
 		var scn: int = int(c0[0]) | (1 << 8)
 		if (scn & 7) == RunScenery.CUTTING or (scn & 7) >= RunScenery.EMBANK:
-			scn = (scn & ~(3 << 3)) | (3 << 3)
-		cells[0] = [scn, maxf(float(c0[1]), start_d), c0[2], c0[3]]
+			scn = (scn & ~(15 << 3)) | (3 << 3) | (3 << 5)          # (a cutting that begins at the mouth is at full depth from there on)
+		cells[0] = [scn, start_d, c0[2], c0[3]]          # (the first cell starts where the stub of platform tiling ends, whatever the cell grid says)
 		out.append([RunScenery.BORE, (-start_d) if west else d0, (-d0) if west else start_d, 0.0, 0.0, 0])
 	for c in cells:
 		var xa_c: float = -float(c[2]) if west else float(c[1])

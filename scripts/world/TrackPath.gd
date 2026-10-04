@@ -48,7 +48,7 @@ static func data() -> Dictionary:
 ## the path of the track from station `a` to station `b` (NaPTAN ids) as the train sets off from a (distance 0 = where its centre stands), `dist` metres long.
 ## Without data for the pair, a straight path. `head` / `tail` are the exact curves of curved platforms at the two ends, [[length, curvature], ...] in the direction of travel: `head` from distance 0,
 ## `tail` ending at `dist` (they replace the real profile there; the fades keep the profile off their neighbourhood).
-static func between(a: String, b: String, dist: float, fade_in: float, fade_out: float, head: Array = [], tail: Array = [], back: Array = [], after: Array = [], p_ss := false) -> TrackPath:
+static func between(a: String, b: String, dist: float, fade_in: float, fade_out: float, head: Array = [], tail: Array = [], back: Array = [], after: Array = [], p_ss := false, v_pad_in := 0.0, v_pad_out := 0.0) -> TrackPath:
 	var h: Array = profile(a, b)
 	var tp := TrackPath.new()
 	tp.length = dist
@@ -56,7 +56,7 @@ static func between(a: String, b: String, dist: float, fade_in: float, fade_out:
 	var kmax := int(ceil((dist + 6.0) / CELL)) + AHEAD
 	tp.ss = p_ss
 	tp._set_scenes(a, b, dist, kmin, kmax, h)
-	tp._plan_pitch = tp._plan_grade(a, b, dist, fade_in, fade_out, kmin, kmax)
+	tp._plan_pitch = tp._plan_grade(a, b, dist, fade_in + v_pad_in, fade_out + v_pad_out, kmin, kmax)
 	var n := kmax - kmin + 1
 	var ks := PackedFloat32Array()
 	ks.resize(n)
@@ -139,25 +139,48 @@ static func _overlay(ks: PackedFloat32Array, kmin: int, head: Array, tail: Array
 
 ## what the track from a to b runs through, [[sec code, metres], ...] in that direction (the other direction's list reversed when only that one is known), or [] without data
 static func sections(a: String, b: String) -> Array:
+	# a hop has two entries when both directions are in the data (each from its own track): the ride one way and the station at the far end must read the SAME one, so the one of the pair that sorts first
+	# is the source of both directions (reversed for the other)
 	var pairs: Dictionary = data().get("pairs", {})
-	var e: Dictionary = pairs.get(a + ">" + b, {})
-	if e.has("sec"):
-		return (e["sec"] as Array).duplicate(true)
-	e = pairs.get(b + ">" + a, {})
-	if e.has("sec"):
-		var out: Array = (e["sec"] as Array).duplicate(true)
+	var fwd: Dictionary = pairs.get(a + ">" + b, {})
+	var rev: Dictionary = pairs.get(b + ">" + a, {})
+	if a <= b and fwd.has("sec"):
+		return (fwd["sec"] as Array).duplicate(true)
+	if a > b and rev.has("sec"):
+		var out: Array = (rev["sec"] as Array).duplicate(true)
 		out.reverse()
 		return out
+	if fwd.has("sec"):
+		return (fwd["sec"] as Array).duplicate(true)
+	if rev.has("sec"):
+		var out2: Array = (rev["sec"] as Array).duplicate(true)
+		out2.reverse()
+		return out2
 	return []
 
 
 func _set_scenes(a: String, b: String, dist: float, kmin: int, kmax: int, prof: Array) -> void:
 	var raw := sections(a, b)
-	var real_len: float = float(prof[0]) if not prof.is_empty() else dist
-	secs = []
-	var scale := dist / maxf(real_len, 1.0)
+	var real_len := 0.0
 	for r in raw:
-		secs.append([int(r[0]), float(r[1]) * scale])
+		real_len += float(r[1])
+	if real_len < 1.0:
+		real_len = float(prof[0]) if not prof.is_empty() else dist
+	secs = []
+	# The ride is `dist` long, the track on the ground real_len (the ride's length is clamped and re-solved from the timetable). A station draws the stretch beyond its platform from the real
+	# lengths, so near both ends the ride must put the sections where the stations do (distances from the stop on the ground), and the difference is taken up by the middle of the hop.
+	var span_a := minf(300.0, minf(real_len, dist) / 3.0)
+	var warp := func(r: float) -> float:
+		if r <= span_a:
+			return r
+		if r >= real_len - span_a:
+			return r - real_len + dist
+		return span_a + (r - span_a) * (dist - 2.0 * span_a) / maxf(real_len - 2.0 * span_a, 1.0)
+	var r0 := 0.0
+	for r in raw:
+		var r1: float = r0 + float(r[1])
+		secs.append([int(r[0]), float(warp.call(r1)) - float(warp.call(r0)), float(r[1])])
+		r0 = r1
 	if secs.is_empty():
 		secs = _guess_secs(a, b, dist)
 	plan_scenes(secs, ss, pair_seed(a, b), kmin, kmax)

@@ -113,7 +113,14 @@ func start(p_game: Node3D, p_train: Train, p_run: int, p_k: int, p_origin: Stati
 	for g in tail:
 		tail_len += float(g[0])
 	# the track between: straight at both stations (the platform and the stretch where the hand-overs happen), the line's real bends in between
-	path = TrackPath.between(id_a, id_b, dist, maxf(_origin_module_length() * 0.5 + 24.0, head_end + 12.0), maxf(dest_face_length * 0.5 + 26.0 + absf(car_offset) + 40.0, tail_len + 12.0), head, tail, back, after, Net.lines.has(train.line_id) and String(Net.lines[train.line_id]['group']) == 'ss')
+	var fade_in := maxf(_origin_module_length() * 0.5 + 24.0, head_end + 12.0)
+	var fade_out := maxf(dest_face_length * 0.5 + 26.0 + absf(car_offset) + 40.0, tail_len + 12.0)
+	# the climbs and dips must not begin before the origin station has been left behind by the whole train (the origin's level running track is in sight until the player's car is 20 m past its platform,
+	# and the front car is up to a train length further on) or end after the destination appears behind the rear cars
+	var half_train := train.length * 0.5
+	var need_in := _origin_module_length() * 0.5 - car_offset + 20.0 + half_train + 10.0
+	var need_out := dest_face_length * 0.5 + car_offset + 26.0 + half_train + 10.0
+	path = TrackPath.between(id_a, id_b, dist, fade_in, fade_out, head, tail, back, after, Net.lines.has(train.line_id) and String(Net.lines[train.line_id]['group']) == 'ss', maxf(0.0, need_in - fade_in), maxf(0.0, need_out - fade_out))
 	_path_straight = path.is_straight() and train.bend == null
 	# the frame of the path in the world: the player's car is where it is, whatever shape the train has
 	p0 = ref_world * (train.car_pose_on_path(path, ref_car, 0.0) * Transform3D(Basis.IDENTITY, Vector3(0.0, PlatformModule.RAIL_Y, 0.0))).affine_inverse()
@@ -266,7 +273,7 @@ func _start_tunnel(travelled: float) -> void:
 	phase = Phase.TUNNEL
 	tunnel = TunnelRun.new()
 	game.add_child(tunnel)
-	tunnel.setup(path, train.door_side == "R")
+	tunnel.setup(path, train.door_side == "R", travelled + float(train.car_x[ref_car]))
 	tunnel.global_transform = _world(travelled)
 	tunnel.place(travelled + float(train.car_x[ref_car]))
 	if origin.crowd != null:

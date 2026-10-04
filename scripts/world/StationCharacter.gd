@@ -13,24 +13,31 @@ static var _data: Dictionary = {}
 static var _loaded := false
 
 
+static var _mx := Mutex.new()
+
+
+## (plans are generated on worker threads too: the first caller parses, the others wait and see the finished data)
 static func _load() -> void:
 	if _loaded:
 		return
-	_loaded = true
-	if FileAccess.file_exists(PATH):
-		var d = JSON.parse_string(FileAccess.get_file_as_string(PATH))
-		if d is Dictionary:
-			_data = d
-	if FileAccess.file_exists(PATH_EL):
-		var e = JSON.parse_string(FileAccess.get_file_as_string(PATH_EL))
-		if e is Dictionary:
-			for k in ["open_styles", "surface_overrides"]:
-				var tgt: Dictionary = _data.get(k, {})
-				tgt.merge(e.get(k, {}), true)
-				_data[k] = tgt
-			for k in ["elizabeth_heathrow", "elizabeth_bored"]:
-				if e.has(k):
-					_data[k] = e[k]
+	_mx.lock()
+	if not _loaded:
+		if FileAccess.file_exists(PATH):
+			var d = JSON.parse_string(FileAccess.get_file_as_string(PATH))
+			if d is Dictionary:
+				_data = d
+		if FileAccess.file_exists(PATH_EL):
+			var e = JSON.parse_string(FileAccess.get_file_as_string(PATH_EL))
+			if e is Dictionary:
+				for k in ["open_styles", "surface_overrides"]:
+					var tgt: Dictionary = _data.get(k, {})
+					tgt.merge(e.get(k, {}), true)
+					_data[k] = tgt
+				for k in ["elizabeth_heathrow", "elizabeth_bored"]:
+					if e.has(k):
+						_data[k] = e[k]
+		_loaded = true
+	_mx.unlock()
 
 
 ## width and height of a PNG file from its header, (0, 0) when the source file is not there or is not a PNG

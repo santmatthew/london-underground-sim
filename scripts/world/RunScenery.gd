@@ -169,7 +169,6 @@ static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int) -> P
 		s0.append(pos)
 		pos += float(r[1])
 		s1.append(pos)
-	var total := pos
 	# the stretch of a position: the last one starting at or before it
 	var run_at := func(sv: float) -> int:
 		var ri := 0
@@ -217,7 +216,10 @@ static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int) -> P
 			la = level.call(sc - CELL * 0.5, f)
 			lb = level.call(sc + CELL * 0.5, f)
 			if code == 2:
-				brick = 1 if (seed + int((float(s1[f[1]]) - float(s0[f[0]])) / 50.0)) % 3 == 0 else 0
+				var real_len := 0.0
+				for i in range(f[0], f[1] + 1):
+					real_len += float(secs[i][2]) if secs[i].size() > 2 else float(secs[i][1])          # (the length on the ground: a ride stretches its sections a little, the station does not)
+				brick = 1 if (seed + int(real_len / 50.0)) % 3 == 0 else 0
 			else:
 				for i in range(f[0], f[1] + 1):
 					if int(secs[i][0]) == 4:
@@ -233,7 +235,6 @@ static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int) -> P
 			if pb == 1 and (code == 2 or code >= 3):
 				lb = 3
 		out[k - k0] = prof | (la << 3) | (lb << 5) | (tall << 7) | (pa << 8) | (pb << 9) | (brick << 10) | ((1 if ss else 0) << 11)
-	total = total
 	return out
 
 
@@ -363,7 +364,7 @@ static func _cutting(kit: MeshKit, x0: float, x1: float, t: float, o: Dictionary
 			_strip(kit, "grass", x0, x1, t - 2.9, G, t - 2.9, G, 0.0, G, 0.0, G)
 			continue
 		if brick:
-			var wz := 3.4
+			var wz := 5.2 if sg < 0.0 else 3.4          # (the platform side of the running tunnel is wider: the walls clear it)
 			# ground at the foot, the wall, the ground on top
 			_strip(kit, "gravel", x0, x1, t + sg * 2.9, G, t + sg * 2.9, G, t + sg * wz, G, t + sg * wz, G)
 			var hw_a := minf(ha, 3.6)
@@ -496,8 +497,8 @@ static func portal(kit: MeshKit, bore: int, open_prof: int, x: float, dir: int, 
 	if open_prof == CUTTING:
 		var brick: bool = int(o.get("seed", 0)) % 3 == 0
 		if brick:
-			pl = 5.2
-			pr = 5.2
+			pl = 5.7
+			pr = 4.0
 			top = 5.0
 		else:
 			pl = CUT_H * SLOPE + SHOULDER
@@ -506,9 +507,13 @@ static func portal(kit: MeshKit, bore: int, open_prof: int, x: float, dir: int, 
 	var hint := Vector3(float(dir), 0, 0)
 	var zl := t - NEAR
 	var zr := t + FAR
+	# the land outside: on an embankment or a viaduct it is far below the track, and the headwall is an abutment that stands on it
+	var low := bed
+	if open_prof == EMBANK or open_prof == VIADUCT:
+		low = G - full_height(EMBANK, bool(o.get("tall", false)) or open_prof == VIADUCT)
 	# the blocks beside the opening
-	_wallq(kit, "brick_stock", Vector3(x, top, t - pl), Vector3(x, bed, t - pl), Vector3(x, bed, zl), Vector3(x, top, zl), hint)
-	_wallq(kit, "brick_stock", Vector3(x, top, zr), Vector3(x, bed, zr), Vector3(x, bed, t + pr), Vector3(x, top, t + pr), hint)
+	_wallq(kit, "brick_stock", Vector3(x, top, t - pl), Vector3(x, low, t - pl), Vector3(x, low, zl), Vector3(x, top, zl), hint)
+	_wallq(kit, "brick_stock", Vector3(x, top, zr), Vector3(x, low, zr), Vector3(x, low, t + pr), Vector3(x, top, t + pr), hint)
 	# over the opening: above the arch, or above the box
 	if bore == BOX:
 		_wallq(kit, "brick_stock", Vector3(x, top, zl), Vector3(x, BOX_TOP, zl), Vector3(x, BOX_TOP, zr), Vector3(x, top, zr), hint)
@@ -527,4 +532,4 @@ static func portal(kit: MeshKit, bore: int, open_prof: int, x: float, dir: int, 
 			var ze := zw + sg * 2.5
 			for face: int in [0, 1]:
 				var h := Vector3(0, 0, -sg if face == 0 else sg)
-				_wallq(kit, "brick_stock", Vector3(x, top, zw), Vector3(x, G, zw), Vector3(xe, G, ze), Vector3(xe, G + 1.2, ze), h)
+				_wallq(kit, "brick_stock", Vector3(x, top, zw), Vector3(x, low if low < G else G, zw), Vector3(xe, low if low < G else G, ze), Vector3(xe, (low if low < G else G) + 1.2, ze), h)
