@@ -188,7 +188,8 @@ func _bogie_half(i: int) -> float:
 ## the pose of a car whose front bogie is at f and rear bogie at r (module / ride frame): in the middle, pointing from one to the other
 static func _bogie_pose(f: Vector3, r: Vector3) -> Transform3D:
 	var d := f - r
-	return Transform3D(Basis(Vector3.UP, atan2(-d.z, d.x)), (f + r) * 0.5)
+	var climb := atan2(d.y, Vector2(d.x, d.z).length())          # (a ride on a gradient: the car follows the slope)
+	return Transform3D(Basis(Vector3.UP, atan2(-d.z, d.x)) * Basis(Vector3(0.0, 0.0, 1.0), climb), (f + r) * 0.5)
 
 
 ## the pose of car i on the track `path` of a ride when the middle of the train is at path distance `s_c`: in the platform-level frame of the path, on the bogies (and moved away from the platform edge

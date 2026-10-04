@@ -183,6 +183,16 @@ static func get_mat(name: String) -> Material:
 		"tunnel_lining":
 			# the bore between stations: dark cast-iron segmental rings (tools/gen_tunnel_textures.py), 2.44 m a tile
 			m = _surface("gen/tunnel_lining", "png", 1.0 / 2.44, Color(1, 1, 1), {"dirt": 0.5, "ceiling_soot": 0.35})
+		"grass":
+			# railway-side grass, banks and fields (tools/gen_ground_textures.py), 2 m a tile
+			m = _surface("gen/grass", "png", 1.0 / 2.0, Color(1, 1, 1), {"dirt": 0.0, "floor_dirt_height": 0.0})
+		"grass_dark":
+			# the scrub of a cutting side: the same grass, darker and bluer
+			m = _surface("gen/grass", "png", 1.0 / 2.6, Color(0.95, 1.0, 0.80), {"dirt": 0.0, "floor_dirt_height": 0.0})
+		"earth":
+			m = _surface("gen/earth", "png", 1.0 / 2.0, Color(1, 1, 1), {"dirt": 0.0, "floor_dirt_height": 0.0})
+		"gravel":
+			m = _surface("gen/gravel", "png", 1.0 / 1.5, Color(0.62, 0.60, 0.57), {"dirt": 0.2, "floor_dirt_height": 0.0})
 		"cable_black", "cable_grey", "cable_red", "cable_blue", "cable_orange":
 			var cm := StandardMaterial3D.new()
 			cm.albedo_color = {"cable_black": Color(0.045, 0.045, 0.05), "cable_grey": Color(0.30, 0.31, 0.32), "cable_red": Color(0.22, 0.04, 0.035), "cable_blue": Color(0.035, 0.07, 0.19), "cable_orange": Color(0.30, 0.15, 0.03)}[name]

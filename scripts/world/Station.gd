@@ -109,6 +109,7 @@ func build_async(p: StationPlan, use_async := true) -> void:
 				nb.append(1.0 if d.z > 0.0 else -1.0)
 		(m["spec"] as Dictionary)["nb"] = nb
 		(m["spec"] as Dictionary)["bend"] = m.get("bend", {})
+		(m["spec"] as Dictionary)["ext"] = m.get("ext", [])
 		await pm.build(m["spec"], async_mode)
 		modules.append(pm)
 		stats["tris"] += pm.meta.get("tri_count", 0)

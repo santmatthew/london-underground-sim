@@ -17,6 +17,7 @@ echo "== running-tunnel lining"
 build/venv/bin/python tools/gen_tunnel_textures.py
 echo "== Elizabeth line wall panels"
 build/venv/bin/python tools/gen_el_textures.py
+build/venv/bin/python tools/gen_ground_textures.py
 echo "== station character textures (name friezes, tile lettering, Victoria line motifs)"
 build/venv/bin/python tools/gen_char_textures.py && python3 tools/fix_texture_imports.py
 echo "== MakeHuman/MPFB asset packs + Blender extension, people, trains, props: see docs/ASSETS.md (long-running steps)"

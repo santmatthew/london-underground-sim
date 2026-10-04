@@ -450,8 +450,45 @@ func finish_common(rng: RandomNumberGenerator = null) -> void:
 		modules[mi]["dir_sign"] = PlatformCurve.dir_sign_for(self, mi)    # which side of the train the platform is on (doors left / right)
 	for mi in modules.size():
 		modules[mi]["bend"] = PlatformCurve.for_module(self, mi)         # curved platforms (Bank, Liverpool Street ...): {} for a straight one
+	for mi in modules.size():
+		modules[mi]["ext"] = _ext_for(mi)                                  # what the track beyond the platform ends runs through (cuttings, viaducts, cut-and-cover ...)
 	_add_start_spots(rng)
 	_add_lifts()
+
+
+## what the track runs through beyond each end of module `mi`, per face: {"w": sections, "e": sections, "ss", "seed_w", "seed_e"} with sections [[code, metres], ...] going away from the stop
+## (data/line_geometry.json via TrackPath.sections); empty where the data has no neighbour
+func _ext_for(mi: int) -> Array:
+	var sid: String = Net.station_ids[idx]
+	var m: Dictionary = modules[mi]
+	var ds: int = int(m.get("dir_sign", 1))
+	var out: Array = []
+	for fi in (m["faces"] as Array).size():
+		var pid := String(m["faces"][fi]["pid"])
+		var nb := PlatformCurve.neighbours(sid, pid)
+		var canon := ds if fi == 0 else -ds
+		var east: String = nb[1] if canon > 0 else nb[0]
+		var west: String = nb[0] if canon > 0 else nb[1]
+		var lines: Array = Net.stations[idx]["platforms"][pid]["lines"]
+		var ss: bool = lines.size() > 0 and String(Net.lines[lines[0]]["group"]) == "ss"
+		out.append({
+			"w": TrackPath.sections(sid, west) if west != "" else [], "e": TrackPath.sections(sid, east) if east != "" else [],
+			"ss": ss, "seed_w": TrackPath.pair_seed(sid, west), "seed_e": TrackPath.pair_seed(sid, east),
+		})
+	# the two tracks of a module lie side by side and leave by the same end: what one of them has beyond an end, the other has too
+	for end: String in ["w", "e"]:
+		var sk: String = "seed_" + end
+		var donor := -1
+		for fi in out.size():
+			if not (out[fi][end] as Array).is_empty():
+				donor = fi
+				break
+		if donor >= 0:
+			for fi in out.size():
+				if (out[fi][end] as Array).is_empty():
+					out[fi][end] = out[donor][end]
+					out[fi][sk] = out[donor][sk]
+	return out
 
 
 ## the direction along its module (+1 / -1 in x) in which the trains of platform face `f` (a `faces` entry) travel: face 0 runs one way, face 1 the other, and a module whose platforms are on the right

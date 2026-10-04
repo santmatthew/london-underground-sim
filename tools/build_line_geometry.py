@@ -7,7 +7,7 @@ For every stop the heading change across the platform (PLAT_SPAN metres centred 
 
   data/line_geometry.json = {
     "step": 20,
-    "pairs": {"<from NaPTAN>><to NaPTAN>": {"len": metres, "h": [heading x10 at 0, STEP, 2 STEP ... , len]}},
+    "pairs": {"<from NaPTAN>><to NaPTAN>": {"len": metres, "h": [heading x10 at 0, STEP, 2 STEP ... , len], "sec": [[kind, metres], ...]}},   # sec: what the track runs through, in order (tools/fetch_line_sections.py)
     "platforms": {"<NaPTAN>": {"<next NaPTAN>": {"dh": degrees over PLAT_SPAN (+ = turns left in the direction of travel), "line": "central"}}}
   }
 Only derived numbers are stored (OpenStreetMap contributors, ODbL; see CREDITS.md).
@@ -151,6 +151,145 @@ def nearest_on(poly, p):
     return best
 
 
+SECTION_CODES = {"open": 0, "tunnel": 1, "cutting": 2, "embankment": 3, "viaduct": 4}
+SEC_STEP = 8.0
+SEC_NEAR = 4.0          # a way within this many metres of the track is the track
+
+
+class SegIndex:
+    """a spatial grid over the segments of a set of ways"""
+    CELL = 40.0
+
+    def __init__(self):
+        self.g = {}
+
+    def add_way(self, poly):
+        for a, b in zip(poly, poly[1:]):
+            x0, x1 = sorted((a[0], b[0]))
+            y0, y1 = sorted((a[1], b[1]))
+            for ix in range(int(x0 // self.CELL), int(x1 // self.CELL) + 1):
+                for iy in range(int(y0 // self.CELL), int(y1 // self.CELL) + 1):
+                    self.g.setdefault((ix, iy), []).append((a, b))
+
+    def near(self, p, d):
+        ix, iy = int(p[0] // self.CELL), int(p[1] // self.CELL)
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for a, b in self.g.get((ix + dx, iy + dy), ()):
+                    ab = (b[0] - a[0], b[1] - a[1])
+                    l2 = ab[0] ** 2 + ab[1] ** 2
+                    t = 0.0 if l2 == 0 else max(0.0, min(1.0, ((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1]) / l2))
+                    if math.dist(p, (a[0] + ab[0] * t, a[1] + ab[1] * t)) <= d:
+                        return True
+        return False
+
+
+def load_sections():
+    """{kind: SegIndex} of the tunnel / cutting / embankment / bridge ways (tools/fetch_line_sections.py), empty when not fetched"""
+    out = {}
+    for kind in ("tunnel", "cutting", "embankment", "bridge"):
+        fp = os.path.join(GEOM, "ways_%s.json" % kind)
+        if not os.path.exists(fp):
+            continue
+        ix = SegIndex()
+        for e in json.load(open(fp)):
+            pts = [xy(p["lat"], p["lon"]) for p in e.get("geometry", []) if p]
+            if len(pts) >= 2:
+                ix.add_way(pts)
+        out[kind] = ix
+    return out
+
+
+def classify_path(poly, secs):
+    """[[code, metres], ...] along the track `poly`: tunnel, else cutting, else embankment, else viaduct (a bridge of 60 m or more), else open; stretches under 40 m are absorbed by their neighbours"""
+    cs = cum(poly)
+    L = cs[-1]
+    n = max(1, int(round(L / SEC_STEP)))
+    raw = []
+    for i in range(n):
+        p = at(poly, cs, (i + 0.5) * L / n)
+        kind = "open"
+        for k in ("tunnel", "cutting", "embankment", "bridge"):
+            if k in secs and secs[k].near(p, SEC_NEAR):
+                kind = k
+                break
+        raw.append(kind)
+    # bridges are viaducts only when long
+    runs = []
+    for k in raw:
+        if runs and runs[-1][0] == k:
+            runs[-1][1] += 1
+        else:
+            runs.append([k, 1])
+    for r in runs:
+        if r[0] == "bridge":
+            r[0] = "viaduct" if r[1] * L / n >= 60.0 else "open"
+    # merge short runs into the previous (or next) run
+    def merged(rs):
+        out = []
+        for r in rs:
+            if out and out[-1][0] == r[0]:
+                out[-1][1] += r[1]
+            else:
+                out.append(list(r))
+        return out
+    runs = merged(runs)
+    changed = True
+    while changed and len(runs) > 1:
+        changed = False
+        for i, r in enumerate(runs):
+            if r[1] * L / n < 40.0:
+                j = i - 1 if i > 0 else i + 1
+                runs[j][1] += r[1]
+                del runs[i]
+                changed = True
+                break
+        runs = merged(runs)
+    return [[SECTION_CODES[r[0]], round(r[1] * L / n, 1)] for r in runs]
+
+
+def supplement_elizabeth(net, sxy, pairs, secs):
+    """The Elizabeth line's relation has no track ways in the core tunnels (and none at Heathrow): the hops it lacks are found over the line's own ways (tools/fetch_line_sections.py, kind
+    "elizabeth", tagged line=Elizabeth), the shortest way between the track nearest each station"""
+    fp = os.path.join(GEOM, "ways_elizabeth.json")
+    if not os.path.exists(fp):
+        return 0
+    g = Graph()
+    for e in json.load(open(fp)):
+        poly = [xy(p["lat"], p["lon"]) for p in e.get("geometry", []) if p]
+        if len(poly) >= 2:
+            g.add_way(poly)
+    added = 0
+    hops = set()
+    for svc in net["lines"]["elizabeth"]["services"]:
+        for a, b in zip(svc["stops"], svc["stops"][1:]):
+            hops.add((a, b))
+    for a, b in sorted(hops):
+        if a + ">" + b in pairs or b + ">" + a in pairs or a not in sxy or b not in sxy:
+            continue
+        ka, kb = g.snap(sxy[a], 300.0) or g.snap(sxy[a], 800.0), g.snap(sxy[b], 300.0) or g.snap(sxy[b], 800.0)          # (some stations are marked at their entrance, far from the platforms)
+        if ka is None or kb is None:
+            print("  elizabeth: no track near", net["stations"][a]["name"] if ka is None else net["stations"][b]["name"])
+            continue
+        pa = g.path(ka, kb)
+        straight = math.dist(g.pts[ka], g.pts[kb])
+        if pa is None or len(pa) < 2:
+            print("  elizabeth: no path", net["stations"][a]["name"], "->", net["stations"][b]["name"])
+            continue
+        length = cum(pa)[-1]
+        if length > straight * 1.8 + 200.0:
+            print("  elizabeth: path too long", net["stations"][a]["name"], "->", net["stations"][b]["name"], round(length), "m for", round(straight), "m")
+            continue
+        ss, hh = heading_profile(pa)
+        k = a + ">" + b
+        pairs[k] = {"len": round(ss[-1], 1), "h": [int(round(math.degrees(h - hh[0]) * 10.0)) for h in hh], "line": "elizabeth"}
+        if secs:
+            pairs[k]["sec"] = classify_path(pa, secs)
+        added += 1
+        print("  elizabeth: %s -> %s %.0f m" % (net["stations"][a]["name"], net["stations"][b]["name"], length))
+    return added
+
+
 def load_platforms():
     """every platform outline in Greater London (tools/fetch_line_geometry.py): [(bounding box, polyline)]"""
     fp = os.path.join(GEOM, "platforms_london.json")
@@ -205,6 +344,7 @@ def main():
     files = sorted(glob.glob(os.path.join(GEOM, "rel", "*.json")))
     pairs, plats = {}, {}
     all_platforms = load_platforms()
+    secs = load_sections()
     stats = {"rel": 0, "pairs": 0, "nopath": 0, "nostation": 0}
     for fp in files:
         rel = json.load(open(fp))
@@ -275,6 +415,8 @@ def main():
                 continue
             ss, hh = heading_profile(pa)
             pairs[k] = {"len": round(ss[-1], 1), "h": [int(round(math.degrees(h - hh[0]) * 10.0)) for h in hh], "line": line}
+            if secs:
+                pairs[k]["sec"] = classify_path(pa, secs)
             stats["pairs"] += 1
         # the platform of stop i: the track PLAT_SPAN metres around it, from the end of the path that arrives and the start of the one that leaves
         for i in range(len(stops)):
@@ -302,6 +444,7 @@ def main():
             dh = (hb - ha + math.pi) % (2 * math.pi) - math.pi
             ent = plats.setdefault(sid, {}).setdefault(nxt, {"line": line})
             ent["dh"] = round(math.degrees(dh), 1)
+    stats["el_added"] = supplement_elizabeth(net, sxy, pairs, secs)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     json.dump({"step": STEP, "span": PLAT_SPAN, "pairs": pairs, "platforms": plats}, open(OUT, "w"), separators=(",", ":"))
     print(stats, "pairs:", len(pairs), "platform entries:", sum(len(v) for v in plats.values()), "bytes:", os.path.getsize(OUT))

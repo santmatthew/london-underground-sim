@@ -489,19 +489,8 @@ static func scenery(pm: PlatformModule, st: Dictionary, x0: float, x1: float, zf
 	holder.name = "Outdoors"
 	pm.add_child(holder)
 	var day := daylight()
-	var sn := sun()
 	# --- the sky dome
-	var dome := MeshInstance3D.new()
-	var sm := SphereMesh.new()
-	sm.radius = SKY_R
-	sm.height = SKY_R * 2.0
-	sm.radial_segments = 24
-	sm.rings = 12
-	dome.mesh = sm
-	dome.material_override = _sky_material(day, sn)
-	dome.position = Vector3((x0 + x1) * 0.5, 0.0, 0.0)
-	dome.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	holder.add_child(dome)
+	add_dome(holder, (x0 + x1) * 0.5, day)
 	# --- backdrop strips: a belt of trees close behind the fence and the backs of a terrace beyond it, on both sides
 	var tint := lerpf(0.10, 1.0, day)
 	var warm := Color(tint, tint * lerpf(0.9, 1.0, day), tint * lerpf(1.0, 0.96, day))
@@ -531,6 +520,21 @@ static func scenery(pm: PlatformModule, st: Dictionary, x0: float, x1: float, zf
 			o.distance_fade_length = 15.0
 			holder.add_child(o)
 			lx += 13.0
+
+
+## the sky over a stretch of open track: a dome centred at x = cx
+static func add_dome(holder: Node3D, cx: float, day: float) -> void:
+	var dome := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = SKY_R
+	sm.height = SKY_R * 2.0
+	sm.radial_segments = 24
+	sm.rings = 12
+	dome.mesh = sm
+	dome.material_override = _sky_material(day, sun())
+	dome.position = Vector3(cx, 0.0, 0.0)
+	dome.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	holder.add_child(dome)
 
 
 static func _backdrop(holder: Node3D, tex: String, at: Vector3, s: float, length: float, height: float, tile_w: float, tint: Color, bend: Bend = null) -> void:

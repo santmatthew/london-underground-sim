@@ -50,6 +50,7 @@ var ped_xs: Array = []             # door x positions when this module has platf
 var box := false
 var bend: Bend = null         # the platform curves (Bend): the module is built straight, in design space, and the shell, colliders, lights and trains are then wrapped round the arc
 var kit := MeshKit.new()
+var _open_xs: Array = []     # Vector2 x ranges of the running track beyond the platform that lie in daylight (RunScenery): they get the sky and daylight lights
 var _cols: Array = []        # [center, size]  (collision boxes in local space)
 var _lights: Array = []      # [pos, energy, range]
 var edge_shapes: Dictionary = {}    # face sign (1.0 / -1.0) -> Array of [x_center, CollisionShape3D]
@@ -110,7 +111,7 @@ func build(p_spec: Dictionary, p_async := false) -> void:
 		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 
 	var mats := {}
-	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "ped_glass", "stainless", "floor_cream", "brick_stock", "brick_red", "brick_blue", "ballast", "tactile_buff", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab", "tunnel_lining", "cable_black", "cable_grey", "cable_red", "el_panel", "el_dark", "ped_glass_dark", "el_stripe"]:
+	for n in ["tile_white", "tile_cream", "tile_sq_grey", "tile_oxford", "panel_white", "ped_glass", "stainless", "floor_cream", "brick_stock", "brick_red", "brick_blue", "ballast", "tactile_buff", "floor_lozenge", "floor_diamond_grey", "floor_diamond_bw", "floor_slab", "floor_stone", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "track_sleepers", "metal", "rail", "yellow_paint", "white_paint", "black", "tunnel_dark", "light_emissive", "glass_roof", "steel", "timber_slab", "tunnel_lining", "grass", "grass_dark", "earth", "gravel", "cable_black", "cable_grey", "cable_red", "el_panel", "el_dark", "ped_glass_dark", "el_stripe"]:
 		mats[n] = Mats.get_mat(n)
 	for k in kit.surfaces.keys():
 		if k.begins_with("flat:"):
@@ -121,6 +122,10 @@ func build(p_spec: Dictionary, p_async := false) -> void:
 			mats[k] = Mats.dado(Color.html(k.substr(5)))
 		elif k.begins_with("char:"):
 			mats[k] = StationCharacter.material(k)
+		elif k.begins_with("bd:"):
+			mats[k] = RunScenery.material(k)
+		elif k.begins_with("light_emissive_"):
+			mats[k] = RunScenery.lamp_material(k)
 	bend = null
 	var bd: Dictionary = spec.get("bend", {})
 	if not bd.is_empty():
@@ -145,8 +150,45 @@ func build(p_spec: Dictionary, p_async := false) -> void:
 	if open:
 		var ztr := GAP * 0.5 + float(spec.get("pw", 3.0)) + TRACK_TO_EDGE + TRACK_TO_WALL
 		PlatformOpen.scenery(self, open_style, x0, x1, ztr)
+	_ext_outdoors()
 	_add_recess_seats()
 	meta["tri_count"] = kit.triangle_count()
+
+
+## The sky and daylight over the running track that lies in the open beyond the platform ends (the open-air platforms have theirs from PlatformOpen.scenery)
+func _ext_outdoors() -> void:
+	if _open_xs.is_empty() or Station.debug_off("scenery"):
+		return
+	var holder: Node3D = get_node_or_null("Outdoors")
+	var day := PlatformOpen.daylight()
+	RunScenery.refresh_day()
+	if holder == null:
+		holder = Node3D.new()
+		holder.name = "Outdoors"
+		add_child(holder)
+		PlatformOpen.add_dome(holder, 0.0, day)
+	if day <= 0.04:
+		return
+	var seen := {}
+	for r in _open_xs:
+		var lx := ceilf((r as Vector2).x / 13.0) * 13.0
+		while lx < (r as Vector2).y:
+			var q := int(lx / 13.0)
+			if not seen.has(q):
+				seen[q] = true
+				var o := OmniLight3D.new()
+				var p := Vector3(lx, 9.0, 0.0)
+				o.position = bend.map(p) if bend != null else p
+				o.light_energy = 2.4 * day
+				o.omni_range = 24.0
+				o.omni_attenuation = 1.1
+				o.light_color = Color(1.0, lerpf(0.86, 0.97, day), lerpf(0.72, 0.92, day))
+				o.shadow_enabled = false
+				o.distance_fade_enabled = true
+				o.distance_fade_begin = 50.0
+				o.distance_fade_length = 15.0
+				holder.add_child(o)
+			lx += 13.0
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -163,18 +205,52 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	var arch_mat := "tile_white" if wall_mat == "tile_oxford" else wall_mat
 	if not box:
 		kit.sweep_x(arch_mat, prof, x0, x1, 0.0)
-	# beyond the platform the bore is bare dark lining with cabling and a lamp here and there, after a few metres of the platform's own tiling
-	kit.sweep_x("tunnel_lining", prof_run, xa, x0 - RUN_IN, 0.0)
-	kit.sweep_x(arch_mat, prof_run, x0 - RUN_IN, x0, 0.0)
-	kit.sweep_x(arch_mat, prof_run, x1, x1 + RUN_IN, 0.0)
-	kit.sweep_x("tunnel_lining", prof_run, x1 + RUN_IN, xb, 0.0)
-	# platform-side wall, tunnel face. Full height under the platform (running tunnel) and above it at the platform.
-	# In the running tunnel (no platform) the wall goes down to the trackbed.
-	_wall_z("tunnel_lining", s * zwall_run, xa, x0 - RUN_IN, BED_Y, SPRING_Y, [], s < 0.0, true)
-	_wall_z(wall_mat, s * zwall_run, x0 - RUN_IN, x0, BED_Y, SPRING_Y, [], s < 0.0, true)
-	_wall_z(wall_mat, s * zwall_run, x1, x1 + RUN_IN, BED_Y, SPRING_Y, [], s < 0.0, true)
-	_wall_z("tunnel_lining", s * zwall_run, x1 + RUN_IN, xb, BED_Y, SPRING_Y, [], s < 0.0, true)
-	_run_detail(s, xa, x0 - RUN_IN, xb, x1 + RUN_IN, zwall_run, zfar)
+	# beyond the platform the bore is bare dark lining with cabling and a lamp here and there, after a few metres of the platform's own tiling. Where the line comes out into daylight (or runs in a
+	# cut-and-cover box) beyond a platform end, that stretch is what RunScenery builds, cell by cell, the same as the ride's own scenery (spec "ext": what the track runs through, see StationPlan)
+	var runs_w: Array = _ext_runs(s, true, xa, x0)
+	var runs_e: Array = _ext_runs(s, false, x1, xb)
+	if runs_w.is_empty():
+		runs_w = [[RunScenery.BORE, xa, x0, 0.0, 0.0, 0]]
+	if runs_e.is_empty():
+		runs_e = [[RunScenery.BORE, x1, xb, 0.0, 0.0, 0]]
+	var bore_runs: Array = []                 # [a, b] of every stretch of the bore
+	var two_faces: bool = (spec.get("faces", []) as Array).size() > 1 and spec["faces"][0] != null and spec["faces"][1] != null
+	var rin_w := RUN_IN if (int(runs_w[runs_w.size() - 1][0]) & 7) == RunScenery.BORE else 0.0
+	var rin_e := RUN_IN if (int(runs_e[0][0]) & 7) == RunScenery.BORE else 0.0
+	for west in [true, false]:
+		for r in (runs_w if west else runs_e):
+			var a: float = r[1]
+			var b: float = r[2]
+			if (int(r[0]) & 7) == RunScenery.BORE:
+				bore_runs.append([a, b])
+				var at_plat: bool = (b >= x0 - 0.01) if west else (a <= x1 + 0.01)
+				var lo_l := a
+				var hi_l := b
+				if at_plat:
+					if west:
+						hi_l = maxf(a, x0 - RUN_IN)
+						kit.sweep_x(arch_mat, prof_run, hi_l, b, 0.0)
+						_wall_z(wall_mat, s * zwall_run, hi_l, b, BED_Y, SPRING_Y, [], s < 0.0, true)
+					else:
+						lo_l = minf(b, x1 + RUN_IN)
+						kit.sweep_x(arch_mat, prof_run, a, lo_l, 0.0)
+						_wall_z(wall_mat, s * zwall_run, a, lo_l, BED_Y, SPRING_Y, [], s < 0.0, true)
+				if hi_l - lo_l > 0.01:
+					kit.sweep_x("tunnel_lining", prof_run, lo_l, hi_l, 0.0)
+					_wall_z("tunnel_lining", s * zwall_run, lo_l, hi_l, BED_Y, SPRING_Y, [], s < 0.0, true)
+					_run_detail(s, west, lo_l, hi_l, (x0 - RUN_IN) if west else (x1 + RUN_IN), zwall_run, zfar)
+			else:
+				var tmp := MeshKit.new()
+				tmp.seed_rng(5 + int(r[5]))
+				var kk: int = r[5]
+				RunScenery.add_scene(tmp, int(r[0]), (0 if posmod(kk, 2) == 0 else 3) + posmod(kk, 3), float(r[3]), float(r[4]), ztrack, {"u0": float(r[3]), "near_flat": two_faces})
+				if west:
+					tmp.mirror_x()
+				if s < 0.0:
+					tmp.mirror_z()
+				kit.merge(tmp)
+				if not RunScenery.enclosed(int(r[0]) & 7):
+					_open_xs.append(Vector2(a, b))
 	var holes := []
 	for ox in openings:
 		holes.append([ox - OPEN_W * 0.5, ox + OPEN_W * 0.5, OPEN_H])
@@ -217,17 +293,21 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	# --- track bed ---
 	var bz0 := minf(s * zedge, s * zfar)
 	var bz1 := maxf(s * zedge, s * zfar)
-	kit.horiz("trackbed", xa, xb, bz0, bz1, BED_Y, true, BED_Y)
+	kit.horiz("trackbed", x0, x1, bz0, bz1, BED_Y, true, BED_Y)
+	for br in bore_runs:
+		kit.horiz("trackbed", br[0], br[1], bz0, bz1, BED_Y, true, BED_Y)
 	if open:
 		kit.horiz("ballast", x0 - 0.5, x1 + 0.5, bz0, bz1, BED_Y + 0.002, true, BED_Y)
 	# in the running tunnel the bed spans the whole tunnel width (there's no platform)
 	var rz0 := minf(s * zwall_run, s * zedge)
 	var rz1 := maxf(s * zwall_run, s * zedge)
-	kit.horiz("trackbed", xa, x0, rz0, rz1, BED_Y, true, BED_Y)
-	kit.horiz("trackbed", x1, xb, rz0, rz1, BED_Y, true, BED_Y)
-	# end-of-view black walls
-	_end_cap(s, xa, zwall_run, zfar, true)
-	_end_cap(s, xb, zwall_run, zfar, false)
+	for br in bore_runs:
+		kit.horiz("trackbed", br[0], br[1], rz0, rz1, BED_Y, true, BED_Y)
+	# end-of-view black walls (the open stretches have the sky instead)
+	if RunScenery.enclosed(int(runs_w[0][0]) & 7):
+		_end_cap(s, xa, zwall_run, zfar, true)
+	if RunScenery.enclosed(int(runs_e[runs_e.size() - 1][0]) & 7):
+		_end_cap(s, xb, zwall_run, zfar, false)
 
 	# --- rails ---
 	for dz in [-0.7175, 0.7175]:
@@ -249,7 +329,7 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 		var y0: float = st["y0"]
 		var soff := 0.004 + 0.0025 * stripe_i          # (stripes that overlap - an inset one over a wider one - must not lie in the same plane)
 		stripe_i += 1
-		_band(key, s * zfar, x0 - RUN_IN, x1 + RUN_IN, y0, st["y1"], s < 0.0, true, [], soff)
+		_band(key, s * zfar, x0 - rin_w, x1 + rin_e, y0, st["y1"], s < 0.0, true, [], soff)
 		if not box:
 			_band(key, s * zwall, x0, x1, y0, st["y1"], s < 0.0, false, holes, soff)
 	if not box:
@@ -302,29 +382,80 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 
 ## cabling, brackets and a few lamps on the lining of the running tunnel beyond the platform ends: west stretch xa..xw, east stretch xe..xb (TunnelDetail); the lamps nearest the platform
 ## also light the bore for real, the rest only glow
-func _run_detail(s: float, xa: float, xw: float, xb: float, xe: float, zwall_run: float, zfar: float) -> void:
+## the cabling and lamps of one stretch of the bore [lo, hi] beyond a platform end (`plat_end`: where the bore proper begins on that side: the lamps are laid out from there)
+func _run_detail(s: float, west: bool, lo: float, hi: float, plat_end: float, zwall_run: float, zfar: float) -> void:
 	if Station.debug_off("tunnel_detail"):         # (UG_OFF=tunnel_detail,tunnel_lights: the frame-rate experiment switches the cabling / its lights off)
 		return
 	var seed := hash(String(spec.get("name", "")) + str(s))
-	for west in [true, false]:
-		var lo: float = xa if west else xe
-		var hi: float = xw if west else xb
-		var from_platform: float = hi if west else lo
-		var dirn := -1.0 if west else 1.0
-		var lamps: Array = []
-		var lx := from_platform + dirn * 7.0
-		var k := 0
-		while lx > lo + 0.5 and lx < hi - 0.5:
-			if _frac(seed, k + (0 if west else 500)) > 0.18:
-				lamps.append(lx + dirn * (_frac(seed + 5, k) - 0.5) * 3.0)       # (some are out)
-			lx += dirn * (17.0 + 6.0 * _frac(seed + 9, k))
-			k += 1
-		var lights: Array = []
-		var near := Vector2(hi - 45.0, hi) if west else Vector2(lo, lo + 45.0)
-		TunnelDetail.add(kit, s, lo, hi, zwall_run, zfar, {"seed": seed, "lamps": lamps, "near": near, "lamp_lights": lights})
-		for lp in lights:
-			if absf((lp as Vector3).x - from_platform) < 45.0 and not Station.debug_off("tunnel_lights"):
-				_lights.append([lp, 1.3, 9.0])
+	var dirn := -1.0 if west else 1.0
+	var lamps: Array = []
+	var lx := plat_end + dirn * 7.0
+	var k := 0
+	while (lx > lo - 0.5) if west else (lx < hi + 0.5):
+		if lx > lo + 0.5 and lx < hi - 0.5 and _frac(seed, k + (0 if west else 500)) > 0.18:
+			lamps.append(lx + dirn * (_frac(seed + 5, k) - 0.5) * 3.0)       # (some are out)
+		lx += dirn * (17.0 + 6.0 * _frac(seed + 9, k))
+		k += 1
+	var lights: Array = []
+	var near := Vector2(plat_end - 45.0, plat_end) if west else Vector2(plat_end, plat_end + 45.0)
+	TunnelDetail.add(kit, s, lo, hi, zwall_run, zfar, {"seed": seed, "lamps": lamps, "near": near, "lamp_lights": lights})
+	for lp in lights:
+		if absf((lp as Vector3).x - plat_end) < 45.0 and not Station.debug_off("tunnel_lights"):
+			_lights.append([lp, 1.3, 9.0])
+
+
+## What lies beyond a platform end for the track of the face with sign `s`, as cells for RunScenery: [[scene, x0, x1, d0, d1, cell], ...] ascending in x from `a` to `b`, with the cells of
+## deep-tube bore merged ([] when it is all bore: the bore is built as it always was). d0 / d1: distances from the stop; the cell is built in that frame and mirrored for the west end.
+func _ext_runs(s: float, west: bool, a: float, b: float) -> Array:
+	var ext: Array = spec.get("ext", [])
+	var fi := 0 if s > 0.0 else 1
+	if fi >= ext.size() or ext[fi] == null:
+		return []
+	var e: Dictionary = ext[fi]
+	var secs: Array = e.get("w" if west else "e", [])
+	if secs.is_empty():
+		return []
+	var d0 := absf(b) if west else absf(a)          # (the stop is at the module's middle)
+	var d1 := d0 + (b - a)
+	var k0 := int(floor((d0 + RunScenery.CELL * 0.5) / RunScenery.CELL))
+	var k1 := int(floor((d1 + RunScenery.CELL * 0.5) / RunScenery.CELL))
+	var scenes := RunScenery.cell_scenes(secs, bool(e.get("ss", false)), int(e.get("seed_w" if west else "seed_e", 0)), k0, k1)
+	var cells: Array = []
+	var any := false
+	for i in scenes.size():
+		var k := k0 + i
+		var da := maxf(float(k) * RunScenery.CELL - RunScenery.CELL * 0.5, d0)
+		var db := minf(float(k) * RunScenery.CELL + RunScenery.CELL * 0.5, d1)
+		if db - da < 0.01:
+			continue
+		if (scenes[i] & 7) != RunScenery.BORE:
+			any = true
+		cells.append([scenes[i], da, db, k])
+	if not any:
+		return []
+	# a platform tunnel that opens into daylight (a hall with end walls has its own portal): a few metres of the platform's own tiling, then the headwall
+	var out: Array = []
+	if not box and not RunScenery.enclosed(int(cells[0][0]) & 7):
+		var start_d := d0 + RUN_IN
+		while cells.size() > 1 and float(cells[0][2]) <= start_d + 0.5:
+			cells.remove_at(0)
+		var c0: Array = cells[0]
+		var scn: int = int(c0[0]) | (1 << 8)
+		if (scn & 7) == RunScenery.CUTTING or (scn & 7) >= RunScenery.EMBANK:
+			scn = (scn & ~(3 << 3)) | (3 << 3)
+		cells[0] = [scn, maxf(float(c0[1]), start_d), c0[2], c0[3]]
+		out.append([RunScenery.BORE, (-start_d) if west else d0, (-d0) if west else start_d, 0.0, 0.0, 0])
+	for c in cells:
+		var xa_c: float = -float(c[2]) if west else float(c[1])
+		var xb_c: float = -float(c[1]) if west else float(c[2])
+		if (int(c[0]) & 7) == RunScenery.BORE and not out.is_empty() and (int(out[out.size() - 1][0]) & 7) == RunScenery.BORE:
+			out[out.size() - 1][2] = xb_c if not west else out[out.size() - 1][2]
+			out[out.size() - 1][1] = xa_c if west else out[out.size() - 1][1]
+		else:
+			out.append([c[0], xa_c, xb_c, c[1], c[2], c[3]])
+	if west:
+		out.reverse()          # (ascending x)
+	return out
 
 
 static func _frac(a: int, b: int) -> float:

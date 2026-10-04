@@ -355,6 +355,71 @@ func _cut_slabs(tri: Array, xmin: float, xmax: float, b: Bend, step: float) -> A
 	return out
 
 
+## Everything gathered so far seen in a mirror at z = 0 (a mirrored copy keeps its front sides: the order of the corners is turned round)
+func mirror_z() -> void:
+	for name in surfaces:
+		var s: Dictionary = surfaces[name]
+		var v: PackedVector3Array = s["v"]
+		var n: PackedVector3Array = s["n"]
+		var t: PackedFloat32Array = s["t"]
+		for i in v.size():
+			v[i] = Vector3(v[i].x, v[i].y, -v[i].z)
+			n[i] = Vector3(n[i].x, n[i].y, -n[i].z)
+			t[i * 4 + 2] = -t[i * 4 + 2]
+			t[i * 4 + 3] = -t[i * 4 + 3]
+		var ix: PackedInt32Array = s["i"]
+		for j in range(0, ix.size(), 3):
+			var tmp := ix[j + 1]
+			ix[j + 1] = ix[j + 2]
+			ix[j + 2] = tmp
+		s["v"] = v
+		s["n"] = n
+		s["t"] = t
+		s["i"] = ix
+
+
+## ... and in a mirror at x = 0
+func mirror_x() -> void:
+	for name in surfaces:
+		var s: Dictionary = surfaces[name]
+		var v: PackedVector3Array = s["v"]
+		var n: PackedVector3Array = s["n"]
+		var t: PackedFloat32Array = s["t"]
+		for i in v.size():
+			v[i] = Vector3(-v[i].x, v[i].y, v[i].z)
+			n[i] = Vector3(-n[i].x, n[i].y, n[i].z)
+			t[i * 4] = -t[i * 4]
+			t[i * 4 + 3] = -t[i * 4 + 3]
+		var ix: PackedInt32Array = s["i"]
+		for j in range(0, ix.size(), 3):
+			var tmp := ix[j + 1]
+			ix[j + 1] = ix[j + 2]
+			ix[j + 2] = tmp
+		s["v"] = v
+		s["n"] = n
+		s["t"] = t
+		s["i"] = ix
+
+
+## Adds everything `other` has gathered to this kit
+func merge(other: MeshKit) -> void:
+	for name in other.surfaces:
+		var o: Dictionary = other.surfaces[name]
+		var s := _surf(name)
+		var base: int = s["v"].size()
+		s["v"].append_array(o["v"])
+		s["n"].append_array(o["n"])
+		s["uv"].append_array(o["uv"])
+		s["t"].append_array(o["t"])
+		s["c"].append_array(o["c"])
+		var ix: PackedInt32Array = o["i"]
+		var shifted := PackedInt32Array()
+		shifted.resize(ix.size())
+		for j in ix.size():
+			shifted[j] = ix[j] + base
+		s["i"].append_array(shifted)
+
+
 func build(materials: Dictionary, default_mat: Material = null) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	for name in surfaces:

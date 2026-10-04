@@ -113,7 +113,7 @@ func start(p_game: Node3D, p_train: Train, p_run: int, p_k: int, p_origin: Stati
 	for g in tail:
 		tail_len += float(g[0])
 	# the track between: straight at both stations (the platform and the stretch where the hand-overs happen), the line's real bends in between
-	path = TrackPath.between(id_a, id_b, dist, maxf(_origin_module_length() * 0.5 + 24.0, head_end + 12.0), maxf(dest_face_length * 0.5 + 26.0 + absf(car_offset) + 40.0, tail_len + 12.0), head, tail, back, after)
+	path = TrackPath.between(id_a, id_b, dist, maxf(_origin_module_length() * 0.5 + 24.0, head_end + 12.0), maxf(dest_face_length * 0.5 + 26.0 + absf(car_offset) + 40.0, tail_len + 12.0), head, tail, back, after, Net.lines.has(train.line_id) and String(Net.lines[train.line_id]['group']) == 'ss')
 	_path_straight = path.is_straight() and train.bend == null
 	# the frame of the path in the world: the player's car is where it is, whatever shape the train has
 	p0 = ref_world * (train.car_pose_on_path(path, ref_car, 0.0) * Transform3D(Basis.IDENTITY, Vector3(0.0, PlatformModule.RAIL_Y, 0.0))).affine_inverse()

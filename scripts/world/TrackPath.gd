@@ -14,6 +14,7 @@ const BACK := 14                     # cells before the start (168 m): the platf
 const AHEAD := 14                    # cells past the end
 const RAMP := 36.0                   # the curvature is faded in / out over this many metres
 const DATA := "res://data/line_geometry.json"
+const MAX_GRADE := 0.045             # no stretch climbs or dips more steeply than this (1 : 22)
 
 static var _data: Dictionary = {}
 static var _loaded := false
@@ -25,6 +26,12 @@ var _kmin := 0                       # index of the first cell
 var _anchor := Transform3D.IDENTITY  # puts the raw (first cell's) frame where the frame of the path is: pose(0) is the identity
 var _th := PackedFloat32Array()      # heading at the start of each cell (n + 1 values), in the raw frame
 var _p := PackedVector3Array()       # position at the start of each cell (n + 1 values)
+var ss := false                      # a sub-surface line: its tunnels are cut-and-cover boxes
+var secs: Array = []                 # what the track runs through, [[sec code, metres], ...] (data "sec": 0 open, 1 tunnel, 2 cutting, 3 embankment, 4 viaduct), scaled to the ride's length
+var _scenes := PackedInt32Array()    # per cell, from k_first(): RunScenery's scene number
+var pitch := PackedFloat32Array()    # per cell, from k_first(): the climb of the track (radians, + = up); the tunnels between deep stations dip between them
+var _plan_pitch := PackedFloat32Array()      # (set before _build)
+var _py := PackedFloat32Array()      # height of the track at the start of each cell
 
 
 static func data() -> Dictionary:
@@ -41,12 +48,15 @@ static func data() -> Dictionary:
 ## the path of the track from station `a` to station `b` (NaPTAN ids) as the train sets off from a (distance 0 = where its centre stands), `dist` metres long.
 ## Without data for the pair, a straight path. `head` / `tail` are the exact curves of curved platforms at the two ends, [[length, curvature], ...] in the direction of travel: `head` from distance 0,
 ## `tail` ending at `dist` (they replace the real profile there; the fades keep the profile off their neighbourhood).
-static func between(a: String, b: String, dist: float, fade_in: float, fade_out: float, head: Array = [], tail: Array = [], back: Array = [], after: Array = []) -> TrackPath:
+static func between(a: String, b: String, dist: float, fade_in: float, fade_out: float, head: Array = [], tail: Array = [], back: Array = [], after: Array = [], p_ss := false) -> TrackPath:
 	var h: Array = profile(a, b)
 	var tp := TrackPath.new()
 	tp.length = dist
 	var kmin := -BACK
 	var kmax := int(ceil((dist + 6.0) / CELL)) + AHEAD
+	tp.ss = p_ss
+	tp._set_scenes(a, b, dist, kmin, kmax, h)
+	tp._plan_pitch = tp._plan_grade(dist, fade_in, fade_out, kmin, kmax)
 	var n := kmax - kmin + 1
 	var ks := PackedFloat32Array()
 	ks.resize(n)
@@ -127,6 +137,117 @@ static func _overlay(ks: PackedFloat32Array, kmin: int, head: Array, tail: Array
 			ks[i] = ks[i] * maxf(0.0, 1.0 - cover[i]) + sum[i]
 
 
+## what the track from a to b runs through, [[sec code, metres], ...] in that direction (the other direction's list reversed when only that one is known), or [] without data
+static func sections(a: String, b: String) -> Array:
+	var pairs: Dictionary = data().get("pairs", {})
+	var e: Dictionary = pairs.get(a + ">" + b, {})
+	if e.has("sec"):
+		return (e["sec"] as Array).duplicate(true)
+	e = pairs.get(b + ">" + a, {})
+	if e.has("sec"):
+		var out: Array = (e["sec"] as Array).duplicate(true)
+		out.reverse()
+		return out
+	return []
+
+
+func _set_scenes(a: String, b: String, dist: float, kmin: int, kmax: int, prof: Array) -> void:
+	var raw := sections(a, b)
+	var real_len: float = float(prof[0]) if not prof.is_empty() else dist
+	secs = []
+	var scale := dist / maxf(real_len, 1.0)
+	for r in raw:
+		secs.append([int(r[0]), float(r[1]) * scale])
+	if secs.is_empty():
+		secs = _guess_secs(a, b, dist)
+	plan_scenes(secs, ss, pair_seed(a, b), kmin, kmax)
+
+
+## The vertical profile: stations lie on a hump and the tubes between them dip, so a train drops away from one platform and climbs into the next (real tubes: about 1 : 30 for a few hundred metres,
+## 2 to 4 m deep for a mile-long hop). Not surveyed: a typical dish, the same depth at both ends (the data has no heights), over the stretches of tunnel; none in the sub-surface lines' shallow
+## tunnels, in the open or on the platform and the stretch where the hand-overs happen. UG_GRADE=off switches it off, UG_GRADE=<metres> forces that depth over the whole ride (tests).
+## Returns the climb per cell (radians) for the cells kmin..kmax.
+func _plan_grade(dist: float, fade_in: float, fade_out: float, kmin: int, kmax: int) -> PackedFloat32Array:
+	var n := kmax - kmin + 1
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var forced := OS.get_environment("UG_GRADE")
+	if forced == "off" or (ss and forced == ""):
+		return out
+	var w_int := dist - fade_in - fade_out
+	if w_int < 120.0:
+		return out
+	var vr := clampf(w_int * 0.35, 40.0, 140.0)
+	var depth := clampf(w_int * 0.006, 0.5, 3.2)
+	if forced != "":
+		depth = forced.to_float()
+	# where the track is in a tunnel
+	var tun: Array = []
+	var pos := 0.0
+	for r in secs:
+		if int(r[0]) == 1 or forced != "":
+			tun.append([pos, pos + float(r[1])])
+		pos += float(r[1])
+	if forced != "":
+		tun = [[0.0, dist]]
+	if tun.is_empty():
+		return out
+	var ys := PackedFloat32Array()
+	ys.resize(n + 1)
+	for j in n + 1:
+		var sj := float(kmin + j) * CELL - CELL * 0.5
+		# the share of the stretch round sj (vr wide) that lies in a tunnel
+		var lo := sj - vr * 0.5
+		var hi := sj + vr * 0.5
+		var cover := 0.0
+		for t in tun:
+			cover += maxf(0.0, minf(hi, t[1]) - maxf(lo, t[0]))
+		var m := cover / vr
+		var wn := smoothstep(fade_in, fade_in + vr, sj) * (1.0 - smoothstep(dist - fade_out - vr, dist - fade_out, sj))
+		ys[j] = -depth * m * wn
+	for i in n:
+		out[i] = asin(clampf((ys[i + 1] - ys[i]) / CELL, -MAX_GRADE, MAX_GRADE))
+	return out
+
+
+## the same for either direction of a pair of stations (which cuttings are brick-walled is chosen from it)
+static func pair_seed(a: String, b: String) -> int:
+	return (a + ">" + b if a < b else b + ">" + a).hash() & 0x7fffffff
+
+
+## a hop the data does not have (the line's relation in OpenStreetMap lacks it): the open country between two surface stations, the tunnel between underground ones, and between a surface
+## station and an underground one the open half then the tunnel half
+static func _guess_secs(a: String, b: String, dist: float) -> Array:
+	var ia := Net.station_ids.find(a)
+	var ib := Net.station_ids.find(b)
+	if ia < 0 or ib < 0:
+		return [[1, dist]]
+	var oa: bool = String(Net.stations[ia].get("kind", "deep")) == "surface"
+	var ob: bool = String(Net.stations[ib].get("kind", "deep")) == "surface"
+	if oa and ob:
+		return [[0, dist]]
+	if not oa and not ob:
+		return [[1, dist]]
+	return [[0 if oa else 1, dist * 0.5], [1 if oa else 0, dist * 0.5]]
+
+
+## what the cells show for a line that runs through `p_secs` ([[sec code, metres], ...]); the cells from kmin to kmax
+func plan_scenes(p_secs: Array, p_ss: bool, seed: int, kmin: int, kmax: int) -> void:
+	secs = p_secs
+	ss = p_ss
+	_scenes = RunScenery.cell_scenes(secs, ss, seed, kmin, kmax)
+
+
+## RunScenery's scene number of cell k (the bore beyond the cells that were planned)
+func cell_scene(k: int) -> int:
+	var i := k - _kmin
+	if i < 0:
+		return _scenes[0] if not _scenes.is_empty() else RunScenery.BORE
+	if i >= _scenes.size():
+		return _scenes[_scenes.size() - 1] if not _scenes.is_empty() else RunScenery.BORE
+	return _scenes[i]
+
+
 ## [real length, headings in radians at 0, step, 2 step ... length] of the track from a to b, or [] when unknown. Falls back to the other direction's track, reversed.
 static func profile(a: String, b: String) -> Array:
 	var pairs: Dictionary = data().get("pairs", {})
@@ -179,12 +300,15 @@ func _build(ks: PackedFloat32Array, dist: float, kmin := 0) -> void:
 	kappa = ks
 	_kmin = kmin
 	var n := kappa.size()
+	pitch = _plan_pitch if _plan_pitch.size() == n else PackedFloat32Array()
+	if pitch.size() != n:
+		pitch.resize(n)
 	_th.resize(n + 1)
 	_p.resize(n + 1)
 	_th[0] = 0.0
 	_p[0] = Vector3.ZERO
 	for i in n:
-		var q := _step(_th[i], _p[i], kappa[i], CELL)
+		var q := _step(_th[i], _p[i], kappa[i], CELL, pitch[i])
 		_th[i + 1] = q[0]
 		_p[i + 1] = q[1]
 	# the frame of the path is the one the track has at distance 0
@@ -192,17 +316,27 @@ func _build(ks: PackedFloat32Array, dist: float, kmin := 0) -> void:
 	_anchor = _raw_pose(0.0).affine_inverse()
 
 
-## heading and position after u metres of curvature kk from heading th0 at p0
-static func _step(th0: float, p0: Vector3, kk: float, u: float) -> Array:
+## heading and position after u metres of curvature kk and climb pc (radians) from heading th0 at p0
+static func _step(th0: float, p0: Vector3, kk: float, u: float, pc := 0.0) -> Array:
+	var h := u * cos(pc)               # (the distance covered on the ground)
+	var dy := u * sin(pc)
 	if absf(kk) < 1e-9:
-		return [th0, p0 + Vector3(cos(th0), 0.0, -sin(th0)) * u]
-	var th1 := th0 + kk * u
-	return [th1, p0 + Vector3((sin(th1) - sin(th0)) / kk, 0.0, (cos(th1) - cos(th0)) / kk)]
+		return [th0, p0 + Vector3(cos(th0) * h, dy, -sin(th0) * h)]
+	var th1 := th0 + kk * h
+	return [th1, p0 + Vector3((sin(th1) - sin(th0)) / kk, dy, (cos(th1) - cos(th0)) / kk)]
 
 
 func is_straight() -> bool:
 	for k in kappa:
 		if absf(k) > 1e-9:
+			return false
+	return is_level()
+
+
+## no climb or dip anywhere
+func is_level() -> bool:
+	for g in pitch:
+		if absf(g) > 1e-9:
 			return false
 	return true
 
@@ -237,8 +371,9 @@ func _raw_pose(s: float) -> Transform3D:
 	if i >= n:
 		var th := _th[n]
 		return Transform3D(Basis(Vector3.UP, th), _p[n] + Vector3(cos(th), 0.0, -sin(th)) * (s - s_start - float(n) * CELL))
-	var q := _step(_th[i], _p[i], kappa[i], s - s_start - float(i) * CELL)
-	return Transform3D(Basis(Vector3.UP, q[0]), q[1])
+	var pc: float = pitch[i]
+	var q := _step(_th[i], _p[i], kappa[i], s - s_start - float(i) * CELL, pc)
+	return Transform3D(Basis(Vector3.UP, q[0]) * Basis(Vector3(0.0, 0.0, 1.0), pc), q[1])
 
 
 ## the pose of the track at distance s: origin on the centre line at the path's level 0, +x along the track, +z to the right

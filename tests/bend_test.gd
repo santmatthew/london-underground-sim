@@ -87,5 +87,9 @@ func run():
 	check(absf(tp.pose(300.0).basis.x.angle_to(Vector3(cos(turn), 0.0, -sin(turn)))) < 1e-4, "after the curve the track runs straight at the new heading")
 	check(pe.origin.z < -5.0, "a left turn moves the track toward -z (%.1f)" % pe.origin.z)
 	var tp2 := TrackPath.between("a", "b", 500.0, 80.0, 80.0)
-	check(tp2.is_straight() and tp2.length == 500.0, "no data, no curve")
+	var flat_k := true
+	for kk in tp2.kappa:
+		if absf(kk) > 1e-9:
+			flat_k = false
+	check(flat_k and tp2.length == 500.0, "no data, no curve")
 	print("OK" if ok else "FAILED")

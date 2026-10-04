@@ -15,11 +15,11 @@ func run():
 	var checked := 0
 	var worst := 9.0
 	var kinds := {}
-	for cls in [0]:                      # (bending keeps every offset from the track: the straight cell is the one to measure)
-		for v in 2 * TunnelRun.N_VAR:
-			var kit: MeshKit = run._cell_kit(v, cls)
+	for scene in [RunScenery.BORE, RunScenery.BOX | (1 << 11), RunScenery.OPEN, RunScenery.CUTTING | (3 << 3) | (3 << 5), RunScenery.EMBANK | (3 << 3) | (3 << 5), RunScenery.VIADUCT | (3 << 3) | (3 << 5)]:
+		for v in 2 * TunnelRun.N_VAR:                 # (bending keeps every offset from the track: the straight cell is the one to measure)
+			var kit: MeshKit = run._cell_kit((16 << 18) | (scene << 3) | v)
 			for mat in kit.surfaces:
-				if mat in ["tunnel_lining", "trackbed", "rail", "track_sleepers"]:
+				if mat in ["tunnel_lining", "trackbed", "rail", "track_sleepers", "ballast"]:
 					continue
 				for p in kit.surfaces[mat]["v"]:
 					checked += 1
