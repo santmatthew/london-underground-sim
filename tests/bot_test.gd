@@ -36,10 +36,16 @@ func run():
 		await get_tree().physics_frame
 		frames += 1
 		var y_now: float = g.player.global_position.y
-		if frames % 10 == 0:
+		if frames % int(OS.get_environment("BOT_TRAIL") if OS.get_environment("BOT_TRAIL") != "" else "10") == 0:
 			var sc0 := g.player.get_last_slide_collision()
-			trail.append("%s pos %s vfloor %s slide %s mode %s" % [Clock.fmt(Clock.now, true), str(g.player.global_position.snapped(Vector3(0.1, 0.1, 0.1))), str(g.player.is_on_floor()), ((sc0.get_collider() as Node).get_parent().name + "/" + (sc0.get_collider() as Node).name if sc0 and sc0.get_collider() != null and is_instance_valid(sc0.get_collider()) else "-"), g.autopilot.mode if g.autopilot else "-"])
-			if trail.size() > 24:
+			var near_agents := ""
+			if g.station != null and g.station.crowd != null:
+				var lp0 := g.station.to_design(g.station.to_local(g.player.global_position))
+				for ag in g.station.crowd.agents:
+					if ag.body != null and ag.pos.distance_to(lp0) < 1.6:
+						near_agents += " [AGENT %s pos %s body %s layer %d]" % [ag.state, str(ag.pos.snapped(Vector3(0.1, 0.1, 0.1))), str((ag.body as Node3D).position.snapped(Vector3(0.1, 0.1, 0.1))), (ag.body as CollisionObject3D).collision_layer]
+			trail.append("%s pos %s vfloor %s slide %s mode %s%s" % [Clock.fmt(Clock.now, true), str(g.player.global_position.snapped(Vector3(0.1, 0.1, 0.1))), str(g.player.is_on_floor()), ((sc0.get_collider() as Node).get_parent().name + "/" + (sc0.get_collider() as Node).name if sc0 and sc0.get_collider() != null and is_instance_valid(sc0.get_collider()) else "-"), g.autopilot.mode if g.autopilot else "-", near_agents])
+			if trail.size() > int(OS.get_environment("BOT_TRAIL_N") if OS.get_environment("BOT_TRAIL_N") != "" else "24"):
 				trail.pop_front()
 		if y_now < y_prev - 0.25 and drops < 6:
 			drops += 1

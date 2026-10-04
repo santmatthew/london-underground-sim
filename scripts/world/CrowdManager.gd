@@ -778,8 +778,10 @@ func _wake(a: Agent) -> void:
 	cap.height = 1.75
 	cs.shape = cap
 	b.add_child(cs)
+	# (placed BEFORE it enters the tree: a body that enters at this node's origin and is moved afterwards is in the physics space there for a step - a player standing at the station's origin was lifted
+	# 0.9 m and carried 10 m away by the person who woke up beside the gateline, at the start of a journey: crowd_wake_test)
+	b.position = (station.to_phys(a.pos) if station.has_bend else a.pos) + Vector3(0, 0.88, 0)
 	add_child(b)
-	b.position = a.pos + Vector3(0, 0.88, 0)
 	a.body = b
 
 
