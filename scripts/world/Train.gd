@@ -118,7 +118,7 @@ func build(p_kind: String, p_cars: int, p_line: String, livery: Color) -> void:
 ## A moving train passes through walkways that share its tunnel line (landings/corridors west of the platform): its bodies must only be
 ## solid while it stands at the platform. Layers are remembered so they can be restored.
 func set_solid(on: bool) -> void:
-	if get_meta("solid", true) == on:
+	if get_meta("ride_muted", false) or get_meta("solid", true) == on:          # (ride_muted: the player's ride is sliding this station away: Ride.gd keeps its other trains non-solid)
 		return
 	set_meta("solid", on)
 	for n in find_children("*", "CollisionObject3D", true, false):

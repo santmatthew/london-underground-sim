@@ -187,6 +187,17 @@ func _process(delta: float) -> void:
 		Phase.DEPART:
 			# origin station slides backwards (along the track)
 			origin.global_transform = world * origin_p
+			# the next train of the station may be due a few seconds after this one leaves (the timetable has headways that short) and arrives at the platform where this train's rear cars still are:
+			# nothing of the moving station may collide, so the other trains are made non-solid for as long as the station is in sight (Train.set_solid honours "ride_muted")
+			_mute_timer -= delta
+			if _mute_timer <= 0.0:
+				_mute_timer = 0.2
+				for key in origin.trains.visits:
+					var other: Train = origin.trains.visits[key]["train"]
+					if other != train and is_instance_valid(other) and not other.get_meta("ride_muted", false):
+						other.set_meta("ride_muted", true)
+						for n in other.find_children("*", "CollisionObject3D", true, false):
+							(n as CollisionObject3D).collision_layer = 0
 			# hand-over when the player's car is well inside the running tunnel
 			var L := _origin_module_length()
 			var need := L * 0.5 - car_offset + 20.0
@@ -277,6 +288,7 @@ func _build_destination() -> void:
 	dest_ready = true
 
 
+var _mute_timer := 0.0
 var _muted: Array = []          # [CollisionObject3D, original layer] of station geometry that must not touch the player while it slides past
 
 
