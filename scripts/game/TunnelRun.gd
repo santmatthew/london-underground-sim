@@ -95,7 +95,7 @@ static func _store(key: int, kit: MeshKit) -> void:
 	_cache[key] = _finish(kit)
 
 
-## the mesh key of cell k: curvature class, scene (RunScenery) and variant
+## the mesh key of cell k: curvature class (bits 24-), scene (RunScenery, bits 3-23) and variant
 ## (a mirrored ride - the platform on the right - flips the cells across the track, so they are bent the other way to start with)
 func _key_of(k: int) -> int:
 	var cls := path.cell_class(k) * (-1 if mirror else 1)
@@ -108,14 +108,14 @@ func _key_of(k: int) -> int:
 		v = (0 if lit else N_VAR) + posmod(k, N_VAR)        # (a box tunnel: lamps in the lit ones)
 	else:
 		v = posmod(k, N_VAR)                                  # (in the open: the backdrops repeat every three cells, nothing else to vary)
-	return ((cls + 16) << 18) | (sc << 3) | v
+	return ((cls + 16) << 24) | (sc << 3) | v
 
 
 ## the cell of mesh key `key` as a MeshKit with the track at z = _ztrack; bent about the cell's entry when its class is not 0
 static func _cell_kit(key: int) -> MeshKit:
 	var v := key & 7
-	var sc := (key >> 3) & 0x7fff
-	var cls := (key >> 18) - 16
+	var sc := (key >> 3) & 0x1fffff
+	var cls := (key >> 24) - 16
 	var zfar := PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE + PlatformModule.TRACK_TO_WALL
 	var ztrack := zfar - PlatformModule.TRACK_TO_WALL
 	var zwall_run := zfar - (PlatformModule.TRACK_TO_WALL + PlatformModule.TRACK_TO_EDGE + PlatformModule.PW_RUN)
@@ -224,11 +224,11 @@ func place(s: float) -> void:
 			_request(key)
 			# (not built yet: the same scene straight, else the bore)
 			var v := key & 7
-			var alt := (16 << 18) | (sc << 3) | v
+			var alt := (16 << 24) | (sc << 3) | v
 			cls = 0
-			key = alt if _cache.has(alt) else ((16 << 18) | (RunScenery.BORE << 3) | v)
+			key = alt if _cache.has(alt) else ((16 << 24) | (RunScenery.BORE << 3) | v)
 			if not _cache.has(key):
-				key = (16 << 18) | (RunScenery.BORE << 3) | (v % N_VAR)
+				key = (16 << 24) | (RunScenery.BORE << 3) | (v % N_VAR)
 				if not _cache.has(key):
 					_store(key, _cell_kit(key))
 		mi.mesh = _cache[key]

@@ -378,6 +378,16 @@ func mirror_z() -> void:
 		s["i"] = ix
 
 
+## every point moves in z by an amount that runs from `da` at x0 to `db` at x1 (clamped beyond): a stretch of track that comes toward another along the cell
+func shear_z(x0: float, x1: float, da: float, db: float) -> void:
+	for name in surfaces:
+		var v: PackedVector3Array = surfaces[name]["v"]
+		for i in v.size():
+			var f := clampf((v[i].x - x0) / maxf(x1 - x0, 0.001), 0.0, 1.0)
+			v[i] = Vector3(v[i].x, v[i].y, v[i].z + lerpf(da, db, f))
+		surfaces[name]["v"] = v
+
+
 ## ... and in a mirror at x = 0
 func mirror_x() -> void:
 	for name in surfaces:

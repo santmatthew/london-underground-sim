@@ -474,6 +474,7 @@ func _ext_for(mi: int) -> Array:
 		out.append({
 			"w": TrackPath.sections(sid, west) if west != "" else [], "e": TrackPath.sections(sid, east) if east != "" else [],
 			"ss": ss, "seed_w": TrackPath.pair_seed(sid, west), "seed_e": TrackPath.pair_seed(sid, east),
+			"single_w": west != "" and TrackPath.is_single(sid, west), "single_e": east != "" and TrackPath.is_single(sid, east),
 		})
 	# the two tracks of a module lie side by side and leave by the same end: what one of them has beyond an end, the other has too
 	for end: String in ["w", "e"]:

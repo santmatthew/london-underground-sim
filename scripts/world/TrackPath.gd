@@ -26,6 +26,7 @@ var _kmin := 0                       # index of the first cell
 var _anchor := Transform3D.IDENTITY  # puts the raw (first cell's) frame where the frame of the path is: pose(0) is the identity
 var _th := PackedFloat32Array()      # heading at the start of each cell (n + 1 values), in the raw frame
 var _p := PackedVector3Array()       # position at the start of each cell (n + 1 values)
+var single := false                  # the track is a single one (data/single_track.json): no second track beside it
 var ss := false                      # a sub-surface line: its tunnels are cut-and-cover boxes
 var secs: Array = []                 # what the track runs through, [[sec code, metres], ...] (data "sec": 0 open, 1 tunnel, 2 cutting, 3 embankment, 4 viaduct), scaled to the ride's length
 var _scenes := PackedInt32Array()    # per cell, from k_first(): RunScenery's scene number
@@ -43,6 +44,26 @@ static func data() -> Dictionary:
 		_loaded = true
 	_mx.unlock()
 	return _data
+
+
+const SINGLE := "res://data/single_track.json"
+static var _single: Dictionary = {}
+static var _single_loaded := false
+
+
+## is the track between the stations a and b (NaPTAN ids) single (data/single_track.json): no second track beside it
+static func is_single(a: String, b: String) -> bool:
+	_mx.lock()
+	if not _single_loaded:
+		var f := FileAccess.open(SINGLE, FileAccess.READ)
+		if f != null:
+			var d: Dictionary = JSON.parse_string(f.get_as_text())
+			for pr in d.get("pairs", []):
+				_single[String(pr[0]) + ">" + String(pr[1])] = true
+				_single[String(pr[1]) + ">" + String(pr[0])] = true
+		_single_loaded = true
+	_mx.unlock()
+	return _single.has(a + ">" + b)
 
 
 ## the path of the track from station `a` to station `b` (NaPTAN ids) as the train sets off from a (distance 0 = where its centre stands), `dist` metres long.
@@ -183,7 +204,8 @@ func _set_scenes(a: String, b: String, dist: float, kmin: int, kmax: int, prof: 
 		r0 = r1
 	if secs.is_empty():
 		secs = _guess_secs(a, b, dist)
-	plan_scenes(secs, ss, pair_seed(a, b), kmin, kmax)
+	single = is_single(a, b)
+	plan_scenes(secs, ss, pair_seed(a, b), kmin, kmax, dist)
 
 
 ## The vertical profile. Two parts. The REAL one: the platform levels of the two stations (data/platform_levels.json, TfL FOI depth table via tubedepths, metres above Ordnance Datum) give how far the track
@@ -277,10 +299,10 @@ static func _guess_secs(a: String, b: String, dist: float) -> Array:
 
 
 ## what the cells show for a line that runs through `p_secs` ([[sec code, metres], ...]); the cells from kmin to kmax
-func plan_scenes(p_secs: Array, p_ss: bool, seed: int, kmin: int, kmax: int) -> void:
+func plan_scenes(p_secs: Array, p_ss: bool, seed: int, kmin: int, kmax: int, p_dist := -1.0) -> void:
 	secs = p_secs
 	ss = p_ss
-	_scenes = RunScenery.cell_scenes(secs, ss, seed, kmin, kmax)
+	_scenes = RunScenery.cell_scenes(secs, ss, seed, kmin, kmax, p_dist, single)
 
 
 ## RunScenery's scene number of cell k (the bore beyond the cells that were planned)
@@ -291,6 +313,16 @@ func cell_scene(k: int) -> int:
 	if i >= _scenes.size():
 		return _scenes[_scenes.size() - 1] if not _scenes.is_empty() else RunScenery.BORE
 	return _scenes[i]
+
+
+## how far the other track of the pair lies from this one at path distance s (RunScenery: the station's spacing near the stops and the tunnel mouths, narrowing to the line's between; the cells' own levels, linear across a cell)
+func spacing_at(s: float) -> float:
+	var k := int(roundf(s / CELL))
+	var sc := cell_scene(k)
+	if (sc & RunScenery.PAIR) == 0:
+		return RunScenery.TRACK_SPACING
+	var f := clampf((s - (float(k) * CELL - CELL * 0.5)) / CELL, 0.0, 1.0)
+	return lerpf(RunScenery.spacing_of_level((sc >> 13) & 15), RunScenery.spacing_of_level((sc >> 17) & 15), f)
 
 
 ## [real length, headings in radians at 0, step, 2 step ... length] of the track from a to b, or [] when unknown. Falls back to the other direction's track, reversed.

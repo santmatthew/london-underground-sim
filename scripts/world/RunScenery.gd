@@ -152,14 +152,29 @@ const CELL := 12.0
 const PAIR := 1 << 12          # scene bit: the other track of the pair lies beside this one (12.9 m off, on the platform side, the same distance as the two tracks of a station): in the open the line is double track
 
 const TRACK_SPACING := 2.0 * (PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE)          # (the two tracks of a station module)
+const SPACING_MIN := 4.0       # ... and of the line between the stations (the real 3.5 - 4 m), reached in 15 steps over RAMP_LEN
+const PAIR_LEVELS := 15
+const RAMP_STATION := 200.0    # within this far of a stop (the module's own running track) the two tracks keep the station's spacing
+const RAMP_LEN := 180.0        # ... and, coming out of a tunnel, they narrow over this far (scene bits 13-16: spacing level at the cell's entry, 17-20: at its exit)
 
 
 static func scene_prof(sc: int) -> int:
 	return sc & 7
 
 
+## the spacing of the two tracks at a pair level (0: a station's, PAIR_LEVELS: the line's)
+static func spacing_of_level(l: int) -> float:
+	return lerpf(TRACK_SPACING, SPACING_MIN, float(clampi(l, 0, PAIR_LEVELS)) / float(PAIR_LEVELS))
+
+
+## the level at a place `d_stop` metres from the nearest stop and `d_tunnel` metres from the nearest tunnel (BORE / BOX) cell: the tracks come together smoothly, away from the stations and the mouths
+static func pair_level(d_stop: float, d_tunnel: float) -> int:
+	var u := minf(clampf((d_stop - RAMP_STATION) / RAMP_LEN, 0.0, 1.0), clampf(d_tunnel / RAMP_LEN, 0.0, 1.0))
+	return int(roundf(float(PAIR_LEVELS) * smoothstep(0.0, 1.0, u)))
+
+
 ## `secs`: [[sec code, metres], ...] of the line from the stop (0 = open, 1 tunnel, 2 cutting, 3 embankment, 4 viaduct); cells k0..k1 (cell k covers k * 12 +- 6 m; before the start and past the end the first / last stretch goes on)
-static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int) -> PackedInt32Array:
+static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int, dist := -1.0, single := false) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	out.resize(k1 - k0 + 1)
 	if secs.is_empty():
@@ -205,6 +220,23 @@ static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int) -> P
 	var prof_of_cell := func(k: int) -> int:
 		var ri: int = run_at.call(float(k) * CELL)
 		return profile_of(int(secs[ri][0]), ss)
+	# the spacing level of the two tracks at every cell boundary (boundary j lies between cells j - 1 and j): only for a ride (`dist` >= 0); a station's running track keeps the station's spacing
+	var lv := PackedInt32Array()
+	if dist >= 0.0:
+		var m0 := k0 - 18
+		var m1 := k1 + 18
+		var enc: Array = []
+		for m in range(m0, m1 + 1):
+			enc.append(enclosed(prof_of_cell.call(m)))
+		lv.resize(k1 - k0 + 2)
+		for j in range(k0, k1 + 2):
+			var pb := float(j) * CELL - CELL * 0.5
+			var d_tun := 1e9
+			for m in range(maxi(m0, j - 17), mini(m1, j + 16) + 1):
+				if enc[m - m0]:
+					d_tun = minf(d_tun, maxf(absf(pb - float(m) * CELL) - CELL * 0.5, 0.0))
+			var d_stop := -pb if pb < 0.0 else (pb - dist if pb > dist else minf(pb, dist - pb))
+			lv[j - k0] = pair_level(d_stop, d_tun)
 	for k in range(k0, k1 + 1):
 		var sc := float(k) * CELL
 		var ri: int = run_at.call(sc)
@@ -237,7 +269,10 @@ static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int) -> P
 				la = 3
 			if pb == 1 and (code == 2 or code >= 3):
 				lb = 3
-		out[k - k0] = prof | (la << 3) | (lb << 5) | (tall << 7) | (pa << 8) | (pb << 9) | (brick << 10) | ((1 if ss else 0) << 11) | (0 if enclosed(prof) else PAIR)
+		var sc_bits := prof | (la << 3) | (lb << 5) | (tall << 7) | (pa << 8) | (pb << 9) | (brick << 10) | ((1 if ss else 0) << 11) | (0 if enclosed(prof) or single else PAIR)
+		if dist >= 0.0 and not enclosed(prof) and not single:
+			sc_bits |= (lv[k - k0] << 13) | (lv[k - k0 + 1] << 17)
+		out[k - k0] = sc_bits
 	return out
 
 
@@ -246,13 +281,23 @@ static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int) -> P
 ## track itself (its other face), so it clears the bit there.
 static func add_scene(kit: MeshKit, scene: int, v: int, x0: float, x1: float, t: float, o: Dictionary = {}) -> void:
 	var pair := (scene & PAIR) != 0 and not enclosed(scene & 7)
-	_scene_kit(kit, scene, v, x0, x1, t, o, pair, false)
+	var oo := o.duplicate()
+	var da := 0.0          # how far the other track has come toward this one from the station's spacing, at x0 and at x1
+	var db := 0.0
+	if pair:
+		da = TRACK_SPACING - spacing_of_level((scene >> 13) & 15)
+		db = TRACK_SPACING - spacing_of_level((scene >> 17) & 15)
+		oo["flat0"] = da * 0.5          # (the ground between the tracks ends half way)
+		oo["flat1"] = db * 0.5
+	_scene_kit(kit, scene, v, x0, x1, t, oo, pair, false)
 	if pair:
 		var other := MeshKit.new()
 		other.seed_rng(11 + v)
-		_scene_kit(other, scene, (v + 1) % 3, x0, x1, t, o, true, true)
+		_scene_kit(other, scene, v, x0, x1, t, oo, true, true)          # (the same variant: a station's other face has the main face's, so the signals stand level)
 		track(other, x0, x1, t)
 		other.mirror_z()
+		if da != 0.0 or db != 0.0:
+			other.shear_z(x0, x1, da, db)
 		kit.merge(other)
 
 
@@ -338,6 +383,16 @@ static func _backdrops(kit: MeshKit, x0: float, x1: float, t: float, o: Dictiona
 		_backdrop(kit, "houses", x0, x1, t + sg * houses_dz, ya, yb, u0 + 7.0)
 
 
+## where the ground between a station's two tracks ends, at x0 and at x1 (z of the line half way to the other track; 0, the spine, for a station module)
+static func _flat(o: Dictionary) -> Vector2:
+	return Vector2(float(o.get("flat0", 0.0)), float(o.get("flat1", 0.0)))
+
+
+## is there ground (not just touching formations) between the edge of this track's formation, at z = edge, and the line half way to the other track?
+static func _gap(fl: Vector2, edge: float) -> bool:
+	return fl.x < edge - 0.05 and fl.y < edge - 0.05
+
+
 ## ballast across the formation
 static func _formation(kit: MeshKit, x0: float, x1: float, t: float, half := 2.9) -> void:
 	kit.horiz("ballast", x0, x1, t - half, t + half, PlatformModule.BED_Y, true, PlatformModule.BED_Y)
@@ -363,11 +418,16 @@ static func _lineside(kit: MeshKit, x0: float, x1: float, t: float, v: int, dz: 
 static func _open(kit: MeshKit, x0: float, x1: float, t: float, o: Dictionary) -> void:
 	var v: int = o.get("v", 0)
 	var near_flat: bool = o.get("near_flat", false)
+	var fl := _flat(o)
+	var gap := near_flat and _gap(fl, t - 2.9)
 	_formation(kit, x0, x1, t)
 	# the ground, a step above the ballast
 	for sg: float in [1.0, -1.0]:
 		if sg < 0.0 and near_flat:
-			_strip(kit, "grass", x0, x1, t - 2.9, G, t - 2.9, G, 0.0, G, 0.0, G)
+			if gap:
+				_strip(kit, "grass", x0, x1, t - 2.9, G, t - 2.9, G, fl.x, G, fl.y, G)
+			else:
+				continue          # (the formations of the two tracks touch)
 		else:
 			_strip(kit, "grass", x0, x1, t + sg * 2.9, G, t + sg * 2.9, G, t + sg * GW, G, t + sg * GW, G)
 		_wallq(kit, "ballast", Vector3(x0, G, t + sg * 2.9), Vector3(x0, PlatformModule.BED_Y, t + sg * 2.9), Vector3(x1, PlatformModule.BED_Y, t + sg * 2.9), Vector3(x1, G, t + sg * 2.9), Vector3(0, 0, -sg))
@@ -388,11 +448,14 @@ static func _cutting(kit: MeshKit, x0: float, x1: float, t: float, o: Dictionary
 	var ha := CUT_H * la
 	var hb := CUT_H * lb
 	var near_flat: bool = o.get("near_flat", false)
+	var fl := _flat(o)
+	var gap := near_flat and _gap(fl, t - 2.9)
 	var brick: bool = int(o.get("seed", 0)) % 3 == 0
 	_formation(kit, x0, x1, t)
 	for sg: float in [1.0, -1.0]:
 		if sg < 0.0 and near_flat:
-			_strip(kit, "grass", x0, x1, t - 2.9, G, t - 2.9, G, 0.0, G, 0.0, G)
+			if gap:
+				_strip(kit, "grass", x0, x1, t - 2.9, G, t - 2.9, G, fl.x, G, fl.y, G)
 			continue
 		if brick:
 			var wz := 5.2 if sg < 0.0 else 3.4          # (the platform side of the running tunnel is wider: the walls clear it)
@@ -436,10 +499,13 @@ static func _embank(kit: MeshKit, x0: float, x1: float, t: float, o: Dictionary)
 	var ha := hmax * float(o.get("la", 3)) / 3.0
 	var hb := hmax * float(o.get("lb", 3)) / 3.0
 	var near_flat: bool = o.get("near_flat", false)
+	var fl := _flat(o)
+	var gap := near_flat and _gap(fl, t - 2.9)
 	_formation(kit, x0, x1, t)
 	for sg: float in [1.0, -1.0]:
 		if sg < 0.0 and near_flat:
-			_strip(kit, "grass", x0, x1, t - 2.9, G, t - 2.9, G, 0.0, G, 0.0, G)
+			if gap:
+				_strip(kit, "grass", x0, x1, t - 2.9, G, t - 2.9, G, fl.x, G, fl.y, G)
 			continue
 		var za := SHOULDER + 0.4 + ha * 1.6
 		var zb := SHOULDER + 0.4 + hb * 1.6
@@ -467,8 +533,9 @@ static func _viaduct(kit: MeshKit, x0: float, x1: float, t: float, o: Dictionary
 		_wallq(kit, "brick_red", Vector3(x0, G + PARAPET, zp + sg * 0.45), Vector3(x0, gy, zp + sg * 0.45), Vector3(x1, gy, zp + sg * 0.45), Vector3(x1, G + PARAPET, zp + sg * 0.45), Vector3(0, 0, sg))
 		_q(kit, "concrete", Vector3(x0, G + PARAPET, zp), Vector3(x1, G + PARAPET, zp), Vector3(x1, G + PARAPET, zp + sg * 0.45), Vector3(x0, G + PARAPET, zp + sg * 0.45), Vector3.UP)
 		_strip(kit, "grass", x0, x1, zp + sg * 0.45, gy, zp + sg * 0.45, gy, t + sg * GW, gy, t + sg * GW, gy)
-	if near_flat:
-		kit.horiz("ballast", x0, x1, 0.0, t - VIA_HALF, PlatformModule.BED_Y, true, PlatformModule.BED_Y)
+	var fl := _flat(o)
+	if near_flat and _gap(fl, t - VIA_HALF):
+		_strip(kit, "ballast", x0, x1, fl.x, PlatformModule.BED_Y, fl.y, PlatformModule.BED_Y, t - VIA_HALF, PlatformModule.BED_Y, t - VIA_HALF, PlatformModule.BED_Y)
 	_backdrops(kit, x0, x1, t, o, VIA_HALF + 12.0, VIA_HALF + 28.0, gy, gy)
 
 
@@ -537,7 +604,7 @@ static func portal(kit: MeshKit, bore: int, open_prof: int, x: float, dir: int, 
 			top = G + CUT_H
 	var near_flat: bool = o.get("near_flat", false)
 	if near_flat:
-		pl = t          # (the other track of the pair lies on the platform side: this headwall stops at the spine, the other one takes over from there)
+		pl = t - float(o.get("flat0" if dir > 0 else "flat1", 0.0))          # (the other track of the pair lies on the platform side: this headwall stops half way to it, the other one takes over from there)
 	var hint := Vector3(float(dir), 0, 0)
 	var zl := t - NEAR
 	var zr := t + FAR

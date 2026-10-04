@@ -17,7 +17,56 @@ func run():
 	# (open country with a train every few minutes both ways; a line of the other group, mirrored)
 	for hop in [["Amersham", "Chalfont & Latimer", false, 600.0], ["Chalfont & Latimer", "Amersham", true, 700.0], ["Colindale", "Hendon Central", false, 400.0]]:
 		await _hop(hop[0], hop[1], hop[2], hop[3], t0)
+	await _extras(t0)
 	print("OK" if ok else "FAILED")
+
+
+## the filters: the lines that share the player's tracks, a single track, and the module's reading of the pair bit
+func _extras(t0: float) -> void:
+	var ih: int = Net.name_to_idx["Hammersmith (D&P)"]
+	var ibc: int = Net.name_to_idx["Barons Court"]
+	var idh: String = Net.station_ids[ih]
+	var idb: String = Net.station_ids[ibc]
+	var path_h := TrackPath.between(idh, idb, 700.0, 120.0, 120.0)
+	var counts := {}
+	for ln in ["district", "piccadilly"]:
+		var o := Oncoming.new()
+		add_child(o)
+		o.setup(path_h, false, ih, ibc, t0, t0 + 900.0, 700.0, ln)
+		var grp: String = Net.lines[ln]["group"]
+		var all_same := true
+		for e in o.entries:
+			if String(Net.lines[e["info"]["line"]]["group"]) != grp:
+				all_same = false
+		check(all_same, "%s: only trains of lines of its group come the other way" % ln)
+		counts[ln] = o.entries.size()
+		o.queue_free()
+	var o_all := Oncoming.new()
+	add_child(o_all)
+	o_all.setup(path_h, false, ih, ibc, t0, t0 + 900.0, 700.0)
+	check(o_all.entries.size() >= int(counts["district"]) + int(counts["piccadilly"]), "without a line, trains of both lines are counted (%d >= %d + %d)" % [o_all.entries.size(), counts["district"], counts["piccadilly"]])
+	check(int(counts["district"]) > 0 and int(counts["piccadilly"]) > 0, "both lines run Barons Court - Hammersmith the other way (%d, %d)" % [counts["district"], counts["piccadilly"]])
+	o_all.queue_free()
+	# a single track: no second track in the scenery, nothing comes the other way
+	var ic: int = Net.name_to_idx["Chesham"]
+	var ica: int = Net.name_to_idx["Chalfont & Latimer"]
+	var path_c := TrackPath.between(Net.station_ids[ica], Net.station_ids[ic], 6000.0, 120.0, 120.0)
+	check(path_c.single, "Chalfont & Latimer - Chesham is a single track")
+	var any_pair := false
+	for k in range(-10, 500):
+		if (path_c.cell_scene(k) & RunScenery.PAIR) != 0:
+			any_pair = true
+	check(not any_pair, "a single track has no second track in its scenery")
+	var oc := Oncoming.new()
+	add_child(oc)
+	oc.setup(path_c, false, ica, ic, t0, t0 + 900.0, 6000.0, "metropolitan")
+	check(oc.entries.is_empty(), "nothing comes the other way on a single track")
+	oc.queue_free()
+	check(not TrackPath.between(idh, idb, 700.0, 120.0, 120.0).single, "a double track is not single")
+	# the module draws the other face itself: the pair bit is cleared for two faces, kept for one
+	var scn := RunScenery.OPEN | RunScenery.PAIR | (1 << 8)
+	check((PlatformModule.ext_scene(scn, true) & RunScenery.PAIR) == 0 and (PlatformModule.ext_scene(scn, true) & ~RunScenery.PAIR) == (scn & ~RunScenery.PAIR), "a module with two faces draws no second copy of the pair, and nothing else changes")
+	check(PlatformModule.ext_scene(scn, false) == scn, "a module with one face keeps the pair")
 
 
 func _hop(na: String, nb: String, mirror: bool, cam_s: float, t0: float) -> void:
@@ -48,7 +97,7 @@ func _hop(na: String, nb: String, mirror: bool, cam_s: float, t0: float) -> void
 	add_child(onc)
 	onc.setup(path, mirror, ia, ib, t0, t1, dist)
 	check(onc.entries.size() > 0, "%s -> %s: the ride has oncoming trains" % [na, nb])
-	check(is_equal_approx(onc.lat, RunScenery.TRACK_SPACING * (1.0 if mirror else -1.0)), "the second track is on the platform side (%s)" % ("right" if mirror else "left"))
+	check(is_equal_approx(onc.side, 1.0 if mirror else -1.0), "the second track is on the platform side (%s)" % ("right" if mirror else "left"))
 	# --- each goes from the destination to the origin in its run's time
 	var last_s := 1e9
 	for e in onc.entries:
@@ -98,13 +147,14 @@ func _hop(na: String, nb: String, mirror: bool, cam_s: float, t0: float) -> void
 			var vs: PackedVector3Array = mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]
 			for v in vs:
 				var lz := (pose_cam.affine_inverse() * (mi.global_transform * v)).z
-				if absf(lz) > 8.0 and absf(lz) < 18.0 and mesh.surface_get_material(si) == Mats.get_mat("rail"):
+				if absf(lz) > 2.5 and absf(lz) < 18.0 and mesh.surface_get_material(si) == Mats.get_mat("rail"):
 					zsum += lz
 					zn += 1
 	check(zn > 0, "%s -> %s: the scenery has rails of a second track" % [na, nb])
 	if zn > 0:
 		var zmean := zsum / float(zn)
-		check(signf(zmean) == signf(onc.lat) and absf(absf(zmean) - RunScenery.TRACK_SPACING) < 1.5, "the trains run on the side the scenery has the second track (rails at %.1f m, trains at %.1f m)" % [zmean, onc.lat])
+		var want_sp := path.spacing_at(float(kc) * 12.0)
+		check(signf(zmean) == onc.side and absf(absf(zmean) - want_sp) < 1.5, "the trains run on the side the scenery has the second track, at its spacing (rails at %.1f m, trains at %.1f m)" % [zmean, onc.side * want_sp])
 	var worst_lat := 0.0
 	var worst_dir := -1.0
 	var shown_max := 0
@@ -128,20 +178,22 @@ func _hop(na: String, nb: String, mirror: bool, cam_s: float, t0: float) -> void
 			check(false, "the train is built by the time it is near")
 			continue
 		var s_mid: float = onc.s_of(e0, Clock.now)
-		if absf(s_mid - cam_s) > Oncoming.VIEW + float(e0["len"]) * 0.5 + 1.0:
+		if s_mid - cam_s > Oncoming.AHEAD + float(e0["len"]) * 0.5 or cam_s - s_mid > Oncoming.BEHIND + float(e0["len"]) * 0.5:
 			check(not tr.visible, "a train %.0f m away is not drawn" % absf(s_mid - cam_s))
 			continue
 		for i in tr.cars.size():
 			var car := tr.cars[i] as Node3D
 			var sc := s_mid - float(tr.car_x[i])
-			var want_vis := absf(sc - cam_s) < Oncoming.VIEW + 10.0 and (path.cell_scene(int(roundf(sc / 12.0))) & RunScenery.PAIR) != 0
+			var want_vis := sc - cam_s < Oncoming.AHEAD and cam_s - sc < Oncoming.BEHIND and (path.cell_scene(int(roundf(sc / 12.0))) & RunScenery.PAIR) != 0
 			check(car.visible == want_vis or not tr.visible, "car %d at s %.0f: shown %s, should be %s" % [i, sc, str(car.visible), str(want_vis)])
 			if not car.visible:
 				continue
+			# a car that is shown stands wholly on the scenery that is drawn (TunnelRun's cells: from 11 behind the player's cell to 10 ahead of it)
+			check(sc + 9.5 <= float(kc + TunnelRun.N_SEG / 2 - 1) * 12.0 + 6.0 and sc - 9.5 >= float(kc - TunnelRun.N_SEG / 2) * 12.0 - 6.0, "car %d (s %.0f) lies within the cells that are drawn round the player's cell %d" % [i, sc, kc])
 			var p := path.pose(sc)
 			var local := p.affine_inverse() * car.global_position
 			# a car stands on the second track (a bend moves the middle of a long car off the chord by a few centimetres)
-			worst_lat = maxf(worst_lat, absf(local.z - onc.lat))
+			worst_lat = maxf(worst_lat, absf(local.z - onc.side * path.spacing_at(sc)))
 			check(absf(local.y - (PlatformModule.RAIL_Y)) < 0.9, "car %d stands at rail level (y %.2f)" % [i, local.y])
 			var fwd := car.global_transform.basis.x * (-1.0 if i == tr.cars.size() - 1 else 1.0)
 			worst_dir = maxf(worst_dir, fwd.dot(p.basis.x))

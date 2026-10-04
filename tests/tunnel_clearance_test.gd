@@ -19,9 +19,10 @@ func run():
 	for sc0: int in scenes_c.duplicate():
 		if not RunScenery.enclosed(sc0 & 7):
 			scenes_c.append(sc0 | RunScenery.PAIR)          # (with the other track of the pair beside it: its furniture must stay out of this one's way too)
+			scenes_c.append(sc0 | RunScenery.PAIR | (15 << 13) | (15 << 17))          # ... also when it has come as close as the line has it
 	for scene in scenes_c:
 		for v in 2 * TunnelRun.N_VAR:                 # (bending keeps every offset from the track: the straight cell is the one to measure)
-			var kit: MeshKit = run._cell_kit((16 << 18) | (scene << 3) | v)
+			var kit: MeshKit = run._cell_kit((16 << 24) | (scene << 3) | v)
 			for mat in kit.surfaces:
 				if mat in ["tunnel_lining", "trackbed", "rail", "track_sleepers", "ballast"]:
 					continue

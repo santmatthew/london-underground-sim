@@ -230,27 +230,27 @@ func follow_path(path: TrackPath, s_c: float, world: Transform3D) -> void:
 		(cars[i] as Node3D).transform = t
 
 
-## A train on the second track of a ride (Oncoming): its middle is at path distance `s_mid`, `lat` metres to the side of the path (path z), and it runs toward lower s, so the front of the train is the
-## end at the lower s. `world` is where the path's frame is in the world.
-func follow_oncoming(path: TrackPath, s_mid: float, world: Transform3D, lat: float) -> void:
+## A train on the second track of a ride (Oncoming): its middle is at path distance `s_mid`, the track `side` (+1 / -1) of the path (path z) at the spacing the path has there (`TrackPath.spacing_at`), and it runs
+## toward lower s, so the front of the train is the end at the lower s. `world` is where the path's frame is in the world.
+func follow_oncoming(path: TrackPath, s_mid: float, world: Transform3D, side: float) -> void:
 	_articulated = true
 	var rail := Transform3D(Basis.IDENTITY, Vector3(0.0, PlatformModule.RAIL_Y, 0.0))
-	var centre := _bogie_pose(_beside(path, s_mid - 6.0, lat), _beside(path, s_mid + 6.0, lat)) * rail
+	var centre := _bogie_pose(_beside(path, s_mid - 6.0, side), _beside(path, s_mid + 6.0, side)) * rail
 	global_transform = world * centre
 	var inv := centre.affine_inverse()
 	for i in cars.size():
 		var half := _bogie_half(i)
 		var sc := s_mid - float(car_x[i])
-		var t := inv * (_bogie_pose(_beside(path, sc - half, lat), _beside(path, sc + half, lat)) * rail)
+		var t := inv * (_bogie_pose(_beside(path, sc - half, side), _beside(path, sc + half, side)) * rail)
 		if i == cars.size() - 1:
 			t.basis = t.basis * Basis(Vector3.UP, PI)
 		(cars[i] as Node3D).transform = t
 
 
-## the point of the track `lat` metres to the side of the path at distance s
-static func _beside(path: TrackPath, s: float, lat: float) -> Vector3:
+## the point of the second track beside the path at distance s
+static func _beside(path: TrackPath, s: float, side: float) -> Vector3:
 	var p := path.pose(s)
-	return p.origin + p.basis * Vector3(0.0, 0.0, lat)
+	return p.origin + p.basis * Vector3(0.0, 0.0, side * path.spacing_at(s))
 
 
 ## the car a world point belongs to: the one whose walkable box holds it, else the nearest

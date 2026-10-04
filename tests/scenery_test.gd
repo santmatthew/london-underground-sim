@@ -93,7 +93,7 @@ func run():
 	for scene in scenes_t:
 		for v in 2 * TunnelRun.N_VAR:
 			for cls in [0, 5]:
-				var kit: MeshKit = run_node._cell_kit(((cls + 16) << 18) | (scene << 3) | v)
+				var kit: MeshKit = run_node._cell_kit(((cls + 16) << 24) | (scene << 3) | v)
 				worst = maxi(worst, kit.triangle_count())
 				if (scene & RunScenery.PAIR) != 0 and cls == 0:
 					# the other track lies on the platform side, a full track spacing off: rails there, ground out to either side
@@ -200,4 +200,97 @@ func run():
 				bad_hops += 1
 				print("    %s -> %s at %.2f x the real length: %d cells differ" % [Net.stations[Net.station_ids.find(ab[0])]["name"], Net.stations[Net.station_ids.find(ab[1])]["name"], factor, mism])
 	check(bad_hops == 0, "the ride's scenery agrees with the stations' at both ends of %d hop lengths (%d cells compared, %d hops disagree)" % [hops, cells_cmp, bad_hops])
+	# --- the other track of the pair: the station's spacing near the stops and the tunnel mouths, narrowing smoothly to the line's between
+	var dist_p := 2400.0
+	var secs_p := [[0, 900.0], [1, 300.0], [0, 1200.0]]
+	var sp := RunScenery.cell_scenes(secs_p, false, 5, -14, 210, dist_p)
+	var cont_ok := true
+	var smooth_ok := true
+	var near_ok := true
+	var tun_ok := true
+	var reached := 0
+	var enc_ok := true
+	for k in range(-14, 211):
+		var scn: int = sp[k - (-14)]
+		var s0 := float(k) * 12.0 - 6.0
+		var s1 := s0 + 12.0
+		var prof_k := scn & 7
+		if prof_k == RunScenery.BORE:
+			if (scn & RunScenery.PAIR) != 0 or (scn >> 13) != 0:
+				enc_ok = false
+			continue
+		var la := (scn >> 13) & 15
+		var lb := (scn >> 17) & 15
+		reached = maxi(reached, maxi(la, lb))
+		if absi(la - lb) > 2:
+			smooth_ok = false
+		if k + 1 <= 210 and (sp[k + 1 - (-14)] & 7) != RunScenery.BORE and ((sp[k + 1 - (-14)] >> 13) & 15) != lb:
+			cont_ok = false
+		var d_stop := minf(absf(s0), absf(dist_p - s0)) if (s0 >= 0.0 and s0 <= dist_p) else 0.0
+		if d_stop < RunScenery.RAMP_STATION and la != 0:
+			near_ok = false
+		# the mouths: the cell next to a tunnel starts at level 0 (and the one before it ends at 0)
+		if k - 1 >= -14 and (sp[k - 1 - (-14)] & 7) == RunScenery.BORE and la != 0:
+			tun_ok = false
+		if k + 1 <= 210 and (sp[k + 1 - (-14)] & 7) == RunScenery.BORE and lb != 0:
+			tun_ok = false
+	check(enc_ok, "a tunnel cell has no second track")
+	check(cont_ok, "the level at the end of a cell is the level at the start of the next")
+	check(smooth_ok, "the spacing changes by at most two levels across a cell")
+	check(near_ok, "within %.0f m of a stop the tracks keep the station's spacing" % RunScenery.RAMP_STATION)
+	check(tun_ok, "the tracks are at the station's spacing at a tunnel mouth")
+	check(reached == RunScenery.PAIR_LEVELS, "the tracks come together (%d of %d levels reached on the open stretch)" % [reached, RunScenery.PAIR_LEVELS])
+	check(is_equal_approx(RunScenery.spacing_of_level(0), RunScenery.TRACK_SPACING) and is_equal_approx(RunScenery.spacing_of_level(RunScenery.PAIR_LEVELS), RunScenery.SPACING_MIN), "the levels run from the station's spacing to the line's")
+	# a station's running track (no distance): always the station's spacing
+	var st_sc := RunScenery.cell_scenes([[0, 900.0]], false, 5, 0, 60)
+	var st_flat := true
+	for scx in st_sc:
+		if ((scx >> 13) & 255) != 0:
+			st_flat = false
+	check(st_flat, "a station's running track keeps the station's spacing")
+	# the path reads the same numbers: spacing_at is the line's spacing in the middle, the station's at the ends, and moves smoothly
+	var tpp := TrackPath.new()
+	tpp.length = dist_p
+	tpp._scenes = sp
+	tpp._kmin = -14
+	check(is_equal_approx(tpp.spacing_at(100.0), RunScenery.TRACK_SPACING), "spacing_at near the origin is the station's")
+	check(absf(tpp.spacing_at(600.0) - RunScenery.SPACING_MIN) < 0.2, "spacing_at in the middle of the first open stretch is the line's (%.2f m)" % tpp.spacing_at(600.0))
+	var jump := 0.0
+	var prev := tpp.spacing_at(0.0)
+	for i in range(1, 400):
+		var v := tpp.spacing_at(float(i))
+		if (tpp.cell_scene(int(roundf(float(i) / 12.0))) & 7) != RunScenery.BORE and (tpp.cell_scene(int(roundf(float(i - 1) / 12.0))) & 7) != RunScenery.BORE:
+			jump = maxf(jump, absf(v - prev))
+		prev = v
+	check(jump < 0.12, "spacing_at has no steps (largest change in a metre: %.3f m)" % jump)
+	# a bent cell keeps the other track beside this one (the whole cell bends about the track, its stub and headwalls with it)
+	for cls_b in [5, -5, 14]:
+		for scene_b in [RunScenery.OPEN | RunScenery.PAIR, RunScenery.CUTTING | RunScenery.PAIR | (3 << 3) | (3 << 5) | (1 << 8), RunScenery.EMBANK | RunScenery.PAIR | (3 << 3) | (3 << 5) | (1 << 9) | (1 << 11)]:
+			var kb: MeshKit = TunnelRun._cell_kit(((cls_b + 16) << 24) | (scene_b << 3) | 1)
+			var zp := 0.0
+			var np := 0
+			var zm := 0.0
+			var nm := 0
+			for pv in (kb.surfaces["rail"]["v"] as PackedVector3Array):
+				if pv.z > 0.0:
+					zp += pv.z
+					np += 1
+				else:
+					zm += pv.z
+					nm += 1
+			var sep := zp / maxf(float(np), 1.0) - zm / maxf(float(nm), 1.0)
+			check(np > 0 and nm > 0 and absf(sep - RunScenery.TRACK_SPACING) < 1.0, "class %d, scene %x: the other track is %.1f m from this one (%.1f)" % [cls_b, scene_b, RunScenery.TRACK_SPACING, sep])
+			check(TunnelRun._finish(kb).get_surface_count() > 0, "class %d, scene %x with its pair builds a mesh" % [cls_b, scene_b])
+	# the other track's rails are where the spacing says (a cell at the line's spacing, a cell at the station's)
+	for lv in [0, 15]:
+		var kit_l := MeshKit.new()
+		RunScenery.add_scene(kit_l, RunScenery.OPEN | RunScenery.PAIR | (lv << 13) | (lv << 17), 0, -6.0, 6.0, 6.45)
+		var zs := 0.0
+		var zn2 := 0
+		for pv in (kit_l.surfaces["rail"]["v"] as PackedVector3Array):
+			if pv.z < 4.6:
+				zs += pv.z
+				zn2 += 1
+		var want_z := 6.45 - RunScenery.spacing_of_level(lv)
+		check(zn2 > 0 and absf(zs / float(zn2) - (want_z + 0.2625)) < 0.1, "level %d: the other track's rails lie %.1f m from this one (mean z %.2f, track at %.2f)" % [lv, RunScenery.spacing_of_level(lv), zs / maxf(float(zn2), 1.0), want_z])
 	print("OK" if ok else "FAILED")

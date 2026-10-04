@@ -243,7 +243,7 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 				var tmp := MeshKit.new()
 				tmp.seed_rng(5 + int(r[5]))
 				var kk: int = r[5]
-				RunScenery.add_scene(tmp, int(r[0]) & ~(RunScenery.PAIR if two_faces else 0), (0 if posmod(kk, 2) == 0 else 3) + posmod(kk, 3), float(r[3]), float(r[4]), ztrack, {"u0": float(r[3]), "near_flat": two_faces})
+				RunScenery.add_scene(tmp, ext_scene(int(r[0]), two_faces), (0 if posmod(kk, 2) == 0 else 3) + posmod(kk, 3), float(r[3]), float(r[4]), ztrack, {"u0": float(r[3]), "near_flat": two_faces})
 				if west:
 					tmp.mirror_x()
 				if s < 0.0:
@@ -404,6 +404,11 @@ func _run_detail(s: float, west: bool, lo: float, hi: float, plat_end: float, zw
 			_lights.append([lp, 1.3, 9.0])
 
 
+## the scene of an ext cell as the module builds it: with two faces the other face is the pair's second track, so the cell's own PAIR bit is cleared (RunScenery.add_scene would draw it twice)
+static func ext_scene(scn: int, two_faces: bool) -> int:
+	return scn & ~(RunScenery.PAIR if two_faces else 0)
+
+
 ## What lies beyond a platform end for the track of the face with sign `s`, as cells for RunScenery: [[scene, x0, x1, d0, d1, cell], ...] ascending in x from `a` to `b`, with the cells of
 ## deep-tube bore merged ([] when it is all bore: the bore is built as it always was). d0 / d1: distances from the stop; the cell is built in that frame and mirrored for the west end.
 func _ext_runs(s: float, west: bool, a: float, b: float) -> Array:
@@ -419,7 +424,7 @@ func _ext_runs(s: float, west: bool, a: float, b: float) -> Array:
 	var d1 := d0 + (b - a)
 	var k0 := int(floor((d0 + RunScenery.CELL * 0.5) / RunScenery.CELL))
 	var k1 := int(floor((d1 + RunScenery.CELL * 0.5) / RunScenery.CELL))
-	var scenes := RunScenery.cell_scenes(secs, bool(e.get("ss", false)), int(e.get("seed_w" if west else "seed_e", 0)), k0, k1)
+	var scenes := RunScenery.cell_scenes(secs, bool(e.get("ss", false)), int(e.get("seed_w" if west else "seed_e", 0)), k0, k1, -1.0, bool(e.get("single_w" if west else "single_e", false)))
 	var cells: Array = []
 	var any := false
 	for i in scenes.size():

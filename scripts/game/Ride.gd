@@ -301,7 +301,7 @@ func _start_tunnel(travelled: float) -> void:
 	var stops: PackedInt32Array = Timetable.run_stops[run]
 	oncoming = Oncoming.new()
 	add_child(oncoming)
-	oncoming.setup(path, train.door_side == "R", stops[k_from], stops[k_from + 1], t_dep, t_arr, dist)
+	oncoming.setup(path, train.door_side == "R", stops[k_from], stops[k_from + 1], t_dep, t_arr, dist, train.line_id)
 	oncoming.begin(travelled + float(train.car_x[ref_car]), Clock.now)
 	if origin.crowd != null:
 		origin.crowd.finish_riders(train)            # riders appear a few per frame; the destination station takes over the complete cars

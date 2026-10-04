@@ -1,0 +1,7 @@
+{
+  "_comment": "Hops of the network that are single track, so the ride has no second track beside it (RunScenery PAIR) and no train comes the other way. Station pairs (NaPTAN ids), either direction. Chesham branch: Chalfont & Latimer - Chesham (Metropolitan); Mill Hill East branch: Finchley Central - Mill Hill East (Northern) - see https://london.gov.uk/who-we-are/what-london-assembly-does/questions-mayor/find-an-answer/single-track-lines and https://en.wikipedia.org/wiki/Mill_Hill_East_tube_station . The Heathrow Terminal 4 loop is single track too but lies in tunnel here, where no second track is drawn anyway.",
+  "pairs": [
+    ["940GZZLUCAL", "940GZZLUCSM"],
+    ["940GZZLUFYC", "940GZZLUMHL"]
+  ]
+}
