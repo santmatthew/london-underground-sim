@@ -68,6 +68,17 @@ static func scene_for(key: String) -> PackedScene:
 	return _packed[key]
 
 
+## the length of a train of `n` cars of the size class `p_kind` (what `build` lays out)
+static func length_for(p_kind: String, n: int) -> float:
+	var pm: Array = PITCH[p_kind]
+	var cars := maxi(3, n)
+	var x := 0.0
+	for i in cars:
+		if i > 0:
+			x -= pm[1] if (i == 1 or i == cars - 1) else pm[0]
+	return -x + float(CAR_LEN[p_kind + "_cab"])
+
+
 func build(p_kind: String, p_cars: int, p_line: String, livery: Color) -> void:
 	kind = p_kind
 	n_cars = maxi(3, p_cars)
