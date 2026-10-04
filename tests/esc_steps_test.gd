@@ -58,6 +58,37 @@ func run():
 					z0 = minf(z0, v.z)
 					z1 = maxf(z1, v.z)
 				check(absf((z1 - z0) - Escalator.LANE_W) < 0.001 and absf((z0 + z1) * 0.5 - e.lane_z(li)) < 0.001, "%s lane %d: as wide as the lane and on it" % [tag, li])
+			# the handrails: a ribbon a lane (its two rails) moving with the lane, following the balustrade
+			var hr := e.get_node_or_null("Handrails") as MeshInstance3D
+			check(hr != null and (hr.mesh as ArrayMesh).get_surface_count() == lanes.size(), "%s: a handrail surface a lane" % tag)
+			if hr != null:
+				for li in lanes.size():
+					var hm := (hr.mesh as ArrayMesh).surface_get_material(li) as ShaderMaterial
+					check(float(hm.get_shader_parameter("speed")) == Escalator.SPEED * float(lanes[li]), "%s lane %d: the rails move %s with the steps" % [tag, li, "down" if lanes[li] > 0.0 else "up"])
+					var hv: PackedVector3Array = (hr.mesh as ArrayMesh).surface_get_arrays(li)[Mesh.ARRAY_VERTEX]
+					var zlo := 1e9
+					var zhi := -1e9
+					for v in hv:
+						zlo = minf(zlo, v.z)
+						zhi = maxf(zhi, v.z)
+					# (two rails: one each side of the lane, between the balustrades' middles)
+					check(zlo > e.lane_z(li) - Escalator.PITCH * 0.5 and zhi < e.lane_z(li) + Escalator.PITCH * 0.5 and zhi - zlo > Escalator.PITCH - 0.4, "%s lane %d: the rails lie on the lane's balustrades (z %.2f .. %.2f)" % [tag, li, zlo, zhi])
+			var rp: Array = e._rail_path()
+			var first: Vector2 = rp[0][0]
+			var last: Vector2 = rp[rp.size() - 1][0]
+			check(absf(first.y - Escalator.RAIL_H) < 0.001 and absf(last.y - (-rise + Escalator.RAIL_H)) < 0.001 and absf(last.x - e.length) < 0.001, "%s: the rail runs from one newel to the other at handrail height" % tag)
+			var mono := true
+			var worst := 0.0
+			for i in rp.size():
+				if i > 0 and float(rp[i][1]) <= float(rp[i - 1][1]):
+					mono = false
+				# on the slope the rail lies RAIL_H above the tread line, along the normal
+				var pt: Vector2 = rp[i][0]
+				if pt.x > Escalator.PLATE + 1.0 and pt.x < Escalator.PLATE + e.run - 1.0:
+					var dist_line := (pt.y + (pt.x - Escalator.PLATE) * tan(Escalator.ANGLE)) * cos(Escalator.ANGLE)
+					worst = maxf(worst, absf(dist_line - Escalator.RAIL_H))
+			check(mono, "%s: the rail's arc length only grows" % tag)
+			check(worst < 0.01, "%s: on the slope the rail is %.3f m above the treads, along the normal (worst %.3f m off)" % [tag, Escalator.RAIL_H, worst])
 			# the culling box holds the shaft (the vertices the engine sees are not where they are drawn)
 			var box := mesh.custom_aabb
 			check(box.has_point(Vector3(0.0, 0.0, 0.0)) and box.has_point(Vector3(e.length, -rise, 0.0)) and box.has_point(Vector3(e.length * 0.5, -rise * 0.5, e.width * 0.5)), "%s: the culling box holds the shaft" % tag)
@@ -72,6 +103,6 @@ func run():
 	var st := Escalator.new()
 	st.build(5.0, [1.0, -1.0], "tile_white", true)
 	add_child(st)
-	check(st.get_node_or_null("Steps") == null, "fixed stairs have no moving steps")
+	check(st.get_node_or_null("Steps") == null and st.get_node_or_null("Handrails") == null, "fixed stairs have no moving steps or handrails")
 	st.queue_free()
 	print("OK" if ok else "FAILED")

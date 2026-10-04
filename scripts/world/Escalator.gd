@@ -232,7 +232,7 @@ func _balustrade(z: float) -> void:
 	var mid := Vector3(PLATE + run * 0.5, -rise * 0.5, z)
 	# sloped inner panel (black glossy), steel top cover, handrail (offsets follow the slope normal)
 	kit.box_xf({"*": "steel", "top": "steel"}, Transform3D(rot, mid + rot * Vector3(0, 0.45, 0)), Vector3(slope_len, 0.9, t), floor_y)
-	kit.box_xf("black", Transform3D(rot, mid + rot * Vector3(0, 0.97, 0)), Vector3(slope_len + 0.02, 0.07, 0.09), floor_y)
+	# (the handrail is the moving ribbon of _handrails_mesh)
 	# under-lit skirt strip
 	kit.box_xf("light_emissive", Transform3D(rot, mid + rot * Vector3(0, 0.03, 0)), Vector3(slope_len, 0.04, t + 0.02), floor_y)
 	# flat plate sections
@@ -240,7 +240,6 @@ func _balustrade(z: float) -> void:
 		var cx: float = (xr[0] + xr[1]) * 0.5
 		var w: float = xr[1] - xr[0]
 		kit.box({"*": "steel", "top": "steel"}, Vector3(cx, xr[2] + 0.45, z), Vector3(w, 0.9, t), floor_y)
-		kit.box("black", Vector3(cx, xr[2] + 0.98, z), Vector3(w, 0.07, 0.09), floor_y)
 	# newel at each end (rounded cap approximated by a box)
 	kit.box("steel", Vector3(0.0, 0.5, z), Vector3(0.2, 1.0, t + 0.04), floor_y)
 	kit.box("steel", Vector3(length, -rise + 0.5, z), Vector3(0.2, 1.0, t + 0.04), floor_y)
@@ -271,6 +270,10 @@ func _guard_slab(z: float, thick: float) -> void:
 	_slabs.append(pts)
 
 
+const RAIL_H := 0.985              # the handrail's centre line, along the normal to the tread line
+const RAIL_W := 0.085
+const RAIL_T := 0.045
+const RAIL_OFF := 0.075            # how far from the middle of the balustrade each lane's rail lies, toward its lane
 const STEP_PITCH := 0.4            # arc length between neighbouring steps (a 0.2 m riser at 30 degrees)
 const STEP_SINK := 0.07
 
@@ -333,6 +336,85 @@ func _steps_mesh() -> ArrayMesh:
 	return mesh
 
 
+## The centre line of a handrail in the (x, y) plane, from the newel at the top to the newel at the bottom, as [point, arc length u]: along the plate, down the line `RAIL_H` above the treads, along the
+## bottom plate, the corners rounded (a quadratic curve through each)
+func _rail_path() -> Array:
+	var h := RAIL_H
+	var half := tan(ANGLE * 0.5)
+	var c1 := Vector2(PLATE + h * half, h)
+	var c2 := Vector2(PLATE + run + h * half, -rise + h)
+	var p0 := Vector2(0.1, h)
+	var p3 := Vector2(length, -rise + h)
+	var d_flat := Vector2(1.0, 0.0)
+	var d_slope := Vector2(cos(ANGLE), -sin(ANGLE))
+	var tl := 1.1 * half          # (tangent length of a corner rounded with a radius of 1.1 m)
+	var pts: Array = [p0]
+	for corner in [[c1, d_flat, d_slope], [c2, d_slope, d_flat]]:
+		var c: Vector2 = corner[0]
+		var a: Vector2 = c - (corner[1] as Vector2) * tl
+		var b: Vector2 = c + (corner[2] as Vector2) * tl
+		for k in range(0, 7):
+			var t := float(k) / 6.0
+			pts.append(a.lerp(c, t).lerp(c.lerp(b, t), t))
+	pts.append(p3)
+	var out: Array = []
+	var u := 0.0
+	for i in pts.size():
+		if i > 0:
+			u += (pts[i] as Vector2).distance_to(pts[i - 1])
+		out.append([pts[i], u])
+	return out
+
+
+## The moving handrails, one surface a lane (the lane's two rails): a ribbon of rubber following the balustrade at the speed of the steps, patterned by shaders/escalator_handrail.gdshader
+func _handrails_mesh() -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	var path := _rail_path()
+	var shader := load("res://shaders/escalator_handrail.gdshader") as Shader
+	for li in lanes.size():
+		var verts := PackedVector3Array()
+		var norms := PackedVector3Array()
+		var uvs := PackedVector2Array()
+		var idx := PackedInt32Array()
+		for side in [-1.0, 1.0]:
+			# the balustrade on that side of the lane, and the rail on the lane's side of it
+			var zb: float = lane_z(li) + side * PITCH * 0.5
+			var zr: float = zb - side * RAIL_OFF
+			var base := verts.size()
+			for i in path.size():
+				var p: Vector2 = path[i][0]
+				var u: float = path[i][1]
+				var d: Vector2 = ((path[mini(i + 1, path.size() - 1)][0] as Vector2) - (path[maxi(i - 1, 0)][0] as Vector2)).normalized()
+				var n := Vector2(-d.y, d.x)          # (up from the rail's direction)
+				var top := p + n * RAIL_T * 0.5
+				var bot := p - n * RAIL_T * 0.5
+				# top-left, top-right, bottom-left, bottom-right (left: toward -z)
+				for q in [[top, -1.0, Vector3(n.x, n.y, 0.0), 0.0], [top, 1.0, Vector3(n.x, n.y, 0.0), 1.0], [bot, -1.0, Vector3(0, 0, -1.0), 0.0], [bot, 1.0, Vector3(0, 0, 1.0), 1.0]]:
+					var pos: Vector2 = q[0]
+					verts.append(Vector3(pos.x, pos.y, zr + float(q[1]) * RAIL_W * 0.5))
+					norms.append(q[2])
+					uvs.append(Vector2(float(q[3]), u))
+			for i in path.size() - 1:
+				var r0 := base + i * 4
+				var r1 := r0 + 4
+				# (Godot's front faces are the clockwise ones) top, right side, left side
+				idx.append_array(PackedInt32Array([r0, r1, r1 + 1, r0, r1 + 1, r0 + 1]))
+				idx.append_array(PackedInt32Array([r0 + 1, r1 + 1, r1 + 3, r0 + 1, r1 + 3, r0 + 3]))
+				idx.append_array(PackedInt32Array([r0, r1 + 2, r1, r0, r0 + 2, r1 + 2]))
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		arrays[Mesh.ARRAY_NORMAL] = norms
+		arrays[Mesh.ARRAY_TEX_UV] = uvs
+		arrays[Mesh.ARRAY_INDEX] = idx
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var m := ShaderMaterial.new()
+		m.shader = shader
+		m.set_shader_parameter("speed", SPEED * float(lanes[li]))
+		mesh.surface_set_material(li, m)
+	return mesh
+
+
 func _finish() -> void:
 	var mats := {}
 	for k in kit.surfaces.keys():
@@ -367,6 +449,12 @@ func _finish() -> void:
 		steps.set_meta("shader_placed", true)          # (its vertices are not where they are drawn: audits that read the mesh skip it)
 		steps.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(steps)
+	if not stairs:
+		var rails := MeshInstance3D.new()
+		rails.mesh = _handrails_mesh()
+		rails.name = "Handrails"
+		rails.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(rails)
 	var body := StaticBody3D.new()
 	body.name = "Collision"
 	for c in _cols:
