@@ -1,0 +1,311 @@
+{
+"_comment":"Platform depth in metres below street per line group, derived from data/platform_levels.json (ground level - platform level) for the stations without a measured one; tools/build_real_depths.py",
+"940GZZLUKEN":{
+"depths":{
+"bakerloo":[
+6.6
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUNWY":{
+"depths":{
+"bakerloo":[
+6.0
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUWYC":{
+"depths":{
+"bakerloo":[
+6.5
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUHSN":{
+"depths":{
+"bakerloo":[
+6.2
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUKSL":{
+"depths":{
+"bakerloo":[
+6.6
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUKPK":{
+"depths":{
+"bakerloo":[
+7.5
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUBST":{
+"depths":{
+"bakerloo":[
+20.3
+],
+"jubilee":[
+21.1
+],
+"ss":[
+7.2
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUNAN":{
+"depths":{
+"central":[
+8.6
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUHGR":{
+"depths":{
+"central":[
+8.1
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUGGH":{
+"depths":{
+"central":[
+6.2
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUERC":{
+"depths":{
+"ss":[
+7.2
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUHSK":{
+"depths":{
+"ss":[
+5.7
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUBKF":{
+"depths":{
+"ss":[
+7.3
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUMMT":{
+"depths":{
+"ss":[
+8.1
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUPAH":{
+"depths":{
+"ss":[
+3.5
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLURYO":{
+"depths":{
+"ss":[
+6.0
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUWSP":{
+"depths":{
+"ss":[
+5.5
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUUPM":{
+"depths":{
+"ss":[
+8.8
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUPLW":{
+"depths":{
+"ss":[
+6.6
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUWKN":{
+"depths":{
+"ss":[
+5.7
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUHSD":{
+"depths":{
+"piccadilly":[
+4.6
+],
+"ss":[
+4.6
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUWBN":{
+"depths":{
+"ss":[
+5.0
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUSFS":{
+"depths":{
+"ss":[
+6.0
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUSTM":{
+"depths":{
+"jubilee":[
+8.2
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUNWH":{
+"depths":{
+"ss":[
+6.0
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLURYL":{
+"depths":{
+"piccadilly":[
+6.2
+],
+"ss":[
+6.2
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUCXY":{
+"depths":{
+"ss":[
+6.6
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUHBT":{
+"depths":{
+"northern":[
+12.6
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUFYC":{
+"depths":{
+"northern":[
+8.5
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUCTN":{
+"depths":{
+"northern":[
+16.9
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUMTC":{
+"depths":{
+"northern":[
+15.3
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUBLM":{
+"depths":{
+"northern":[
+13.4
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUAGL":{
+"depths":{
+"northern":[
+35.6
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUBOR":{
+"depths":{
+"northern":[
+17.5
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUOAK":{
+"depths":{
+"piccadilly":[
+6.2
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUHRC":{
+"depths":{
+"piccadilly":[
+13.0
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+},
+"940GZZLUHR5":{
+"depths":{
+"piccadilly":[
+12.7
+]
+},
+"source":"platform levels (TfL FOI table via tubedepths)"
+}
+}

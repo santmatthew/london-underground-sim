@@ -6,6 +6,7 @@ extends RefCounted
 const STATIONS := "res://data/stations_real.json"
 const PLATFORM_NUMBERS := "res://data/platform_numbers.json"
 const LAYOUTS := "res://data/station_layouts.json"
+const DERIVED_DEPTHS := "res://data/real_depths.json"      # depths from the platform levels for the stations without a measured one (tools/build_real_depths.py)
 const EL_DEPTHS := "res://data/elizabeth_depths.json"      # platform depths of the Elizabeth line (tools/build_elizabeth_depths.py), merged into the layouts' depths
 
 static var _stations: Dictionary = {}
@@ -30,6 +31,18 @@ static func _load() -> void:
 						_numbers = parsed
 					_:
 						_layouts = parsed
+	if FileAccess.file_exists(DERIVED_DEPTHS):
+		var fd := FileAccess.open(DERIVED_DEPTHS, FileAccess.READ)
+		var dd = JSON.parse_string(fd.get_as_text())
+		if dd is Dictionary:
+			for nap in dd:
+				if String(nap).begins_with("_"):
+					continue
+				var ent2: Dictionary = _layouts.get(nap, {})
+				if not (ent2.get("depths", {}) as Dictionary).is_empty():
+					continue          # (measured ones win)
+				ent2["depths"] = dd[nap]["depths"]
+				_layouts[nap] = ent2
 	if FileAccess.file_exists(EL_DEPTHS):
 		var fe := FileAccess.open(EL_DEPTHS, FileAccess.READ)
 		var el = JSON.parse_string(fe.get_as_text())
