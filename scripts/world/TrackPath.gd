@@ -48,7 +48,7 @@ static func data() -> Dictionary:
 ## the path of the track from station `a` to station `b` (NaPTAN ids) as the train sets off from a (distance 0 = where its centre stands), `dist` metres long.
 ## Without data for the pair, a straight path. `head` / `tail` are the exact curves of curved platforms at the two ends, [[length, curvature], ...] in the direction of travel: `head` from distance 0,
 ## `tail` ending at `dist` (they replace the real profile there; the fades keep the profile off their neighbourhood).
-static func between(a: String, b: String, dist: float, fade_in: float, fade_out: float, head: Array = [], tail: Array = [], back: Array = [], after: Array = [], p_ss := false, v_pad_in := 0.0, v_pad_out := 0.0) -> TrackPath:
+static func between(a: String, b: String, dist: float, fade_in: float, fade_out: float, head: Array = [], tail: Array = [], back: Array = [], after: Array = [], p_ss := false, v_pad_in := 0.0, v_pad_out := 0.0, p_line := "") -> TrackPath:
 	var h: Array = profile(a, b)
 	var tp := TrackPath.new()
 	tp.length = dist
@@ -56,7 +56,7 @@ static func between(a: String, b: String, dist: float, fade_in: float, fade_out:
 	var kmax := int(ceil((dist + 6.0) / CELL)) + AHEAD
 	tp.ss = p_ss
 	tp._set_scenes(a, b, dist, kmin, kmax, h)
-	tp._plan_pitch = tp._plan_grade(a, b, dist, fade_in + v_pad_in, fade_out + v_pad_out, kmin, kmax)
+	tp._plan_pitch = tp._plan_grade(a, b, p_line, dist, fade_in + v_pad_in, fade_out + v_pad_out, kmin, kmax)
 	var n := kmax - kmin + 1
 	var ks := PackedFloat32Array()
 	ks.resize(n)
@@ -192,7 +192,7 @@ func _set_scenes(a: String, b: String, dist: float, kmin: int, kmax: int, prof: 
 ## Both are zero over the platform and the stretch where the hand-overs happen; if the two together would be steeper than MAX_GRADE the whole profile is scaled down to fit.
 ## UG_GRADE=off switches both off, UG_GRADE=<metres> forces that dish depth (no real climb) over the whole ride (tests).
 ## Returns the climb per cell (radians) for the cells kmin..kmax.
-func _plan_grade(a: String, b: String, dist: float, fade_in: float, fade_out: float, kmin: int, kmax: int) -> PackedFloat32Array:
+func _plan_grade(a: String, b: String, line: String, dist: float, fade_in: float, fade_out: float, kmin: int, kmax: int) -> PackedFloat32Array:
 	var n := kmax - kmin + 1
 	var out := PackedFloat32Array()
 	out.resize(n)
@@ -204,7 +204,7 @@ func _plan_grade(a: String, b: String, dist: float, fade_in: float, fade_out: fl
 		return out
 	var vr := clampf(w_int * 0.35, 40.0, 140.0)
 	var depth := 0.0 if ss else clampf(w_int * 0.006, 0.5, 3.2)
-	var rise := rise_between(a, b) if forced == "" else 0.0
+	var rise := rise_between(a, b, line) if forced == "" else 0.0
 	if forced != "":
 		depth = forced.to_float()
 	# where the track is in a tunnel
@@ -240,15 +240,18 @@ func _plan_grade(a: String, b: String, dist: float, fade_in: float, fade_out: fl
 	return out
 
 
-## how far the platform at station `b` lies above the one at `a` (metres, from data/platform_levels.json via the hop's "dz"); 0 where the data has none
-static func rise_between(a: String, b: String) -> float:
+## how far the platform at station `b` lies above the one at `a` (metres, from data/platform_levels.json via the hop's "dz"; where lines that share the hop have platforms at different heights, "dzl" has it per
+## line and `line` picks); 0 where the data has none
+static func rise_between(a: String, b: String, line := "") -> float:
 	var pairs: Dictionary = data().get("pairs", {})
 	var e: Dictionary = pairs.get(a + ">" + b, {})
 	if e.has("dz"):
-		return float(e["dz"])
+		var per: Dictionary = e.get("dzl", {})
+		return float(per[line]) if per.has(line) else float(e["dz"])
 	e = pairs.get(b + ">" + a, {})
 	if e.has("dz"):
-		return -float(e["dz"])
+		var per2: Dictionary = e.get("dzl", {})
+		return -(float(per2[line]) if per2.has(line) else float(e["dz"]))
 	return 0.0
 
 

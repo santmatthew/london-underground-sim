@@ -1032,10 +1032,7 @@ func _update_audio_zone() -> void:
 	# inside a train at a platform?
 	for v in station.trains.visits.values():
 		if (v["train"] as Train).contains_world_point(player.global_position):
-			var open_stn := false
-			for m in station.modules:
-				if (m as PlatformModule).open:
-					open_stn = true
+			var open_stn: bool = v.has("module") and (v["module"] as PlatformModule).open          # (the platform this train stands at, not any in the station)
 			Sfx.set_zone("train_idle", dens, 0.0, 0.5 if open_stn else 0.0)
 			announcer.tick("train_idle", dens, 0.5)
 			player.surface = "rubber"

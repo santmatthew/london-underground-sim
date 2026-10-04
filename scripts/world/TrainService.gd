@@ -153,6 +153,8 @@ func _spawn_pass(now: float) -> void:
 			if now > info["dep"] + AFTER_S or now < info["arr"] - APPROACH_S - 3.0:
 				if not info["origin"]:
 					continue
+			if info["origin"] and now < info["arr"]:
+				continue          # (a train that starts its run is in the platform from its `arr` on, not before: Timetable.min_headway counts on it)
 			# already gone (would be despawned again on the very next frame, after building a whole train): skip
 			if now > info["dep"] and absf(x_at({"info": info, "origin": info["origin"], "dir_arr": 1, "dir_dep": 1}, now)) > 280.0:
 				continue

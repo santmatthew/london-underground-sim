@@ -291,7 +291,6 @@ def supplement_elizabeth(net, sxy, pairs, secs):
 
 
 SS_LINES = ("district", "metropolitan", "hammersmith-city", "circle")
-EUSTON_CITY = ("Mornington Crescent", "King's Cross St. Pancras")
 
 
 def _dir_index(pid):
@@ -303,15 +302,15 @@ def _dir_index(pid):
     return None
 
 
-def _level(levels, net, sid, line, pid, other_name):
+def _level(levels, net, sid, line, pid):
     """platform level (m above Ordnance Datum) of `line`'s platform `pid` at station `sid`, None without data"""
     ent = levels.get(sid)
     if not ent:
         return None
     lines = ent["lines"]
     key = line
-    if net["stations"][sid]["name"] == "Euston" and line == "northern":
-        key = "northern" if other_name in EUSTON_CITY else "northern_cx"
+    if pid and "~cx" in pid and (line + "_cx") in lines:
+        key = line + "_cx"          # (Euston has a record for each branch of the Northern line: the platform id says which)
     pair = lines.get(key)
     if pair is None and line in SS_LINES:
         got = [v for k, v in lines.items() if k in SS_LINES]
@@ -324,7 +323,8 @@ def _level(levels, net, sid, line, pid, other_name):
 
 
 def add_levels(net, pairs):
-    """"dz": how far the platform of the next station is above (+) the platform here, from the platform levels of data/platform_levels.json (tools/build_platform_levels.py)"""
+    """"dz": how far the platform of the next station is above (+) the platform here, from the platform levels of data/platform_levels.json (tools/build_platform_levels.py); a hop that several lines
+    use can differ between them (their platforms are at different heights): "dzl" then has it per line"""
     fp = os.path.join(ROOT, "data", "platform_levels.json")
     if not os.path.exists(fp):
         return 0
@@ -333,29 +333,35 @@ def add_levels(net, pairs):
     odd = []
     for k, e in pairs.items():
         a, b = k.split(">")
-        line = e.get("line")
-        if line not in net["lines"]:
-            continue
-        pa = pb = None
-        for svc in net["lines"][line]["services"]:
-            st = svc["stops"]
-            for i in range(len(st) - 1):
-                if st[i] == a and st[i + 1] == b:
-                    pa, pb = svc["plat_fwd"][i], svc["plat_fwd"][i + 1]
-                elif st[i] == b and st[i + 1] == a:
-                    pa, pb = svc["plat_bwd"][i + 1], svc["plat_bwd"][i]
+        per = {}
+        for line, ldata in net["lines"].items():
+            pa = pb = None
+            for svc in ldata["services"]:
+                st = svc["stops"]
+                for i in range(len(st) - 1):
+                    if st[i] == a and st[i + 1] == b:
+                        pa, pb = svc["plat_fwd"][i], svc["plat_fwd"][i + 1]
+                    elif st[i] == b and st[i + 1] == a:
+                        pa, pb = svc["plat_bwd"][i + 1], svc["plat_bwd"][i]
+                    if pa:
+                        break
                 if pa:
                     break
-            if pa:
-                break
-        la = _level(levels, net, a, line, pa, net["stations"][b]["name"])
-        lb = _level(levels, net, b, line, pb, net["stations"][a]["name"])
-        if la is None or lb is None:
+            if not pa:
+                continue
+            la = _level(levels, net, a, line, pa)
+            lb = _level(levels, net, b, line, pb)
+            if la is not None and lb is not None:
+                per[line] = round(lb - la, 1)
+        if not per:
             continue
-        e["dz"] = round(lb - la, 1)
+        e["dz"] = per.get(e.get("line"), next(iter(per.values())))
+        if len(set(per.values())) > 1:
+            e["dzl"] = per
         n += 1
-        if abs(e["dz"]) > 0.05 * e["len"] and abs(e["dz"]) > 4.0:
-            odd.append("%s -> %s (%s): %+.1f m over %.0f m" % (net["stations"][a]["name"], net["stations"][b]["name"], line, e["dz"], e["len"]))
+        for line, dz in per.items():
+            if abs(dz) > 0.05 * e["len"] and abs(dz) > 4.0:
+                odd.append("%s -> %s (%s): %+.1f m over %.0f m" % (net["stations"][a]["name"], net["stations"][b]["name"], line, dz, e["len"]))
     for o in odd:
         print("  steep:", o)
     return n

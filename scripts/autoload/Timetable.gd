@@ -130,15 +130,18 @@ func build(seed_value: int) -> void:
 	var occ_a: Array = []
 	var occ_d: Array = []
 	var occ_l: Array = []          # ... and the length of the train of each
+	var occ_o: Array = []          # ... and whether it starts its run there
 	occ_a.resize(plat_station.size() * 2)
 	occ_d.resize(plat_station.size() * 2)
 	occ_l.resize(plat_station.size() * 2)
+	occ_o.resize(plat_station.size() * 2)
 	for i in ev_lists.size():
 		ev_lists[i] = []
 	for i in occ_a.size():
 		occ_a[i] = []
 		occ_d[i] = []
 		occ_l[i] = []
+		occ_o[i] = []
 	var rng := RandomNumberGenerator.new()
 
 	# 1. train requests: an evenly spaced stream per (line, direction) measured at a reference station on the trunk
@@ -180,7 +183,7 @@ func build(seed_value: int) -> void:
 	for rq in requests:
 		var svc: Dictionary = Net.lines[rq[1]]["services"][rq[2]]
 		rng.seed = hash("%d/%s/%d" % [seed_value, svc["id"], int(rq[0])])
-		_add_run(rq[1], svc, rq[3], rq[0], rng, ev_lists, occ_a, occ_d, occ_l)
+		_add_run(rq[1], svc, rq[3], rq[0], rng, ev_lists, occ_a, occ_d, occ_l, occ_o)
 
 	events = []
 	events.resize(ev_lists.size())
@@ -253,12 +256,13 @@ func _service_run_times(svc: Dictionary) -> PackedFloat32Array:
 
 
 ## Earliest start >= a0 for a visit of length `len` on the platform face without touching any booked visit.
-func _fit(occ_a: Array, occ_d: Array, occ_l: Array, key: int, a0: float, length: float, my_len: float, spawns: bool) -> float:
+func _fit(occ_a: Array, occ_d: Array, occ_l: Array, occ_o: Array, key: int, a0: float, length: float, my_len: float, spawns: bool) -> float:
 	var la: Array = occ_a[key]
 	var ld: Array = occ_d[key]
 	var ll: Array = occ_l[key]
+	var oo: Array = occ_o[key]
 	var n := la.size()
-	if n == 0 or a0 >= ld[n - 1] + min_headway(float(ll[n - 1]), my_len, spawns) and a0 >= la[n - 1]:
+	if n == 0 or a0 >= ld[n - 1] + min_headway(float(ll[n - 1]), my_len, bool(oo[n - 1]), spawns) and a0 >= la[n - 1]:
 		return a0
 	var a := a0
 	while true:
@@ -271,11 +275,11 @@ func _fit(occ_a: Array, occ_d: Array, occ_l: Array, key: int, a0: float, length:
 				lo = mid + 1
 			else:
 				hi = mid
-		if lo > 0 and ld[lo - 1] + min_headway(float(ll[lo - 1]), my_len, spawns) > a:
-			a = ld[lo - 1] + min_headway(float(ll[lo - 1]), my_len, spawns)
+		if lo > 0 and ld[lo - 1] + min_headway(float(ll[lo - 1]), my_len, bool(oo[lo - 1]), spawns) > a:
+			a = ld[lo - 1] + min_headway(float(ll[lo - 1]), my_len, bool(oo[lo - 1]), spawns)
 			continue
-		if lo < n and a + length + min_headway(my_len, float(ll[lo]), false) > la[lo]:
-			a = ld[lo] + min_headway(float(ll[lo]), my_len, spawns)
+		if lo < n and a + length + min_headway(my_len, float(ll[lo]), spawns, bool(oo[lo])) > la[lo]:
+			a = ld[lo] + min_headway(float(ll[lo]), my_len, bool(oo[lo]), spawns)
 			continue
 		return a
 	return a
@@ -284,31 +288,38 @@ func _fit(occ_a: Array, occ_d: Array, occ_l: Array, key: int, a0: float, length:
 static var _headways: Dictionary = {}
 
 
-## The least time between a train leaving a platform face and the next one arriving at it, from the trains' own movement (TrainService: the one that leaves accelerates from rest, the one that comes in
-## brakes to a stop at the platform), so that the tail of the first has left the nose of the second by MARGIN metres at the closest. A train that starts its run in the platform (`spawns`) appears there
-## at rest: the leaving one must have cleared it before. Lengths in metres.
-static func min_headway(l_lead: float, l_follow: float, spawns: bool = false) -> float:
-	var key := (int(l_lead) << 20) | (int(l_follow) << 4) | (1 if spawns else 0)
+## The least time between a train leaving a platform face (dep) and the next one arriving at it (arr), from what TrainService does with the trains: a train that is not starting its run comes in from
+## behind (the same way it later leaves), exists from APPROACH_S + 3 s before its arrival and brakes to a stop at the platform; one that starts its run appears at rest in the platform at its `arr` and sets off
+## the OTHER way, back where arrivals come from (a terminus). Trains go when they are 280 m out or 32 s after leaving. Two trains that exist at the same time keep the tail of one MARGIN metres from the nose
+## of the other (centres at least half the sum of their lengths plus MARGIN apart); two that head for each other on one track can only be there one after the other. Lengths in metres.
+static func min_headway(l_lead: float, l_follow: float, lead_origin: bool = false, follow_origin: bool = false) -> float:
+	if OS.get_environment("UG_HEADWAY") != "":
+		return OS.get_environment("UG_HEADWAY").to_float()          # (tests: a flat gap, to see that platform_clear_test can fail)
+	var key := (int(l_lead) << 24) | (int(l_follow) << 4) | (2 if lead_origin else 0) | (1 if follow_origin else 0)
 	if _headways.has(key):
 		return _headways[key]
 	var need := (l_lead + l_follow) * 0.5 + MARGIN
 	var h := CLEARANCE
-	while h < 120.0:
-		var ok := true
-		if spawns:
-			ok = TrainService.r_dep(h) >= need
-		else:
-			var u := 0.0
-			while u <= h:
-				if TrainService.r_dep(u) + TrainService.r_app(h - u) < need:
-					ok = false
-					break
-				u += 0.25
-		if ok:
+	while h < 150.0:
+		if _headway_ok(h, need, lead_origin, follow_origin):
 			break
 		h += 0.5
 	_headways[key] = h
 	return h
+
+
+static func _headway_ok(h: float, need: float, lead_origin: bool, follow_origin: bool) -> bool:
+	var sgn := -1.0 if lead_origin else 1.0
+	var t := h if follow_origin else h - (TrainService.APPROACH_S + 3.0)         # (when the follower comes into being, from the leader's departure)
+	while t <= TrainService.AFTER_S:
+		var xl := 0.0 if t < 0.0 else sgn * TrainService.r_dep(t)
+		if absf(xl) > 280.0:
+			break                                                              # (the leader is gone)
+		var xf := 0.0 if (follow_origin or t >= h) else -TrainService.r_app(h - t)
+		if absf(xl - xf) < need:
+			return false
+		t += 0.25
+	return true
 
 
 ## the length of a train of line `lid` (StationPlan.CARS, the size class of its stock)
@@ -317,15 +328,17 @@ static func train_len(lid: String) -> float:
 	return Train.length_for(Train.kind_of_line(lid), int(c[0]))
 
 
-func _book(occ_a: Array, occ_d: Array, occ_l: Array, key: int, a: float, d: float, train_length: float) -> void:
+func _book(occ_a: Array, occ_d: Array, occ_l: Array, occ_o: Array, key: int, a: float, d: float, train_length: float, origin: bool) -> void:
 	var la: Array = occ_a[key]
 	var ld: Array = occ_d[key]
 	var ll: Array = occ_l[key]
+	var oo: Array = occ_o[key]
 	var n := la.size()
 	if n == 0 or a >= la[n - 1]:
 		la.append(a)
 		ld.append(d)
 		ll.append(train_length)
+		oo.append(origin)
 		return
 	var lo := 0
 	var hi := n
@@ -338,9 +351,10 @@ func _book(occ_a: Array, occ_d: Array, occ_l: Array, key: int, a: float, d: floa
 	la.insert(lo, a)
 	ld.insert(lo, d)
 	ll.insert(lo, train_length)
+	oo.insert(lo, origin)
 
 
-func _add_run(lid: String, svc: Dictionary, dir: int, t_origin_dep: float, rng: RandomNumberGenerator, ev_lists: Array, occ_a: Array, occ_d: Array, occ_l: Array) -> void:
+func _add_run(lid: String, svc: Dictionary, dir: int, t_origin_dep: float, rng: RandomNumberGenerator, ev_lists: Array, occ_a: Array, occ_d: Array, occ_l: Array, occ_o: Array) -> void:
 	var stops: PackedInt32Array = svc["stop_idx"]
 	var run_secs := _service_run_times(svc)
 	var plats: Array = svc["plat_fwd"] if dir == 0 else svc["plat_bwd"]
@@ -370,14 +384,14 @@ func _add_run(lid: String, svc: Dictionary, dir: int, t_origin_dep: float, rng: 
 			length = 22.0 + (Net.importance(sidx) - 1.0) * 2.5 + crowd * 8.0 + rng.randf() * 7.0
 		var want: float = (t - ORIGIN_WAIT) if k == 0 else t
 		# choose the face that lets the train in earliest
-		var a := _fit(occ_a, occ_d, occ_l, g * 2, want, length, tlen, k == 0)
+		var a := _fit(occ_a, occ_d, occ_l, occ_o, g * 2, want, length, tlen, k == 0)
 		var f := 0
 		if terminal:
-			var a2 := _fit(occ_a, occ_d, occ_l, g * 2 + 1, want, length, tlen, k == 0)
+			var a2 := _fit(occ_a, occ_d, occ_l, occ_o, g * 2 + 1, want, length, tlen, k == 0)
 			if a2 < a:
 				a = a2
 				f = 1
-		_book(occ_a, occ_d, occ_l, g * 2 + f, a, a + length, tlen)
+		_book(occ_a, occ_d, occ_l, occ_o, g * 2 + f, a, a + length, tlen, k == 0)
 		arr[k] = a
 		dep[k] = a + length
 		face[k] = f

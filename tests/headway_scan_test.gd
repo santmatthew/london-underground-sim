@@ -1,4 +1,13 @@
 extends Node
+var ok := true
+
+
+func check(c: bool, what: String) -> void:
+	if not c:
+		print("  FAIL ", what)
+		ok = false
+
+
 ## How tight the timetable is: for every platform face, the gaps between a train leaving and the next one arriving (08:00 - 10:00), counted in bands; and visits per hour of the busiest faces. args --from=8 --to=10
 func run():
 	var h0 := 8.0
@@ -33,4 +42,7 @@ func run():
 	for i in mini(8, worst.size()):
 		var gp: int = worst[i][1]
 		print("  %.1f s at %s %s (run %d)" % [worst[i][0], Net.stations[Timetable.plat_station[gp]]["name"], Timetable.plat_pid[gp], worst[i][2]])
-	print("OK")
+	check(total > 5000, "the window was scanned (%d gaps)" % total)
+	check(counts[0] == 0, "no train arrives within 12 s of the previous one leaving (%d do)" % counts[0])
+	check(float(counts[1]) / float(maxi(total, 1)) < 0.02, "fewer than 2 %% of the gaps are under 20 s (%d of %d)" % [counts[1], total])
+	print("OK" if ok else "FAILED")

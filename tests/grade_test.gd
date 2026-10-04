@@ -75,4 +75,14 @@ func run():
 	check(absf(asin(clampf(t.basis.x.y, -1.0, 1.0)) - atan(0.1)) < 0.002 and absf(t.origin.length()) < 0.001, "a car on a slope takes its pitch")
 	var f := Train._bogie_pose(Vector3(5, 0, 0), Vector3(-5, 0, 0))
 	check(absf(f.basis.x.y) < 1e-6, "a car on the level does not")
+	# a hop that two lines share, with platforms at different heights: the ride takes its own line's climb (Euston -> King's Cross St. Pancras: the Northern line falls, the Victoria line climbs)
+	var eus: String = Net.station_ids[Net.name_to_idx["Euston"]]
+	var kxs: String = Net.station_ids[Net.name_to_idx["King's Cross St. Pancras"]]
+	var r_n := TrackPath.rise_between(eus, kxs, "northern")
+	var r_v := TrackPath.rise_between(eus, kxs, "victoria")
+	check(r_n < -2.0 and r_v > 2.0, "Euston -> King's Cross: Northern %+.1f m, Victoria %+.1f m" % [r_n, r_v])
+	check(absf(TrackPath.rise_between(kxs, eus, "victoria") + r_v) < 0.01, "... and the other way round is the negative")
+	var mc: String = Net.station_ids[Net.name_to_idx["Mornington Crescent"]]
+	var cam: String = Net.station_ids[Net.name_to_idx["Camden Town"]]
+	check(TrackPath.rise_between(mc, eus, "northern") > -9.0 and TrackPath.rise_between(cam, eus, "northern") < -9.0, "Euston's two Northern line branches: Mornington Crescent (Charing Cross branch) %+.1f m, Camden Town (City branch) %+.1f m" % [TrackPath.rise_between(mc, eus, "northern"), TrackPath.rise_between(cam, eus, "northern")])
 	print("OK" if ok else "FAILED")

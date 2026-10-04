@@ -120,7 +120,7 @@ func start(p_game: Node3D, p_train: Train, p_run: int, p_k: int, p_origin: Stati
 	var half_train := train.length * 0.5
 	var need_in := _origin_module_length() * 0.5 - car_offset + 20.0 + half_train + 10.0
 	var need_out := dest_face_length * 0.5 + car_offset + 26.0 + half_train + 10.0
-	path = TrackPath.between(id_a, id_b, dist, fade_in, fade_out, head, tail, back, after, Net.lines.has(train.line_id) and String(Net.lines[train.line_id]['group']) == 'ss', maxf(0.0, need_in - fade_in), maxf(0.0, need_out - fade_out))
+	path = TrackPath.between(id_a, id_b, dist, fade_in, fade_out, head, tail, back, after, Net.lines.has(train.line_id) and String(Net.lines[train.line_id]['group']) == 'ss', maxf(0.0, need_in - fade_in), maxf(0.0, need_out - fade_out), train.line_id)
 	_path_straight = path.is_straight() and train.bend == null
 	# the frame of the path in the world: the player's car is where it is, whatever shape the train has
 	p0 = ref_world * (train.car_pose_on_path(path, ref_car, 0.0) * Transform3D(Basis.IDENTITY, Vector3(0.0, PlatformModule.RAIL_Y, 0.0))).affine_inverse()
