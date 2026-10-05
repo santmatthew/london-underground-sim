@@ -329,10 +329,11 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	var front_mat := "brick_stock" if open else "concrete"
 	if open:
 		front_mat = String(open_style.get("front", "brick_stock"))
+	# (MeshKit.wall shows the RIGHT of a -> b: that is the platform's own side for both of these, so the face was culled from the track, where it is seen - from the platform opposite, across the tracks of a pair of side platforms - and showed the sky under the edge: flipped)
 	if s > 0.0:
-		kit.wall(front_mat, Vector3(x1, 0, s * zedge), Vector3(x0, 0, s * zedge), BED_Y, 0.0, BED_Y, false)
+		kit.wall(front_mat, Vector3(x1, 0, s * zedge), Vector3(x0, 0, s * zedge), BED_Y, 0.0, BED_Y, true)
 	else:
-		kit.wall(front_mat, Vector3(x0, 0, s * zedge), Vector3(x1, 0, s * zedge), BED_Y, 0.0, BED_Y, false)
+		kit.wall(front_mat, Vector3(x0, 0, s * zedge), Vector3(x1, 0, s * zedge), BED_Y, 0.0, BED_Y, true)
 	# platform underside cap at the ends
 	# --- track bed ---
 	var bz0 := minf(s * zedge, s * zfar)
