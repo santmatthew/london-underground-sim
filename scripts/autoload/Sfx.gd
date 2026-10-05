@@ -139,7 +139,10 @@ func play_at(key: String, parent: Node3D, pos := Vector3.ZERO, vol_offset := 0.0
 
 ## looping spatial emitter (e.g. escalator hum). Returns the player; caller owns it.
 func loop_at(key: String, parent: Node3D, pos := Vector3.ZERO, vol_offset := 0.0, max_dist := 30.0) -> AudioStreamPlayer3D:
-	var p := play_at(key, parent, pos, vol_offset, max_dist)
+	# (from a random place in the loop: the emitters of a bank of escalators do not tick in unison)
+	var s := stream(key)
+	var from := randf() * s.get_length() if s != null and s.get_length() > 0.0 else 0.0
+	var p := play_at(key, parent, pos, vol_offset, max_dist, from)
 	return p
 
 

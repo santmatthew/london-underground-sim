@@ -99,6 +99,9 @@ func run():
 				var v := body.constant_linear_velocity
 				check((v.x > 0.0) == (lanes[bi] > 0.0) and absf(v.length() - Escalator.SPEED) < 0.001, "%s lane %d: the slab carries a rider %s at %.2f m/s" % [tag, bi, "down" if lanes[bi] > 0.0 else "up", v.length()])
 			e.queue_free()
+	# the sound is at the steps' pace (tools/audio/ambience.py STEPS_PER_S = speed / pitch; its 16 s loops hold 30 steps), and the path is rounded at its corners
+	check(is_equal_approx(16.0 * Escalator.SPEED / Escalator.STEP_PITCH, 30.0), "the escalator sound loops hold a whole number of steps (16 s x %.3f steps/s)" % (Escalator.SPEED / Escalator.STEP_PITCH))
+	check(Escalator.STEP_FILLET > 0.0 and Escalator.STEP_FILLET * tan(Escalator.ANGLE * 0.5) < 1.0, "the steps' track is rounded at its corners (radius %.1f m)" % Escalator.STEP_FILLET)
 	# the shaders live on: a second escalator (after the first has gone) uses the very same Shader resources, which are not compiled again
 	var e1 := Escalator.new()
 	e1.build(6.0, [1.0, -1.0])

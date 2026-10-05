@@ -301,6 +301,7 @@ static func warm_up() -> void:
 
 
 const STEP_PITCH := 0.4            # arc length between neighbouring steps (a 0.2 m riser at 30 degrees)
+const STEP_FILLET := 1.5           # the radius of the arcs that round the track's two corners (a 30 degree turn over 0.8 m: the steps no longer kink as they reach the slope)
 const STEP_SINK := 0.07
 
 
@@ -356,6 +357,7 @@ func _steps_mesh() -> ArrayMesh:
 		m.set_shader_parameter("sin_t", sin(ANGLE))
 		m.set_shader_parameter("l_vis", slope_len)
 		m.set_shader_parameter("sink", STEP_SINK)
+		m.set_shader_parameter("fillet", STEP_FILLET)
 		mesh.surface_set_material(li, m)
 	# (the vertices are placed by the shader: the box the engine culls by has to be given)
 	mesh.custom_aabb = AABB(Vector3(-0.5, -rise - 1.0, -width * 0.5 - 0.5), Vector3(length + 1.0, rise + 2.0, width + 1.0))

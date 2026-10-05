@@ -100,6 +100,9 @@ func build_async(p: StationPlan, use_async := true) -> void:
 		escalators.append(esc)
 		if not e.get("stairs", false):
 			Sfx.loop_at("escalator_loop", esc, Vector3(esc.length * 0.5, -esc.rise * 0.5 + 1.5, 0), -4.0, 26.0)
+			# the comb plates: a tick at every step, heard only near the ends
+			Sfx.loop_at("escalator_comb_loop", esc, Vector3(Escalator.PLATE * 0.5, 0.25, 0), -3.0, 9.0)
+			Sfx.loop_at("escalator_comb_loop", esc, Vector3(esc.length - Escalator.PLATE * 0.5, -esc.rise + 0.25, 0), -3.0, 9.0)
 		await _slice()
 	_t0 = _t("escalators", _t0)
 	for mi in plan.modules.size():

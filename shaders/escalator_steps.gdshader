@@ -15,6 +15,7 @@ uniform float cos_t = 0.866;
 uniform float sin_t = 0.5;
 uniform float l_vis = 23.0;        // length of the slope
 uniform float sink = 0.07;         // how far a step dips under the plate as it goes in or comes out
+uniform float fillet = 1.5;        // radius of the arcs that round the two corners of the track (the real ones turn over about this wide: 1.2 - 2.5 m); 0 = sharp corners
 uniform vec3 tread_color : source_color = vec3(0.62, 0.63, 0.65);
 uniform vec3 riser_color : source_color = vec3(0.46, 0.47, 0.49);
 uniform vec3 nose_color : source_color = vec3(0.92, 0.74, 0.06);
@@ -23,13 +24,41 @@ varying vec2 v_uv;
 varying float v_kind;
 
 vec2 path(float c) {
-	if (c <= 0.0) {
-		return vec2(x0 + c, 0.0);
+	if (fillet <= 0.001) {
+		if (c <= 0.0) {
+			return vec2(x0 + c, 0.0);
+		}
+		if (c >= l_vis) {
+			return vec2(x0 + run + (c - l_vis), -rise);
+		}
+		return vec2(x0 + c * cos_t, -c * sin_t);
 	}
-	if (c >= l_vis) {
-		return vec2(x0 + run + (c - l_vis), -rise);
+	// the track with its corners rounded: arcs of radius `fillet` centred on the two corners (c = 0 and c = l_vis), joined by the straight slope; the flat under the plates before and after.
+	// The arcs cut the corners by a tangent length t on each side, so the track is a couple of centimetres shorter than the sharp one (l_vis, the steps' pitch: nothing else changes).
+	float th = atan(sin_t, cos_t);
+	float t = fillet * tan(0.5 * th);
+	float la = fillet * th;
+	vec2 dir = vec2(cos_t, -sin_t);
+	if (c <= -0.5 * la) {
+		return vec2(x0 - t + (c + 0.5 * la), 0.0);
 	}
-	return vec2(x0 + c * cos_t, -c * sin_t);
+	if (c < 0.5 * la) {
+		float s = (c + 0.5 * la) / fillet;
+		return vec2(x0 - t + fillet * sin(s), -fillet * (1.0 - cos(s)));
+	}
+	float c1 = 0.5 * la + (l_vis - 2.0 * t);          // where the straight slope ends and the lower arc begins
+	if (c <= c1) {
+		vec2 e1 = vec2(x0 - t + fillet * sin(th), -fillet * (1.0 - cos(th)));
+		return e1 + (c - 0.5 * la) * dir;
+	}
+	vec2 b0 = vec2(x0 + run, -rise) - t * dir;          // the lower arc starts here, centred above the track
+	vec2 ctr = b0 + fillet * vec2(sin_t, cos_t);
+	if (c < c1 + la) {
+		float s2 = (c - c1) / fillet;
+		vec2 v = -fillet * vec2(sin_t, cos_t);
+		return ctr + vec2(v.x * cos(s2) - v.y * sin(s2), v.x * sin(s2) + v.y * cos(s2));
+	}
+	return vec2(x0 + run + t + (c - c1 - la), -rise);
 }
 
 void vertex() {

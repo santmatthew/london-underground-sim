@@ -271,7 +271,10 @@ def crowd_murmur_light_loop(seconds=40.0):
 # --------------------------------------------------------------------------------------
 # escalator
 # --------------------------------------------------------------------------------------
-def escalator_loop(seconds=20.0, steps_per_s=2.0):
+STEPS_PER_S = 0.75 / 0.4          # the escalator's speed over the pitch of its steps (Escalator.SPEED / STEP_PITCH): a step passes every 0.533 s; 16 s is exactly 30 of them
+
+
+def escalator_loop(seconds=16.0, steps_per_s=STEPS_PER_S):
     n = nsamp(seconds)
     rng = rng_for("escalator_loop")
     t = np.arange(n) / SR
@@ -316,6 +319,27 @@ def escalator_loop(seconds=20.0, steps_per_s=2.0):
         add_at(y, sq, int(rng.uniform(0, n)), 0.012, wrap=True)
     y = reverb(y, make_ir(0.5, rng, predelay=0.004, stereo=False), wet=0.3, circular=True)
     return _finish(y, -25.0), dict(loop=True)
+
+
+def escalator_comb_loop(seconds=16.0, steps_per_s=STEPS_PER_S):
+    """What is heard at the end of an escalator, where each step runs under (or out from) the comb plate: a dry metallic tick-tick at the step rate, the teeth of the comb among the grooves of the tread,
+    and a faint ring of the plate. 30 steps in the loop, each a little different; nothing else (the motor and the chain are in escalator_loop)."""
+    n = nsamp(seconds)
+    rng = rng_for("escalator_comb_loop")
+    y = np.zeros(n)
+    ns = int(round(seconds * steps_per_s))
+    for k in range(ns):
+        pos = int((k / steps_per_s + 0.012 * rng.uniform(-1, 1)) * SR)
+        a = rng.uniform(0.7, 1.15)
+        tick = sum_pad(noise_burst(0.014, rng, 1800, 6200, 0.004, amp=1.0 * a),
+                       noise_burst(0.010, rng, 900, 3000, 0.003, amp=0.55 * a),
+                       damped_sine(0.07, 2150 * rng.uniform(0.96, 1.04), 0.03, amp=0.18 * a),
+                       damped_sine(0.05, 1480 * rng.uniform(0.97, 1.03), 0.02, amp=0.10 * a))
+        add_at(y, tick, pos, 1.0, wrap=True)
+        # the second tooth of the comb, a few milliseconds behind
+        add_at(y, tick, pos + int(rng.uniform(0.007, 0.012) * SR), 0.45, wrap=True)
+    y = reverb(y, make_ir(0.35, rng, predelay=0.003, stereo=False), wet=0.2, circular=True)
+    return _finish(y, -30.0), dict(loop=True)
 
 
 # --------------------------------------------------------------------------------------
@@ -516,7 +540,8 @@ LOOPS = {
     "corridor_ambience_loop": (corridor_ambience_loop, dict(category="ambience", volume_db=-3.0, desc="Passageway with flutter echo, draughts and far footsteps")),
     "crowd_murmur_dense_loop": (crowd_murmur_dense_loop, dict(category="crowd", volume_db=-4.0, desc="Dense crowd babble (~70 voices)")),
     "crowd_murmur_light_loop": (crowd_murmur_light_loop, dict(category="crowd", volume_db=-4.0, desc="Light crowd murmur (~12 voices)")),
-    "escalator_loop": (escalator_loop, dict(category="ambience_3d", volume_db=-3.0, desc="Escalator motor, chain and step rumble (mono, for 3D emitters)", channels=1)),
+    "escalator_loop": (escalator_loop, dict(category="ambience_3d", volume_db=-3.0, desc="Escalator motor, chain and step rumble, 30 steps at the real step rate (mono, for 3D emitters)", channels=1)),
+    "escalator_comb_loop": (escalator_comb_loop, dict(category="ambience_3d", volume_db=-3.0, desc="The comb plate at the end of an escalator: a tick-tick at every step (mono, short range, one emitter at each end)", channels=1)),
     "train_interior_run_slow_loop": (lambda: train_interior_run("slow"), dict(category="train_interior", volume_db=-3.0, desc="Inside a car, moderate speed: rumble, ~0.95 s clickety-clack, AC hiss")),
     "train_interior_run_fast_loop": (lambda: train_interior_run("fast"), dict(category="train_interior", volume_db=-3.0, desc="Inside a car, high speed: louder roar, ~0.6 s clack, motor tone")),
     "train_interior_idle_loop": (train_interior_idle_loop, dict(category="train_interior", volume_db=-3.0, desc="Inside a standing train: AC, compressor cycling, hum")),

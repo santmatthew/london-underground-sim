@@ -132,7 +132,7 @@ def coverage(man):
                  "please_move_right_down_inside_the_carriages", "please_stand_on_the_right_escalator",
                  "holding_here_for_a_short_while", "delayed_signal_failure", "good_evening", "lost_property",
                  "the_next_train_is", "tunnel_rumble_loop", "platform_ambience_loop", "concourse_ambience_loop",
-                 "corridor_ambience_loop", "escalator_loop", "train_interior_run_slow_loop",
+                 "corridor_ambience_loop", "escalator_loop", "escalator_comb_loop", "train_interior_run_slow_loop",
                  "train_interior_run_fast_loop", "train_arrive_platform", "train_depart_platform", "door_chime_open",
                  "door_chime_close", "door_slide_open", "door_slide_close", "gate_beep_ok", "gate_beep_error",
                  "gate_flap_open", "gate_flap_close", "escalator_step_on", "busker_loop", "crowd_murmur_dense_loop",
