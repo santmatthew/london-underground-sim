@@ -1131,11 +1131,13 @@ func set_edge_open(face_sign: float, x_from: float, x_to: float, open: bool) -> 
 func _add_footbridges(p_async := false) -> void:
 	if bend != null or Station.debug_off("footbridge"):
 		return
+	var stn := get_parent() as Station
+	var lifts_here: bool = stn != null and stn.has_lifts()          # (the lift towers are drawn where the station has its lifts: Station._build_lifts makes their doors work)
 	for fbd: Dictionary in spec.get("footbridges", []):
 		var fb := Footbridge.new()
 		fb.name = "Footbridge"
 		add_child(fb)
-		await fb.build(float(fbd["x"]), float(fbd["d"]), float(fbd["za"]), float(fbd["zb"]), String(spec.get("wall", "brick_red")), self, p_async)
+		await fb.build(float(fbd["x"]), float(fbd["d"]), float(fbd["za"]), float(fbd["zb"]), String(spec.get("wall", "brick_red")), lifts_here, self, p_async)
 
 
 func _add_lights() -> void:

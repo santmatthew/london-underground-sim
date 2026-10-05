@@ -18,6 +18,7 @@ func run():
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--stations="): names = a.substr(11).split("|")
 		if a == "--all": all = true
+		if a == "--sf": StationPlan.step_free_mode = true          # (step-free journeys: the lifts and their towers are built everywhere)
 		if a.begins_with("--range="):
 			var c := a.substr(8).split(",")
 			for i in range(int(c[0]), int(c[1]) + 1):

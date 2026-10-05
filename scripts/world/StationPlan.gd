@@ -52,6 +52,7 @@ var adj_spiral: Array = []         # adj_lift plus the spiral stair (portals and
 var spirals: Array = []            # the spiral emergency stair(s) of the station (see _add_spirals): {id, steps, rise, top:{pos, front, yaw, out, room}, bot:{...}, tower, tin, tout, tin_dir, tout_dir, interior}
 var lift_only := false             # its way up and down is lifts: the escalator-type banks of the plan are replaced by lifts (`removed` banks, lifts in every graph, see _apply_lift_only)
 var sf_ok := true                  # every vertical link has a lift, so the whole station can be used step-free
+var bridges: Array = []            # footbridges over a pair of side platforms (see _add_footbridges): {k, x, d, y0, flights: [{tag, zc, sg, x_f, x_lf, z_pf, face}, {...}]}, the nodes are "fb<k>_<a|b>_<pf|foot|top|lf>"
 var platform_no: Dictionary = {}   # pid -> 1..N
 var _dests: Dictionary = {}
 var bounds := AABB()
@@ -551,8 +552,10 @@ func _add_footbridges() -> void:
 	var cuts: Array = []
 	for xr in xs:
 		var d := 1.0 if float(xr) <= 0.0 else -1.0          # (the steps go toward the middle of the platform)
-		var lo := west_lim + Footbridge.HW + 0.5 + (Footbridge.RUN if d < 0.0 else 0.0)
-		var hi := east_lim - Footbridge.HW - (Footbridge.RUN if d > 0.0 else 0.0)
+		var back := Footbridge.HW + Footbridge.ANNEX          # (the lift towers on the far side of the landings, the steps on the near one)
+		var fwd := Footbridge.HW + Footbridge.RUN
+		var lo := west_lim + 0.5 + (fwd if d < 0.0 else back)
+		var hi := east_lim - (fwd if d > 0.0 else back)
 		var xb := clampf(float(xr), lo, hi)
 		var fp := Footbridge.footprint(xb, d)
 		var clash := false
@@ -568,6 +571,77 @@ func _add_footbridges() -> void:
 	spec_a["footbridges"] = out
 	spec_a["cuts"] = cuts
 	(modules[b]["spec"] as Dictionary)["cuts"] = cuts
+	for k in out.size():
+		_bridge_graph(k, out[k], a, b)
+
+
+## the walking graph of footbridge `k` (module `a` carries it, `b` is the platform across the tracks): for each platform a node on the platform's walking line at the foot of the steps (_pf), the foot of
+## the steps in the back strip (_foot), the landing (_top) and the platform line in front of the lift tower's lower door (_lf); the steps (foot - top, flagged "stairs": the step-free graph lacks them),
+## the deck between the two landings, and the platform's line to its face node. The crowd, the planner and the bots use it like any other way (the steps are walked as ramp points: see walk_points)
+func _bridge_graph(k: int, br: Dictionary, a: int, b: int) -> void:
+	var ma: Dictionary = modules[a]
+	var pa: Vector3 = ma["pos"]
+	var Y := Footbridge.DECK_Y
+	var d := float(br["d"])
+	var xp := pa.x + float(br["x"])
+	var y0 := pa.y
+	var info := {"k": k, "x": xp, "d": d, "y0": y0, "flights": []}
+	for f in 2:
+		var mi := a if f == 0 else b
+		var fk := ""
+		for key in faces:
+			if int(faces[key]["module"]) == mi:
+				fk = String(key)
+		var sg := 1.0 if f == 0 else -1.0
+		var zc: float = pa.z + float(br["za"] if f == 0 else br["zb"])
+		var z_pf: float = (faces[fk]["pos"] as Vector3).z
+		var nm := "fb%d_%s" % [k, "a" if f == 0 else "b"]
+		var x_f := xp + d * (Footbridge.HW + Footbridge.RUN + 0.5)
+		var x_lf := xp - d * (Footbridge.HW + Footbridge.ANNEX * 0.5)
+		_node(nm + "_pf", Vector3(x_f, y0, z_pf))
+		_node(nm + "_foot", Vector3(x_f, y0, zc))
+		_node(nm + "_top", Vector3(xp, y0 + Y, zc))
+		_node(nm + "_lf", Vector3(x_lf, y0, z_pf))
+		_edge("face:" + fk, nm + "_pf")
+		_edge(nm + "_pf", nm + "_foot")
+		_edge(nm + "_foot", nm + "_top")
+		(edges[edges.size() - 1] as Dictionary)["stairs"] = true
+		_edge(nm + "_pf", nm + "_lf")
+		(info["flights"] as Array).append({"tag": "a" if f == 0 else "b", "zc": zc, "sg": sg, "x_f": x_f, "x_lf": x_lf, "z_pf": z_pf, "face": fk})
+	_edge("fb%d_a_top" % k, "fb%d_b_top" % k)
+	bridges.append(info)
+
+
+## the lifts of the footbridges (lift ids 100 + 2 k + flight): a door in the far wall of the lobby on the deck and one in the plinth below it, facing the platform, joined by a lift edge that only the
+## step-free and the lift graphs have; the doors are drawn by Footbridge (a lift entry with "nohousing": Station._build_lifts makes the anchors but no housing)
+func _add_bridge_lifts() -> void:
+	for br in bridges:
+		var d: float = br["d"]
+		var xp: float = br["x"]
+		var y0: float = br["y0"]
+		var Y := Footbridge.DECK_Y
+		for f in 2:
+			var fl: Dictionary = br["flights"][f]
+			var eid := 100 + int(br["k"]) * 2 + f
+			var zc: float = fl["zc"]
+			var sg: float = fl["sg"]
+			var u_wall := -Footbridge.HW - Footbridge.ANNEX + Footbridge.WALL_T
+			var top := {"pos": Vector3(xp + d * u_wall, y0 + Y, zc), "front": Vector3(xp + d * (u_wall + 1.1), y0 + Y, zc), "yaw": atan2(-d, -0.0), "y": Y, "footprint": [], "side": 0.0, "extra": [], "nohousing": true}
+			var xm: float = fl["x_lf"]
+			var bot := {"pos": Vector3(xm, y0, zc + sg * Footbridge.HW), "front": Vector3(xm, y0, zc + sg * (Footbridge.HW + 1.1)), "yaw": atan2(0.0, -sg), "y": 0.0, "footprint": [], "side": 0.0, "extra": [], "nohousing": true}
+			var t: float = LIFT_WAIT + Y / LIFT_SPEED + LIFT_DOORS
+			var tn := "lift%d_top" % eid
+			var bn := "lift%d_bot" % eid
+			_node(tn, top["front"])
+			_node(bn, bot["front"])
+			while adj_sf.size() < adj.size():
+				adj_sf.append([])
+				adj_lift.append([])
+			var nm := "fb%d_%s" % [int(br["k"]), String(fl["tag"])]
+			_edge_sf(tn, nm + "_top", -1.0)
+			_edge_sf(bn, nm + "_lf", -1.0)
+			_edge_sf(tn, bn, t)
+			lifts.append({"id": "lift%d" % eid, "esc": eid, "rise": Y, "time": t, "top": top, "bot": bot, "removed": false, "bridge": true})
 
 
 ## what the track runs through beyond each end of module `mi`, per face: {"w": sections, "e": sections, "ss", "seed_w", "seed_e"} with sections [[code, metres], ...] going away from the stop
@@ -643,6 +717,7 @@ func _reset_plan() -> void:
 	spirals = []
 	adj_spiral = []
 	sf_ok = true
+	bridges = []
 
 
 func station_platform(pid: String) -> Dictionary:
@@ -865,6 +940,8 @@ func esc_lane_for(ei: int, dir: int, pick := 0) -> int:
 func _is_esc_edge(ei: int) -> bool:
 	if ei < 0:
 		return false
+	if bool((edges[ei] as Dictionary).get("stairs", false)):
+		return true          # (the steps of a footbridge: closed to a step-free journey like an escalator bank)
 	var a: String = nodes[edges[ei]["a"]]["name"]
 	var b: String = nodes[edges[ei]["b"]]["name"]
 	return (a.begins_with("esc") and a.ends_with("_top") and b.begins_with("esc") and b.ends_with("_bot")) or (a.begins_with("esc") and a.ends_with("_bot") and b.begins_with("esc") and b.ends_with("_top"))
@@ -1028,6 +1105,7 @@ func _add_lifts() -> void:
 			_edge_plain(bn, bot_access, -1.0)
 			_edge_plain(tn, bn, t)
 		lifts.append({"id": "lift%d" % ei, "esc": ei, "rise": rise, "time": t, "top": top, "bot": bot, "removed": removed})
+	_add_bridge_lifts()
 	_add_spirals(taken)
 
 
@@ -1496,6 +1574,23 @@ func walk_points(names: Array, pick := 0) -> Array:
 				hx.reverse()
 			for hp in hx:
 				out.append({"pos": hp, "kind": "walk", "tower": true})
+			i += 2
+			continue
+		if n.begins_with("fb") and nxt.begins_with("fb") and n.get_slice("_", 0) == nxt.get_slice("_", 0) and n.get_slice("_", 1) == nxt.get_slice("_", 1) and ((n.ends_with("_foot") and nxt.ends_with("_top")) or (n.ends_with("_top") and nxt.ends_with("_foot"))):
+			# the steps of a footbridge: the foot, the points along the line through the nosings (the ramp the player walks, a little under a metre apart so the crowd's height follows), the landing
+			var br: Dictionary = bridges[int(n.get_slice("_", 0).substr(2))]
+			var foot_pos: Vector3 = nodes[node_idx[n if n.ends_with("_foot") else nxt]]["pos"]
+			var top_pos: Vector3 = nodes[node_idx[n if n.ends_with("_top") else nxt]]["pos"]
+			var ramp: Array = [{"pos": foot_pos, "kind": "walk"}]
+			var u := Footbridge.HW + Footbridge.RUN - 0.3
+			while u > Footbridge.HW + 0.25:
+				ramp.append({"pos": Vector3(float(br["x"]) + float(br["d"]) * u, float(br["y0"]) + Footbridge.line_y(u), foot_pos.z), "kind": "walk"})
+				u -= 0.9
+			ramp.append({"pos": Vector3(float(br["x"]) + float(br["d"]) * (Footbridge.HW + 0.05), float(br["y0"]) + Footbridge.line_y(Footbridge.HW + 0.05), foot_pos.z), "kind": "walk"})          # (the last rise to the landing stays under 0.6 m: the crowd's height follows a waypoint only when it is that close)
+			ramp.append({"pos": top_pos, "kind": "walk"})
+			if n.ends_with("_top"):
+				ramp.reverse()
+			out.append_array(ramp)
 			i += 2
 			continue
 		if n.begins_with("esc") and n.ends_with("_top") and nxt.begins_with("esc") and nxt.ends_with("_bot"):

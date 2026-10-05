@@ -25,6 +25,8 @@ func run():
 	_plans()
 	for nm in ["West Ealing", "Slough", "Southall"]:
 		await _walk(nm)
+	await _graph("West Ealing", false)
+	await _graph("Slough", true)          # (built for step-free journeys: the lifts are there)
 	print("OK" if ok else "FAILED")
 
 
@@ -225,3 +227,95 @@ func _floor(x: float, z: float, from_y: float, depth: float) -> float:
 	q.collision_mask = 1
 	var h := _space.intersect_ray(q)
 	return NAN if h.is_empty() else (h["position"] as Vector3).y
+
+
+## the footbridge in the plan's walking graph: paths over it, through its lifts in the step-free graph, the plan's own waypoints (ramps, lift segments) swept with the capsule, the lift doors
+func _graph(nm: String, step_free: bool) -> void:
+	StationPlan.step_free_mode = step_free
+	StationPlan.lifts_enabled = true
+	var idx: int = Net.name_to_idx[nm]
+	var plan := StationPlan.for_station(idx)
+	check(not plan.bridges.is_empty(), "%s: the plan has its footbridges' graph" % nm)
+	if plan.bridges.is_empty():
+		StationPlan.step_free_mode = false
+		return
+	var st := Station.new()
+	add_child(st)
+	st.build(plan)
+	for i in 3:
+		await get_tree().physics_frame
+	_space = get_world_3d().direct_space_state
+	for br in plan.bridges:
+		var k: int = br["k"]
+		var fa: String = "face:" + String((br["flights"][0] as Dictionary)["face"])
+		var fb: String = "face:" + String((br["flights"][1] as Dictionary)["face"])
+		var by_stairs: Array = ["fb%d_a_pf" % k, "fb%d_a_foot" % k, "fb%d_a_top" % k, "fb%d_b_top" % k, "fb%d_b_foot" % k, "fb%d_b_pf" % k]
+		for rev in ([] if step_free else [false, true]):          # (a step-free journey has the steps closed with barriers: only the lifts are walked)
+			var names: Array = [fa] + by_stairs + [fb]
+			if rev:
+				names.reverse()
+			var err := _plan_route(plan, st, names)
+			check(err == "", "%s, bridge %d: the steps route %s is free (%s)" % [nm, k, "back" if rev else "across", err])
+			if k == 0:
+				# the real player follows the plan's waypoints, as the autopilot does: it must get from one platform to the other, over the deck
+				var pts: Array = []
+				for w in plan.walk_points(names, 0):
+					pts.append(st.to_global(w["pos"] as Vector3))
+				var base_y: float = (pts[0] as Vector3).y
+				var err3 := await _player_walk(pts, base_y)
+				check(err3 == "", "%s, bridge %d: the real player walks the plan's route %s (%s)" % [nm, k, "back" if rev else "across", err3])
+		# the planner finds its way over the bridge or the passages, and the lifts when the steps are closed
+		var p := plan.path(fa, fb, false, false)
+		check(not p.is_empty(), "%s, bridge %d: a path between the platforms" % [nm, k])
+		var psf := plan.path(fa, fb, true, true)
+		var uses_foot := false
+		for n in psf:
+			if String(n).ends_with("_foot"):
+				uses_foot = true
+		check(not psf.is_empty() and not uses_foot, "%s, bridge %d: the step-free path between the platforms has no steps of the bridge (%d nodes)" % [nm, k, psf.size()])
+		# the lifts: a route through both of them, door to door
+		var lift_names: Array = [fa, "fb%d_a_pf" % k, "fb%d_a_lf" % k, "lift%d_bot" % (100 + 2 * k), "lift%d_top" % (100 + 2 * k), "fb%d_a_top" % k, "fb%d_b_top" % k, "lift%d_top" % (101 + 2 * k), "lift%d_bot" % (101 + 2 * k), "fb%d_b_lf" % k, "fb%d_b_pf" % k, fb]
+		var err2 := _plan_route(plan, st, lift_names)
+		check(err2 == "", "%s, bridge %d: the route through the two lifts is free (%s)" % [nm, k, err2])
+		# the lifts' doors: anchors where the plan says, in front of a door, clear, each pointing at the other
+		if st.has_lifts():
+			for f in 2:
+				var eid := 100 + 2 * k + f
+				var lf: Dictionary = plan.lift_of(eid)
+				check(not lf.is_empty(), "%s: the lift %d is in the plan" % [nm, eid])
+				var seen := 0
+				for dnode in st.lift_doors:
+					if int(dnode.get_meta("lift")) != eid:
+						continue
+					seen += 1
+					var end: String = dnode.get_meta("end")
+					var front: Vector3 = lf["top" if end == "top" else "bot"]["front"]
+					check(dnode.position.distance_to(front) < 0.01, "%s: lift %d %s: its anchor stands where the plan puts the door front" % [nm, eid, end])
+					check(_free(st.to_global(front)), "%s: lift %d %s: nobody stands inside something at its door front" % [nm, eid, end])
+					var other: Vector3 = lf["bot" if end == "top" else "top"]["front"]
+					check((dnode.get_meta("to") as Vector3).distance_to(other) < 0.01, "%s: lift %d %s: it leads to the other door" % [nm, eid, end])
+				check(seen == 2, "%s: lift %d has both its doors (%d)" % [nm, eid, seen])
+		# step-free journeys close the steps with a barrier at each end of each flight
+		if step_free:
+			var barriers := 0
+			for c in st.fitting_root.get_children():
+				if String(c.name).begins_with("BridgeBarrier%d_" % k):
+					barriers += 1
+			check(barriers == 4, "%s, bridge %d: a step-free journey has a barrier across each end of both flights (%d)" % [nm, k, barriers])
+	st.queue_free()
+	await get_tree().process_frame
+	StationPlan.step_free_mode = false
+
+
+## the plan's own way along `names` (every stretch between lifts on its own, as the route audit does): sweeps each with the capsule; "" when all is free
+func _plan_route(plan: StationPlan, st: Station, names: Array) -> String:
+	for seg in plan.path_segments(names):
+		var pts: Array = []
+		for w in plan.walk_points(seg, 0):
+			pts.append(st.to_global((w["pos"] as Vector3)))
+		if pts.size() < 2:
+			continue
+		var err := _sweep(pts, 0.3)
+		if err != "":
+			return err
+	return ""

@@ -183,11 +183,12 @@ func _build_lifts() -> void:
 			houses.append_array(d.get("extra", []))
 			for hi in houses.size():
 				var hs: Dictionary = houses[hi]
-				var car := PropKit.lift_housing()
-				car.name = "Lift%d_%s_%d" % [li, end, hi]
-				fitting_root.add_child(car)
-				car.position = hs["pos"]
-				car.rotation.y = hs["yaw"]
+				if not bool(d.get("nohousing", false)):          # (a footbridge's lift: its doors are drawn by Footbridge)
+					var car := PropKit.lift_housing()
+					car.name = "Lift%d_%s_%d" % [li, end, hi]
+					fitting_root.add_child(car)
+					car.position = hs["pos"]
+					car.rotation.y = hs["yaw"]
 				var door := Node3D.new()
 				door.name = "LiftDoor%d_%s_%d" % [li, end, hi]
 				fitting_root.add_child(door)
@@ -213,7 +214,20 @@ func _build_lifts() -> void:
 			fitting_root.add_child(b)
 			b.position = plan.esc_point(ei, Vector3(-0.8, 0.0, 0.0) if top else Vector3(float(e["length"]) + 0.8, -float(e["rise"]), 0.0))
 			b.rotation.y = float(e["yaw"]) + (-PI * 0.5 if top else PI * 0.5)      # (the board faces the passenger coming from the room)
-
+	# ... and across both ends of each flight of a footbridge's steps
+	for br in plan.bridges:
+		var bd: float = br["d"]
+		for fl in br["flights"]:
+			for at in ["foot", "top"]:
+				var bb := PropKit.bank_barrier(Footbridge.W - 0.7, true)
+				bb.name = "BridgeBarrier%d_%s_%s" % [int(br["k"]), String(fl["tag"]), at]
+				fitting_root.add_child(bb)
+				if at == "foot":
+					bb.position = Vector3(float(br["x"]) + bd * (Footbridge.HW + Footbridge.RUN + 0.6), float(br["y0"]), float(fl["zc"]))
+					bb.rotation.y = bd * PI * 0.5          # (the board faces the passenger coming from the platform, away from the steps)
+				else:
+					bb.position = Vector3(float(br["x"]) + bd * (Footbridge.HW + 0.1), float(br["y0"]) + Footbridge.DECK_Y, float(fl["zc"]))
+					bb.rotation.y = -bd * PI * 0.5
 
 # ---------------------------------------------------------------------------------------------------
 # Spiral emergency stairs (the stations that have one, in normal play with lifts: StationPlan._add_spirals)

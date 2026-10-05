@@ -19,6 +19,7 @@ const HEAD := 2.6               # the walking surface to the underside of the ro
 const PARAPET := 1.1
 const SLAB := 0.3               # depth of the deck slab
 const ROOF_T := 0.2
+const ANNEX := 3.4              # the lift tower beside each landing, on the side away from the steps: a lobby this long at deck level over a plinth with the lift's lower door
 
 var kit := MeshKit.new()
 var xb := 0.0
@@ -27,12 +28,16 @@ var wall_mat := "brick_red"
 var _hulls: Array = []          # convex collision shapes: PackedVector3Array each
 var _boxes: Array = []          # [centre, size] axis-aligned collision boxes
 var _lights: Array = []         # Vector3
+var _labels: Array = []         # [position, yaw] of the "LIFT" signs
+var with_lifts := false         # draw the lift towers (the station has its lifts: Station.has_lifts)
 
 
-## the x range (module frame) a footbridge at x = p_xb whose steps go toward p_d takes up
+## the x range (module frame) a footbridge at x = p_xb whose steps go toward p_d takes up, with the lift towers on the other side of the landings (always reserved: the plan does not know whether the
+## station's lifts are built)
 static func footprint(p_xb: float, p_d: float) -> Vector2:
 	var far := p_xb + p_d * (HW + RUN)
-	return Vector2(minf(p_xb - HW, far), maxf(p_xb + HW, far))
+	var back := p_xb - p_d * (HW + ANNEX)
+	return Vector2(minf(back, far), maxf(back, far))
 
 
 ## the height of the line through the nosings (and the ramp the player walks on) at distance u from the deck's middle, along the steps
@@ -41,9 +46,10 @@ static func line_y(u: float) -> float:
 
 
 ## `pm`: the module that builds this (its _brk gives the frame back between the steps when the station is built in the background: the whole takes about 10 ms)
-func build(p_xb: float, p_d: float, za: float, zb: float, p_wall_mat: String, pm: PlatformModule = null, p_async := false) -> void:
+func build(p_xb: float, p_d: float, za: float, zb: float, p_wall_mat: String, p_lifts := false, pm: PlatformModule = null, p_async := false) -> void:
 	xb = p_xb
 	d = p_d
+	with_lifts = p_lifts
 	wall_mat = "matt:a9aaa5" if p_wall_mat == "concrete" else p_wall_mat          # (the concrete of the station walls is much darker than a bridge's)
 	kit.seed_rng(int(absf(xb) * 10.0) + 7)
 	_deck(za, zb)
@@ -99,7 +105,7 @@ func _deck(za: float, zb: float) -> void:
 	var panel := "matt:7c848a"
 	for sx: float in [-1.0, 1.0]:
 		var xc := xb + sx * (HW - WALL_T * 0.5)
-		var open_side := sx == d          # (the side the steps are on is open at the landings)
+		var open_side := sx == d or with_lifts          # (the side the steps are on is open at the landings, and so is the other where a lift tower joins the landing)
 		var z0 := zs0 if open_side else z_lo
 		var z1 := zs1 if open_side else z_hi
 		var bz0 := z0 if open_side else z0 + WALL_T          # (the outer panel stops short of the landings' walls, which close the corners)
@@ -142,7 +148,8 @@ func _flight(zc: float, sg: float) -> void:
 	var x_end := _x(-HW)
 	var th := atan2(r, TREAD)
 	# --- the plinth under the landing: its three sides below the deck (the fourth is the first riser of the steps)
-	_wall(wall_mat, Vector3(x_end, 0, zl), Vector3(x_end, 0, zh), 0.0, Y - SLAB, Vector3(-d, 0, 0))          # (the deck's side panel carries on above it)
+	if not with_lifts:
+		_wall(wall_mat, Vector3(x_end, 0, zl), Vector3(x_end, 0, zh), 0.0, Y - SLAB, Vector3(-d, 0, 0))          # (the deck's side panel carries on above it)
 	_wall(wall_mat, Vector3(xb - HW, 0, zc - sg * HW), Vector3(xb + HW, 0, zc - sg * HW), 0.0, Y, Vector3(0, 0, -sg))
 	_wall(wall_mat, Vector3(xb - HW, 0, zc + sg * HW), Vector3(xb + HW, 0, zc + sg * HW), 0.0, Y, Vector3(0, 0, sg))
 	# --- the steps: a riser at every u_i, a tread between each pair, brick parapets either side
@@ -186,11 +193,68 @@ func _flight(zc: float, sg: float) -> void:
 		_lights.append(Vector3(_x(u), line_y(u) + HEAD - 0.5, zc))
 	# --- collision: the plinth and the ramp (one convex shape whose top is the ramp the player walks up), the parapets above it, the back wall of the landing
 	var foot_u := HW + RUN
-	var prof := [Vector2(-HW, 0.0), Vector2(foot_u, 0.0), Vector2(HW, Y), Vector2(-HW, Y)]
+	var back_u := -HW - (ANNEX if with_lifts else 0.0)
+	var prof := [Vector2(back_u, 0.0), Vector2(foot_u, 0.0), Vector2(HW, Y), Vector2(back_u, Y)]
 	_hulls.append(_prism(prof, zl, zh))
+	if with_lifts:
+		_annex(zc, sg)
 	var par := [Vector2(HW, Y), Vector2(foot_u, 0.0), Vector2(foot_u, PARAPET), Vector2(HW, Y + PARAPET)]
 	for zz: float in [zl, zh - WALL_T]:
 		_hulls.append(_prism(par, zz, zz + WALL_T))
+
+
+## the lift tower beside the landing, away from the steps: a plinth (brick, with the lift's lower door facing the platform) carrying a lobby at deck level (floor, walls, roof) whose far end has the
+## lift's upper door; the stations' lifts are doors the player is carried through (Station._build_lifts: no cab), this is what they are in
+func _annex(zc: float, sg: float) -> void:
+	var Y := DECK_Y
+	var zl := zc - HW
+	var zh := zc + HW
+	var u0 := -HW - ANNEX
+	var xf0 := _x(u0)
+	var xf1 := _x(-HW)
+	var xlo := minf(xf0, xf1)
+	var xhi := maxf(xf0, xf1)
+	var xm := (xlo + xhi) * 0.5
+	_wall(wall_mat, Vector3(xf0, 0, zl), Vector3(xf0, 0, zh), 0.0, Y, Vector3(-d, 0, 0))
+	_wall(wall_mat, Vector3(xlo, 0, zc - sg * HW), Vector3(xhi, 0, zc - sg * HW), 0.0, Y, Vector3(0, 0, -sg))
+	_wall(wall_mat, Vector3(xlo, 0, zc + sg * HW), Vector3(xhi, 0, zc + sg * HW), 0.0, Y, Vector3(0, 0, sg))
+	kit.horiz("floor_slab", xlo, xhi, zl, zh, Y, true, Y)
+	var panel := "matt:7c848a"
+	for zz: float in [zl + WALL_T * 0.5, zh - WALL_T * 0.5]:
+		_box(panel, Vector3(xm, Y + PARAPET * 0.5, zz), Vector3(ANNEX, PARAPET, WALL_T), Y)
+		_wall("ped_glass", Vector3(xlo, 0, zz), Vector3(xhi, 0, zz), Y + PARAPET, Y + HEAD, Vector3(0, 0, 1), Y)
+		_boxes.append([Vector3(xm, Y + HEAD * 0.5, zz), Vector3(ANNEX, HEAD, WALL_T)])
+	var xw := _x(u0 + WALL_T * 0.5)          # the far wall: solid, the upper lift door in it
+	_box(panel, Vector3(xw, Y + HEAD * 0.5, zc), Vector3(WALL_T, HEAD, W), Y)
+	_boxes.append([Vector3(xw, Y + HEAD * 0.5, zc), Vector3(WALL_T, HEAD, W)])
+	var ru0 := -HW - ANNEX - 0.05          # (the lobby's roof ends where the deck's own roof, a little wider than the deck, begins)
+	var ru1 := -HW - 0.15
+	kit.box({"*": "matt:5f666c", "bottom": "ceiling"}, Vector3(_x((ru0 + ru1) * 0.5), Y + HEAD + ROOF_T * 0.5, zc), Vector3(ru1 - ru0, ROOF_T, W + 0.3), Y)
+	kit.box("light_emissive", Vector3(xm, Y + HEAD - 0.03, zc), Vector3(0.34, 0.05, 1.2), Y)
+	_lights.append(Vector3(xm, Y + HEAD - 0.5, zc))
+	_lift_door(Vector3(_x(u0 + WALL_T), Y, zc), Vector3(d, 0, 0))
+	_lift_door(Vector3(xm, 0.0, zc + sg * HW), Vector3(0, 0, sg))
+
+
+## a lift door as the lift housings have it (PropKit.lift_housing: the frame, two leaves and their seam, the call panel with its two lamps, the sign over it and "LIFT") on a wall: `at` is the
+## foot of the door's middle on the wall's face, `facing` the horizontal direction away from the wall
+func _lift_door(at: Vector3, facing: Vector3) -> void:
+	var yaw := atan2(-facing.x, -facing.z)
+	var b := Basis(Vector3.UP, yaw)
+	var charcoal := "matt:2f3033"
+	var parts := [
+		[charcoal, Vector3(0, 1.1, -0.015), Vector3(1.38, 2.18, 0.03)],
+		["steel", Vector3(-0.33, 1.08, -0.04), Vector3(0.62, 2.06, 0.03)],
+		["steel", Vector3(0.33, 1.08, -0.04), Vector3(0.62, 2.06, 0.03)],
+		[charcoal, Vector3(0, 1.08, -0.058), Vector3(0.02, 2.06, 0.01)],
+		[charcoal, Vector3(0.8, 1.05, -0.03), Vector3(0.18, 0.34, 0.03)],
+		["light_emissive", Vector3(0.8, 1.12, -0.055), Vector3(0.05, 0.05, 0.01)],
+		["yellow_paint", Vector3(0.8, 0.98, -0.055), Vector3(0.05, 0.05, 0.01)],
+		[charcoal, Vector3(0, 2.46, -0.035), Vector3(1.4, 0.34, 0.04)],
+	]
+	for p in parts:
+		kit.box_xf(String(p[0]), Transform3D(b, at + b * (p[1] as Vector3)), p[2] as Vector3, at.y)
+	_labels.append([at + b * Vector3(0, 2.46, -0.065), yaw + PI])
 
 
 ## the shape (u, y) extruded between z0 and z1, u mapped to x
@@ -231,6 +295,19 @@ func _finish() -> void:
 		cs2.shape = hull
 		body.add_child(cs2)
 	add_child(body)
+	for lb in _labels:
+		var lab := Label3D.new()
+		lab.text = "LIFT"
+		lab.font = load("res://assets/fonts/Barlow-Bold.ttf")
+		lab.font_size = 96
+		lab.pixel_size = 0.0021
+		lab.modulate = Color(1, 1, 1)
+		lab.shaded = false
+		lab.double_sided = false
+		lab.position = lb[0]
+		lab.rotation.y = lb[1]
+		lab.visibility_range_end = 30.0
+		add_child(lab)
 	for lp in _lights:
 		var o := OmniLight3D.new()
 		o.position = lp
