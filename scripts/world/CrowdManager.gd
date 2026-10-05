@@ -51,7 +51,8 @@ var density := 1.0                # global multiplier (settings)
 var stats := {"agents": 0, "awake": 0, "riders": 0, "lift_rides": 0}
 
 
-func setup(st: Station, p: Node3D) -> void:
+## `p_async`: the station is built while a ride goes on: the first crowd is made in pieces of a few ms, a frame between (36 - 50 ms in one go at a big station); a coroutine then, else it all happens at once
+func setup(st: Station, p: Node3D, p_async := false) -> void:
 	station = st
 	plan = st.plan
 	player = p as Player
@@ -60,7 +61,7 @@ func setup(st: Station, p: Node3D) -> void:
 	add_child(lod)
 	st.trains.doors_opened.connect(_on_doors_opened)
 	st.trains.train_spawned.connect(_on_train_spawned)
-	_prefill()
+	await _prefill(p_async)
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -74,20 +75,30 @@ func _inbound_rate() -> float:
 	return 0.16 * plan.imp * (0.08 + _cf()) * density        # people per second entering the station
 
 
-func _prefill() -> void:
+func _prefill(p_async := false) -> void:
 	var cf := _cf()
+	var t0 := Time.get_ticks_usec()
 	# people already in flight: distribute along inbound routes
 	var n_flight := int(round(_inbound_rate() * 70.0))
 	for k in n_flight:
 		var a := _new_inbound()
-		if a == null:
-			continue
-		_advance_random(a, rng.randf())
+		if a != null:
+			_advance_random(a, rng.randf())
+		if p_async and Time.get_ticks_usec() - t0 > 5000:
+			await get_tree().process_frame
+			t0 = Time.get_ticks_usec()
+			if not is_inside_tree():
+				return
 	# people waiting on platforms
 	for fkey in plan.faces:
 		var n_wait := int(round(rng.randf_range(0.55, 1.0) * (2.0 + cf * plan.imp * 15.0) * density))
 		for k in n_wait:
 			_new_waiter(fkey)
+			if p_async and Time.get_ticks_usec() - t0 > 5000:
+				await get_tree().process_frame
+				t0 = Time.get_ticks_usec()
+				if not is_inside_tree():
+					return
 	# people walking out (arrived earlier)
 	var n_out := int(round(_inbound_rate() * 40.0))
 	for k in n_out:
@@ -96,6 +107,11 @@ func _prefill() -> void:
 		var a2 := _new_outbound(fk, _face_x(fk) + rng.randf_range(-40.0, 40.0))
 		if a2:
 			_advance_random(a2, rng.randf())
+		if p_async and Time.get_ticks_usec() - t0 > 5000:
+			await get_tree().process_frame
+			t0 = Time.get_ticks_usec()
+			if not is_inside_tree():
+				return
 
 
 func _face_x(fk: String) -> float:

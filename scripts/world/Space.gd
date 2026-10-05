@@ -20,7 +20,8 @@ var extra_nodes: Array = []
 
 ## spec keys: name, rect:[x0,x1,z0,z1], y, h, openings, wall, floor, ceil, band (Color, optional), lights ("grid"/"strip_x"/"strip_z"), light_dx, light_dz,
 ##            open_ends: ["E","W"] sides that have NO wall at all (corridor ends; they must be paired with an adjacent space)
-func build(p_spec: Dictionary) -> void:
+## `st`: the station that builds it in the background (its _slice gives the frame back between the parts: a big hall was 10 - 12 ms in one go)
+func build(p_spec: Dictionary, st: Station = null) -> void:
 	spec = p_spec
 	var r: Array = spec["rect"]
 	x0 = r[0]; x1 = r[1]; z0 = r[2]; z1 = r[3]
@@ -41,6 +42,8 @@ func build(p_spec: Dictionary) -> void:
 	# walls
 	for side in ["N", "S", "W", "E"]:
 		_wall(side, wall_mat)
+		if st != null:
+			await st._slice()
 	# skirting / colour band
 	if spec.has("bands"):
 		for b in spec["bands"]:
@@ -48,7 +51,11 @@ func build(p_spec: Dictionary) -> void:
 	elif spec.has("band"):
 		_band(spec["band"])
 	# lights
+	if st != null:
+		await st._slice()
 	_lights()
+	if st != null:
+		await st._slice()
 	_finish()
 
 

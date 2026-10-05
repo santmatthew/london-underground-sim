@@ -127,7 +127,7 @@ func build(p_spec: Dictionary, p_async := false) -> void:
 		})
 		await _brk(p_async)
 	if box:
-		_build_box_hall(x0, x1, zwall, zedge, ztrack, zfar, wall_mat, openings)
+		await _build_box_hall(x0, x1, zwall, zedge, ztrack, zfar, wall_mat, openings)
 	else:
 		_build_spine(x0, x1, spine_x0, spine_x1, zwall, wall_mat, openings)
 	await _brk(p_async)
@@ -165,7 +165,16 @@ func build(p_spec: Dictionary, p_async := false) -> void:
 		meta["bend"] = bd
 	await _brk(p_async)
 	var mi := MeshInstance3D.new()
-	mi.mesh = kit.build(mats)
+	if p_async and is_inside_tree():
+		# (the surfaces of a deep platform's shell are 40 - 60 ms of vertex copying: on a worker thread, the frames go on meanwhile)
+		var built: Array = [null]
+		var task_b := WorkerThreadPool.add_task(func(): built[0] = kit.build(mats), false, "build platform shell")
+		while not WorkerThreadPool.is_task_completed(task_b):
+			await get_tree().process_frame
+		WorkerThreadPool.wait_for_task_completion(task_b)
+		mi.mesh = built[0]
+	else:
+		mi.mesh = kit.build(mats)
 	mi.name = "Shell"
 	add_child(mi)
 	await _brk(p_async)
@@ -231,6 +240,7 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	var arch_mat := "tile_white" if wall_mat == "tile_oxford" else wall_mat
 	if not box:
 		kit.sweep_x(arch_mat, prof, x0, x1, 0.0)
+		await _brk(_async_b)
 	# beyond the platform the bore is bare dark lining with cabling and a lamp here and there, after a few metres of the platform's own tiling. Where the line comes out into daylight (or runs in a
 	# cut-and-cover box) beyond a platform end, that stretch is what RunScenery builds, cell by cell, the same as the ride's own scenery (spec "ext": what the track runs through, see StationPlan)
 	var runs_w: Array = _ext_runs(s, true, xa, x0)
@@ -265,6 +275,7 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 					kit.sweep_x("tunnel_lining", prof_run, lo_l, hi_l, 0.0)
 					_wall_z("tunnel_lining", s * zwall_run, lo_l, hi_l, BED_Y, SPRING_Y, [], s < 0.0, true)
 					_run_detail(s, west, lo_l, hi_l, (x0 - RUN_IN) if west else (x1 + RUN_IN), zwall_run, zfar)
+					await _brk(_async_b)
 			else:
 				var tmp := MeshKit.new()
 				tmp.seed_rng(5 + int(r[5]))
@@ -282,6 +293,7 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 				kit.merge(tmp)
 				if not RunScenery.enclosed(int(r[0]) & 7):
 					_open_xs.append(Vector2(a, b))
+				await _brk(_async_b)          # (a cell of the running track beyond the platform: a few ms each)
 	var holes := []
 	for ox in openings:
 		holes.append([ox - OPEN_W * 0.5, ox + OPEN_W * 0.5, OPEN_H])
@@ -289,9 +301,12 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 		holes.append([rx - RECESS_W * 0.5, rx + RECESS_W * 0.5, RECESS_H])
 	holes.sort_custom(func(a, b): return a[0] < b[0])
 	if not box:
+		await _brk(_async_b)
 		_wall_z(wall_mat, s * zwall, x0, x1, 0.0, SPRING_Y, holes, s < 0.0, true)
+		await _brk(_async_b)
 		for rx in recesses:
 			_recess(s, rx, zwall, String(character.get("recess", "plain")))
+			await _brk(_async_b)
 
 	await _brk(_async_b)
 	# --- platform deck (y = 0) and edge ---
@@ -525,7 +540,7 @@ func _build_box_hall(x0: float, x1: float, zwall: float, zedge: float, ztrack: f
 			# the back of the only platform: the retaining wall and palisade fence that the far side of a track has, where the other platform would have been
 			PlatformOpen.track_wall(self, open_style, -solo, x0, x1, zwall, wall_mat)
 			_cols.append([Vector3((x0 + x1) * 0.5, 2.5, -solo * (zwall + 0.5)), Vector3(x1 - x0 + 4.0, 6.0, 1.0), "open"])
-		_build_open_hall(x0, x1, zwall, ztrack, zfar, wall_mat, openings)
+		await _build_open_hall(x0, x1, zwall, ztrack, zfar, wall_mat, openings)
 		return
 	# ceiling
 	if surface:
@@ -583,7 +598,7 @@ func _build_box_hall(x0: float, x1: float, zwall: float, zedge: float, ztrack: f
 
 ## the open-air variant of the box hall: canopy + columns (PlatformOpen) instead of the closed roof; lights, end walls and collision are the same
 func _build_open_hall(x0: float, x1: float, zwall: float, ztrack: float, zfar: float, wall_mat: String, openings: Array) -> void:
-	PlatformOpen.canopy(self, open_style, x0, x1, openings)
+	await PlatformOpen.canopy(self, open_style, x0, x1, openings)
 	var ly := PlatformOpen.roof_h(open_style) - 0.9          # (lights must hang below the roof's underside to light it)
 	if String(roof_info.get("kind", "")) == "mushroom":
 		for c in roof_info["caps"]:
@@ -605,6 +620,7 @@ func _build_open_hall(x0: float, x1: float, zwall: float, ztrack: float, zfar: f
 	for ce in column_extra:
 		_cols.append([Vector3((ce as Vector2).x, BOX_H * 0.5, (ce as Vector2).y), Vector3(0.44, BOX_H, 0.44)])
 	_box_end_wall(x0, true, zwall, ztrack, zfar, wall_mat, true)
+	await _brk(_async_b)
 	_box_end_wall(x1, false, zwall, ztrack, zfar, wall_mat, false)
 
 

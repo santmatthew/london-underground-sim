@@ -92,7 +92,7 @@ static func light_zs(pm: PlatformModule) -> Array:
 
 
 ## the roof over the island: see the style keys above. Writes pm.roof_spans / pm.roof_info (what is overhead where) for the signs and fittings that hang from it
-static func canopy(pm: PlatformModule, st: Dictionary, x0: float, x1: float, openings: Array) -> void:
+static func canopy(pm: PlatformModule, st: Dictionary, x0: float, x1: float, openings: Array) -> void:          # (a coroutine: it gives the frame back between its parts, see PlatformModule._brk)
 	var kind := String(st.get("canopy", "slab"))
 	var spans := _cut(_spans(st, x0, x1), pm.spec.get("cuts", []))          # (a footbridge and its steps stand where the canopy would be)
 	var zr := canopy_z(pm)          # the roof's reach across the module: the island's both platforms, or (a single platform of a pair of side platforms) its own half
@@ -112,7 +112,9 @@ static func canopy(pm: PlatformModule, st: Dictionary, x0: float, x1: float, ope
 		pm.roof_spans = spans if not spans.is_empty() else [Vector2(x0, x0)]          # (an empty list means roof all along)
 		for sp in spans:
 			_roof(pm, st, kind, sp.x, sp.y)
+			await pm._brk(pm._async_b)
 		_columns(pm, st, spans, x0, x1, openings)
+		await pm._brk(pm._async_b)
 		for sp in spans:
 			_strip_lights(pm, sp.x, sp.y, roof_h(st), kind == "gable")
 	if entry_end > x0:

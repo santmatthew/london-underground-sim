@@ -318,17 +318,21 @@ func _hall(gl: Dictionary) -> void:          # (a coroutine: breaks between its 
 	# the big things first: shops, then the ticket-machine bay
 	if medium:
 		_retail(hall_room, r, gz, imp)
-	_ticket_machines(hall_room, r, gz, 2 if not medium else (3 if imp < 2.2 else 4))
+		await station._slice()
+	await _ticket_machines(hall_room, r, gz, 2 if not medium else (3 if imp < 2.2 else 4))
 	await station._slice()
 	# floor furniture that lives by the walls: info totem, help point
-	_entrance_clutter(hall_room, r, gz, imp)
+	await _entrance_clutter(hall_room, r, gz, imp)
+	await station._slice()
 	wall_node(hall_room, "W", PropKit.help_point_disc(), 0.6, 1.3, 0.95, 1.65, gz - 2.8)
 	# safety and information fittings on free wall: a defibrillator by the gateline, a leaflet rack beside the information frames
 	wall_prop(hall_room, "W", "defibrillator_cabinet", 0.45, 1.25, 0.9, 1.6, gz - 4.2)
+	await station._slice()
 	if medium:
 		for side in ["E", "W"]:
 			if wall_prop(hall_room, side, "leaflet_rack", 0.55, 1.0, 0.8, 1.5, r[2] + 4.2) != null:
 				break
+			await station._slice()
 		# planters (Underground in Bloom): inside the entrance, against a side wall
 		var n_pl := 0
 		for side2 in ["W", "E"]:
@@ -340,6 +344,7 @@ func _hall(gl: Dictionary) -> void:          # (a coroutine: breaks between its 
 					zpl += 3.0
 				else:
 					zpl += 0.8
+				await station._slice()
 	await station._slice()
 	wall_node(hall_room, "E", PropKit.help_point_disc(), 0.6, 1.3, 0.95, 1.65, gz + 3.0)
 	# wall furniture on free wall: clock high on a paid-side wall, a fire cabinet
@@ -383,7 +388,7 @@ func _room_for_rect(r: Array) -> Dictionary:
 
 ## ticket machines in wall bays on the unpaid side (real halls: machines are set in a wall bay under a 'Tickets' sign, never free-standing):
 ## 2 machines in small halls, 3 in medium, 4-5 in big ones, as one bay or two
-func _ticket_machines(rm: Dictionary, r: Array, gz: float, n: int) -> void:
+func _ticket_machines(rm: Dictionary, r: Array, gz: float, n: int) -> void:          # (a coroutine: breaks after each bay's model is built)
 	var bays: Array = []
 	if n <= 2:
 		bays = [[1, 1]]
@@ -393,11 +398,12 @@ func _ticket_machines(rm: Dictionary, r: Array, gz: float, n: int) -> void:
 		bays = [[2, 1], [2, 0]]
 	for bay in bays:
 		var placed := false
+		var node := PropKit.ticket_bay(bay[0], bay[1])          # (one model for both walls: it is moved to the next try, and freed if nothing takes it)
+		var w: float = node.get_meta("width")
+		await station._slice()
 		for side in ["W", "E"]:
 			if placed:
 				break
-			var node := PropKit.ticket_bay(bay[0], bay[1])
-			var w: float = node.get_meta("width")
 			for iv in wall_free(rm, side, 0.0, 2.4):
 				var z0: float = maxf(iv[0], r[2] + 1.8) + w * 0.5
 				var z1: float = minf(iv[1], gz - 2.5) - w * 0.5
@@ -411,8 +417,8 @@ func _ticket_machines(rm: Dictionary, r: Array, gz: float, n: int) -> void:
 						z += 0.5
 				if placed:
 					break
-			if not placed and side == "E":
-				node.free()
+		if not placed:
+			node.free()
 
 
 ## information and newspaper stands crowded near the entrance (real small halls: 3-5 grey poster stands, a blue newspaper stand or two)
@@ -425,6 +431,7 @@ func _entrance_clutter(rm: Dictionary, r: Array, gz: float, imp: float) -> void:
 		var z: float = r[2] + 1.6
 		while placed < n_stands and z < minf(gz - 3.0, r[2] + 9.0):
 			var node := PropKit.poster_stand(picker.pick("info"))
+			await station._slice()          # (a coroutine: each stand's model takes a few ms to build)
 			var wp := wall_point(rm, side, z, 0.0, 0.35)
 			if kit_prop(root, node, wp[0], wp[1], 0.55):
 				placed += 1
@@ -436,6 +443,7 @@ func _entrance_clutter(rm: Dictionary, r: Array, gz: float, imp: float) -> void:
 		var done := false
 		while not done and z2 < minf(gz - 3.0, r[2] + 8.0):
 			var ns := PropKit.newspaper_stand()
+			await station._slice()
 			var wp2 := wall_point(rm, side, z2, 0.0, 0.25)
 			if kit_prop(root, ns, wp2[0], wp2[1], 0.5):
 				done = true
@@ -529,9 +537,9 @@ func _platform(mi: int) -> void:          # (a coroutine: it breaks for a frame 
 				_platform_wall(kit, pm, s, zwall, L, ox)       # (island box halls have no platform-side wall: nothing to hang on)
 		await station._slice()          # (a break between the parts, when the station is built in the background)
 		if not Station.debug_off("furniture"):
-			_platform_furniture(holder, pm, s, zwall, zedge, zfar, L, ox)
+			await _platform_furniture(holder, pm, s, zwall, zedge, zfar, L, ox)
 		await station._slice()
-	var mi_node := PosterKit.finish(kit, holder, "Posters")
+	var mi_node := await PosterKit.finish_async(kit, holder, "Posters", station)
 	if mi_node != null:
 		mi_node.visibility_range_end = 60.0
 		mi_node.visibility_range_end_margin = 6.0
@@ -759,12 +767,15 @@ func _platform_furniture(holder: Node3D, pm: PlatformModule, s: float, zwall: fl
 		var bench := PropKit.bench_toro() if deep else PropKit.bench_timber()
 		if kit_prop(holder, bench, Vector3(x, 0, s * (zwall + 0.36)), Vector3(0, 0, s), 0.45, off):
 			placed_b += 1
+		await station._slice()          # (a prop or two between breaks: a platform's furniture was 12 - 23 ms in one go)
 	if pm.open:
-		_open_extras(holder, pm, s, zwall, zedge, L, off)
+		await _open_extras(holder, pm, s, zwall, zedge, L, off)
 	# a clear-sack bin by the exit end of the platform (green = recycling) and another mid-platform
 	kit_prop(holder, PropKit.bin_hoop(false), Vector3(-L * 0.5 + 11.0, 0, s * (zwall + 0.45)), Vector3(0, 0, s), 0.4, off)
+	await station._slice()
 	if L > 60.0:
 		kit_prop(holder, PropKit.bin_hoop(true), Vector3(L * 0.5 - 12.0, 0, s * (zwall + 0.45)), Vector3(0, 0, s), 0.4, off)
+		await station._slice()
 	# help points at both ends, on the platform wall (an open-air island has no wall: on the nearest column, facing the platform edge)
 	for ex in [-L * 0.5 + 3.0, L * 0.5 - 3.0]:
 		var hp := PropKit.help_point_disc()
@@ -780,6 +791,7 @@ func _platform_furniture(holder: Node3D, pm: PlatformModule, s: float, zwall: fl
 			hp.position = Vector3(ex, 1.3, s * (zwall + 0.004))
 			hp.rotation.y = atan2(0.0, -s)
 		stats["placed"] += 1
+		await station._slice()
 	for ex2 in [-L * 0.5 + 1.0, L * 0.5 - 1.0]:
 		StationProps.put(holder, "platform_edge_marker", Vector3(ex2, 0, s * (zedge - 0.3)), Vector3(0, 0, s))
 	# ceiling-hung bracket clusters (two black ball loudspeakers + cameras) every ~18 m over the platform centre line
@@ -803,6 +815,7 @@ func _platform_furniture(holder: Node3D, pm: PlatformModule, s: float, zwall: fl
 		cc.position = Vector3(cxx, ceil_y, pz)
 		cc.rotation.y = 0.0 if s > 0.0 else PI
 		stats["placed"] += 1
+		await station._slice()
 	# clocks on the platform wall (open air: on a column)
 	for cx2 in [-L * 0.25, L * 0.25]:
 		if StationProps._near(cx2, pm.recesses, 1.8):
@@ -862,10 +875,12 @@ func _open_extras(holder: Node3D, pm: PlatformModule, s: float, zwall: float, ze
 		var b: float = (g as Vector2).y
 		if lamp_kind != "" and s > 0.0:
 			kit_prop(holder, PropKit.lamp_post(lamp_kind), Vector3((a + b) * 0.5, 0, 0), Vector3(0, 0, 1), 0.3, off)
+			await station._slice()
 		if planter_kind != "":
 			for x in [a + 1.4, b - 1.4]:
 				var pn := PropKit.planter_brick() if planter_kind == "brick" else PropKit.planter_box()
 				kit_prop(holder, pn, Vector3(x, 0, s * (zwall + 0.5)), Vector3(0, 0, s), 0.3, off)
+				await station._slice()
 	if st.get("roundel_post", false):
 		var rp := PropKit.roundel_post(StationCharacter.short_name(plan.name))
 		kit_prop(holder, rp, Vector3(clampf((spans[0] as Vector2).x - 2.5, -L * 0.5 + 2.0, L * 0.5 - 2.0), 0, s * (zedge - 1.3)), Vector3(1, 0, 0), 0.3, off)

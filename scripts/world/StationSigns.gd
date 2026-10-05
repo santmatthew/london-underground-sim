@@ -27,7 +27,7 @@ static func place(station: Station) -> void:
 			_landing_signs(station, root, plan, li)
 			await station._slice()
 	for mi in plan.modules.size():
-		_module_signs(station, root, plan, mi)
+		await _module_signs(station, root, plan, mi)
 		await station._slice()
 	cull(root, 42.0)
 	for pm in station.modules:
@@ -443,6 +443,7 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 				if is_nan(roof_y):
 					continue
 			hang_room(root, Signs.board([{"text": "Way out", "bold": true, "arrow": 1}], 1.9, 0.4), Vector3(mp.x + wxx, mp.y + minf(roof_y - 1.3, PlatformModule.BOX_H - 1.3), mp.z), Vector3(1, 0, 0), mp.y, mp.y + roof_y, 2.4)
+	await station._slice()          # (this function is a coroutine: one module's signs were up to 14 ms in one go)
 	# --- per face: roundels, indicators, boards
 	for fi in faces.size():
 		if faces[fi] == null:
@@ -496,6 +497,7 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 				rd2.position = Vector3(x + 1.5, 1.5, s * (zwall + 0.03))
 				rd2.rotation.y = atan2(0.0, s)
 				pm.add_child(rd2)
+		await station._slice()
 		# dot-matrix indicators hung from the crown, double sided
 		var apex := PlatformModule.SPRING_Y + PlatformModule.RISE
 		var zc := s * (zwall + zfar) * 0.5
@@ -503,6 +505,7 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 		for ix in [-L * 0.5 + 14.0, L * 0.5 - 16.0]:
 			# real indicators are about 2 m wide and hang tight under the crown
 			hang_blade(pm, s, ix, pz, PlatformModule.SPRING_Y + 1.2 if not box else PlatformModule.BOX_H - 0.9, Signs.indicator(gp, 2.0), Signs.indicator(gp, 2.0), -1.0)
+		await station._slice()
 		# platform id + line board over the opening (blade, both directions)
 		var brd_rows: Array = [{"text": "%s line" % Net.line_name(f2["line"]), "color": f2["color"], "bold": true},
 			{"text": "Platform %d  %s" % [plan.platform_no[pid2], f2["label"]], "bold": true}]

@@ -169,7 +169,7 @@ static func add_plate(kit: MeshKit, size: Vector2, bottom_centre: Vector3, norma
 
 
 ## turn the kit into a mesh instance under `parent`
-static func finish(kit: MeshKit, parent: Node3D, node_name := "Posters") -> MeshInstance3D:
+static func finish(kit: MeshKit, parent: Node3D, node_name := "Posters", already_bent := false) -> MeshInstance3D:
 	if kit.surfaces.is_empty():
 		return null
 	var mats := {}
@@ -189,9 +189,24 @@ static func finish(kit: MeshKit, parent: Node3D, node_name := "Posters") -> Mesh
 	var mi := MeshInstance3D.new()
 	var pm := parent.get_parent() as PlatformModule
 	if pm != null and pm.bend != null and parent.transform == Transform3D.IDENTITY:
-		kit.bend(pm.bend, 3.0)                 # (a run of posters on a curved platform follows the wall)
+		if not already_bent:
+			kit.bend(pm.bend, 3.0)                 # (a run of posters on a curved platform follows the wall)
 		mi.set_meta("bent", true)
 	mi.mesh = kit.build(mats)
 	mi.name = node_name
 	parent.add_child(mi)
 	return mi
+
+
+## `finish` for a station that is built in the background: the bend of a run of posters on a curved platform (about 100 ms of vertex work at Bank) runs on a worker thread, the frames go on meanwhile
+static func finish_async(kit: MeshKit, parent: Node3D, node_name: String, station: Station) -> MeshInstance3D:
+	var pm := parent.get_parent() as PlatformModule
+	var bent := false
+	if station.async_mode and station.is_inside_tree() and pm != null and pm.bend != null and parent.transform == Transform3D.IDENTITY and not kit.surfaces.is_empty():
+		var bd: Bend = pm.bend
+		var task := WorkerThreadPool.add_task(func(): kit.bend(bd, 3.0), false, "bend posters")
+		while not WorkerThreadPool.is_task_completed(task):
+			await station.get_tree().process_frame
+		WorkerThreadPool.wait_for_task_completion(task)
+		bent = true
+	return finish(kit, parent, node_name, bent)

@@ -29,6 +29,8 @@ func _ready() -> void:
 	add_child(we)
 	for k in Train.CAR_SCENES:
 		Train.scene_for(k)
+	Mats.preload_common()          # (the game does both at start-up (Game._preload): without them a destination's first escalator costs 200 - 500 ms)
+	Escalator.warm_up()
 	var cam := Camera3D.new()
 	cam.far = 400.0
 	add_child(cam)
@@ -49,14 +51,16 @@ func _ready() -> void:
 		var t0 := Time.get_ticks_usec()
 		await dest.build_async(pd)
 		var total := float(Time.get_ticks_usec() - t0) / 1000.0
+		print("DESTBUILD phases (ms, wall clock incl. the frames given back): %s" % str(dest.prof))
 		# what Ride._build_destination does next
 		var dummy := Node3D.new()
 		add_child(dummy)
 		var t1 := Time.get_ticks_usec()
 		dest.trains.setup(dest, dummy)
 		dest.trains.paused = true
-		dest.attach_crowd(dummy)
-		print("DESTBUILD attach_crowd + trains.setup: %.1f ms" % [float(Time.get_ticks_usec() - t1) / 1000.0])
+		var t2 := Time.get_ticks_usec()
+		await dest.attach_crowd(dummy, true)          # (as Ride._build_destination does)
+		print("DESTBUILD trains.setup: %.1f ms, attach_crowd: %.1f ms" % [float(t2 - t1) / 1000.0, float(Time.get_ticks_usec() - t2) / 1000.0])
 		for _i in 30:
 			await get_tree().process_frame
 		timing = false

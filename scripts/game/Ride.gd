@@ -346,8 +346,10 @@ func _build_destination() -> void:
 	# pre-register the visit so the service does not spawn a duplicate train
 	dest_station.trains.setup(dest_station, (game as Game).player)
 	dest_station.trains.external[dest_vkey] = true
-	dest_station.attach_crowd((game as Game).player)
 	dest_station.trains.paused = true
+	await dest_station.attach_crowd((game as Game).player, true)          # (in pieces: 36 - 50 ms in one go at a big station)
+	if not is_instance_valid(dest_station):
+		return
 	dest_ready = true
 
 

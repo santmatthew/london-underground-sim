@@ -291,6 +291,15 @@ static func preload_shaders() -> void:
 		shader(nm)
 
 
+## the shaders, and one escalator built and thrown away: the first of a run costs 140 ms (its materials, the first mesh builds, the steps and the handrails' shader materials) against 11 ms for
+## the next, and a ride to a deep station would otherwise pay it in the middle of the destination's build; done at start-up, behind the menu
+static func warm_up() -> void:
+	preload_shaders()
+	var e := Escalator.new()
+	e.build(6.0, [1, -1, 1], "tile_white")
+	e.free()
+
+
 const STEP_PITCH := 0.4            # arc length between neighbouring steps (a 0.2 m riser at 30 degrees)
 const STEP_SINK := 0.07
 

@@ -271,9 +271,8 @@ func _warm_up_people() -> void:
 
 func _preload() -> void:
 	# warm the material cache so the first station builds quickly
-	Escalator.preload_shaders()
-	for n in ["tile_white", "tile_cream", "panel_white", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "metal", "rail", "yellow_paint", "black", "light_emissive"]:
-		Mats.get_mat(n)
+	Mats.preload_common()
+	Escalator.warm_up()
 
 
 # ---------------------------------------------------------------------------------------------------

@@ -43,6 +43,12 @@ static func _surface(albedo_dir: String, ext: String, uv_per_m: float, tint := C
 
 
 ## name -> Material. Names used by builders: tile_white, tile_cream, floor_platform, ceiling, trackbed, concrete, rubber, metal, ...
+## the materials every station uses, loaded now (while the menu is up): the first of each costs 20 - 50 ms (textures, normal maps), a destination's first escalator was 200 ms of them
+static func preload_common() -> void:
+	for n in ["tile_white", "tile_cream", "panel_white", "tactile", "floor_platform", "floor_hall", "ceiling", "concrete", "trackbed", "metal", "rail", "yellow_paint", "black", "light_emissive"]:
+		get_mat(n)
+
+
 static func get_mat(name: String) -> Material:
 	if _cache.has(name):
 		return _cache[name]

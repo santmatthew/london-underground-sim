@@ -59,7 +59,10 @@ func _yield() -> void:
 			var now := Time.get_ticks_usec()
 			if _chunk_us != 0 and now - _chunk_us > _chunk_report_us():
 				var stk := get_stack()
-				var at: Dictionary = stk[2] if stk.size() > 2 and stk[1]["function"] == "_slice" else (stk[1] if stk.size() > 1 else {"function": "?", "line": 0})
+				var si := 1
+				while si < stk.size() - 1 and String(stk[si]["function"]) in ["_slice", "_brk"]:          # (the helpers that gave the frame back: the line that asked is the one before them)
+					si += 1
+				var at: Dictionary = stk[si] if stk.size() > si else {"function": "?", "line": 0}
 				print("LOAD     chunk %4d ms ends at %s:%d" % [(now - _chunk_us) / 1000, at["function"], at["line"]])
 		await get_tree().process_frame
 		_chunk_us = Time.get_ticks_usec()
@@ -79,7 +82,7 @@ func build_async(p: StationPlan, use_async := true) -> void:
 	var _t0 := Time.get_ticks_msec()
 	for spec in plan.rooms:
 		var sp := Space.new()
-		sp.build(spec)
+		await sp.build(spec, self)
 		add_child(sp)
 		spaces[spec["name"]] = sp
 		await _slice()
@@ -507,14 +510,14 @@ static func _street_material(suburban := false) -> StandardMaterial3D:
 	return gm
 
 
-func attach_crowd(p: Node3D) -> void:
+func attach_crowd(p: Node3D, p_async := false) -> void:
 	if crowd != null:
 		crowd.player = p as Player
 		return
 	crowd = CrowdManager.new()
 	crowd.name = "Crowd"
 	add_child(crowd)
-	crowd.setup(self, p)
+	await crowd.setup(self, p, p_async)
 
 
 ## world position of a platform face's boarding point given a fraction along the platform (0..1) — inside the platform, at the edge
