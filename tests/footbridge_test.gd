@@ -27,7 +27,85 @@ func run():
 		await _walk(nm)
 	await _graph("West Ealing", false)
 	await _graph("Slough", true)          # (built for step-free journeys: the lifts are there)
+	_lift_only()
+	await _cut_all()
+	_staggered()
 	print("OK" if ok else "FAILED")
+
+
+## a station whose escalators are taken out (lift-only: StationPlan._apply_lift_only) keeps its footbridge's steps in the crowd's graph - the bridge's edges are no bank's
+func _lift_only() -> void:
+	var plan := StationPlan.new()          # (not the cached one)
+	plan.generate(Net.name_to_idx["West Ealing"])
+	var steps := 0
+	for ei in plan.edges.size():
+		if bool((plan.edges[ei] as Dictionary).get("stairs", false)):
+			steps += 1
+	check(steps > 0 and not plan.escs.is_empty(), "West Ealing (a copy of the plan): the footbridge's steps are edges (%d) and the station has a bank" % steps)
+	var before := 0
+	for l in plan.adj:
+		for ed in l:
+			if int(ed[2]) >= 0 and bool((plan.edges[int(ed[2])] as Dictionary).get("stairs", false)):
+				before += 1
+	(plan.escs[0] as Dictionary)["stairs"] = false          # (bank 0 becomes an escalator, and so is removed)
+	plan._apply_lift_only()
+	var after := 0
+	for l in plan.adj:
+		for ed in l:
+			if int(ed[2]) >= 0 and bool((plan.edges[int(ed[2])] as Dictionary).get("stairs", false)):
+				after += 1
+	check(before > 0 and after == before, "lift-only: the footbridge's steps stay in the crowd's graph (%d of %d edge ends)" % [after, before])
+
+
+## a style whose roof is a short span (Goodmayes: a shelter at 30 - 34 % of the platform) with that span cut away entirely - a bridge that covers it - still builds: the way in keeps its own roof
+func _cut_all() -> void:
+	var plan := StationPlan.new()          # (not the cached one)
+	plan.generate(Net.name_to_idx["Goodmayes"])
+	var n := 0
+	for m in plan.modules:
+		(m["spec"] as Dictionary)["cuts"] = [[-1000.0, 1000.0]]
+		n += 1
+	var st := Station.new()
+	add_child(st)
+	st.build(plan)
+	for i in 2:
+		await get_tree().physics_frame
+	var built := 0
+	for mi in n:
+		var pm := st.get_node_or_null("Module%d" % mi) as PlatformModule
+		if pm != null and not pm.roof_spans.is_empty():
+			built += 1
+	check(n == 2 and built == n, "Goodmayes with every span of its roof cut away: both modules' roofs are built (%d of %d)" % [built, n])
+	st.queue_free()
+
+
+## the data measures a footbridge from the middle of the pair of platforms; at a staggered pair that is half the stagger from the +z platform's own middle, where its module's x starts
+func _staggered() -> void:
+	for nm in ["West Ealing", "Southall"]:
+		var idx: int = Net.name_to_idx[nm]
+		var plan := StationPlan.for_station(idx)
+		var lay: Dictionary = RealData.platform_layout(Net.station_ids[idx], "elizabeth")
+		check(float(lay.get("stagger", 0.0)) != 0.0 and not (lay["footbridges"] as Array).is_empty(), "%s: staggered, with a footbridge in the data" % nm)
+		var ma: Dictionary = {}
+		var mb: Dictionary = {}
+		for m in plan.modules:
+			if (m["spec"] as Dictionary).has("footbridges"):
+				ma = m
+			elif bool((m["spec"] as Dictionary).get("split", false)):
+				mb = m
+		if ma.is_empty() or mb.is_empty():
+			check(false, "%s: both modules" % nm)
+			continue
+		var nb: String = PlatformCurve.neighbours(Net.station_ids[idx], String(plan.modules[0]["faces"][0]["pid"]))[1]
+		var s0: Dictionary = Net.stations[idx]
+		var s1: Dictionary = Net.stations[Net.id_to_idx[nb]]
+		var east := (float(s1["lon"]) - float(s0["lon"])) * 111320.0 * cos(deg_to_rad(float(s0["lat"])))
+		var north := (float(s1["lat"]) - float(s0["lat"])) * 110574.0
+		var sgn := 1.0 if east * float(lay["axis"][0]) + north * float(lay["axis"][1]) >= 0.0 else -1.0
+		var mid_x: float = (float((ma["pos"] as Vector3).x) + float((mb["pos"] as Vector3).x)) * 0.5          # (the middle of the pair, in the station's x)
+		var want := mid_x + sgn * float(lay["footbridges"][0]["x"])
+		var got: float = float((ma["pos"] as Vector3).x) + float((ma["spec"]["footbridges"][0] as Dictionary)["x"])
+		check(absf(got - want) < 0.05, "%s: the bridge stands %.1f m from the middle of the pair, the data says %.1f (x %.2f, expected %.2f)" % [nm, got - mid_x, sgn * float(lay["footbridges"][0]["x"]), got, want])
 
 
 func _plans() -> void:
@@ -102,8 +180,8 @@ func _walk(nm: String) -> void:
 	for mi in plan.modules.size():
 		if (plan.modules[mi]["spec"] as Dictionary).has("footbridges"):
 			ia = mi
-		else:
-			ib = mi
+		elif bool((plan.modules[mi]["spec"] as Dictionary).get("split", false)):
+			ib = mi          # (the other platform of the pair: a station of other lines has more modules)
 	check(ia >= 0 and ib >= 0, "%s: a module carries the bridge" % nm)
 	if ia < 0 or ib < 0:
 		return

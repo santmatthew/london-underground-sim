@@ -40,6 +40,7 @@ func run():
 				# the hidden stretch stays under the plate (a plate is Escalator.PLATE long)
 				check(loop_len - slope - pitch <= Escalator.PLATE, "%s lane %d: the steps out of sight fit under the landing plate" % [tag, li])
 				check(float(m.get_shader_parameter("speed")) == Escalator.SPEED * float(lanes[li]), "%s lane %d: the steps go %s at the slab's speed" % [tag, li, "down" if lanes[li] > 0.0 else "up"])
+				check(float(m.get_shader_parameter("fillet")) == Escalator.STEP_FILLET and float(m.get_shader_parameter("pitch")) == Escalator.STEP_PITCH, "%s lane %d: the steps' shader has the pitch and the corner radius (%.2f, %.2f)" % [tag, li, float(m.get_shader_parameter("pitch")), float(m.get_shader_parameter("fillet"))])
 				check(absf(float(m.get_shader_parameter("l_vis")) - slope) < 0.0001 and is_equal_approx(float(m.get_shader_parameter("x0")), Escalator.PLATE), "%s lane %d: the track runs along the slope the slab does" % [tag, li])
 				check(is_equal_approx(float(m.get_shader_parameter("rise")), rise) and is_equal_approx(float(m.get_shader_parameter("run")), e.run), "%s lane %d: ... down to the same bottom" % [tag, li])
 				# every step index once, as a tread and as a riser; the local coordinates are what the shader expects
@@ -101,6 +102,16 @@ func run():
 			e.queue_free()
 	# the sound is at the steps' pace (tools/audio/ambience.py STEPS_PER_S = speed / pitch; its 16 s loops hold 30 steps), and the path is rounded at its corners
 	check(is_equal_approx(16.0 * Escalator.SPEED / Escalator.STEP_PITCH, 30.0), "the escalator sound loops hold a whole number of steps (16 s x %.3f steps/s)" % (Escalator.SPEED / Escalator.STEP_PITCH))
+	# ... and the generator's own number is the same (read from the script that makes the loops: a changed speed or pitch without new audio fails here)
+	var src := FileAccess.open("res://tools/audio/ambience.py", FileAccess.READ)
+	var rate := NAN
+	if src != null:
+		for line in src.get_as_text().split("\n"):
+			if line.begins_with("STEPS_PER_S ="):
+				var parts := line.get_slice("#", 0).get_slice("=", 1).strip_edges().split("/")
+				if parts.size() == 2:
+					rate = float(parts[0]) / float(parts[1])
+	check(not is_nan(rate) and absf(rate - Escalator.SPEED / Escalator.STEP_PITCH) < 1e-6, "tools/audio/ambience.py makes the escalator sound at the steps' pace (%.4f steps/s, the game's %.4f)" % [rate, Escalator.SPEED / Escalator.STEP_PITCH])
 	check(Escalator.STEP_FILLET > 0.0 and Escalator.STEP_FILLET * tan(Escalator.ANGLE * 0.5) < 1.0, "the steps' track is rounded at its corners (radius %.1f m)" % Escalator.STEP_FILLET)
 	# the shaders live on: a second escalator (after the first has gone) uses the very same Shader resources, which are not compiled again
 	var e1 := Escalator.new()

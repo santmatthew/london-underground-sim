@@ -590,7 +590,7 @@ func _add_footbridges_of(group: String, a: int, b: int) -> void:
 	var pitch: float = (modules[b]["pos"] as Vector3).z - (ma["pos"] as Vector3).z
 	var xs: Array = []
 	for f in fbs:
-		xs.append(sgn * float((f as Dictionary)["x"]))
+		xs.append(sgn * float((f as Dictionary)["x"]) + dxb * 0.5)          # (the data measures from the middle of the pair, this module's x from its own middle: half the stagger apart)
 	xs.sort()
 	var out: Array = []
 	var cuts: Array = []
@@ -1463,8 +1463,9 @@ func _apply_lift_only() -> void:
 			var removed_edge := false
 			if int(ed[2]) >= 0 and _is_esc_edge(int(ed[2])):
 				var an: String = nodes[edges[int(ed[2])]["a"]]["name"]
-				var ei2 := int(an.substr(3, an.find("_") - 3))
-				removed_edge = bool(escs[ei2].get("removed", false))
+				if an.begins_with("esc"):          # (not a footbridge's steps, "fb<k>_...": those are no bank of this station's and stay)
+					var ei2 := int(an.substr(3, an.find("_") - 3))
+					removed_edge = bool(escs[ei2].get("removed", false))
 			if not removed_edge:
 				kept2.append(ed)
 		adj[i] = kept2

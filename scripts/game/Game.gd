@@ -284,7 +284,7 @@ func _warm_up_station() -> void:
 	var t0 := Time.get_ticks_msec()
 	var ws := Station.new()
 	add_child(ws)
-	ws.global_position = Vector3(0.0, -5000.0, 0.0)
+	ws.global_position = Vector3(3000.0, -5000.0, 0.0)          # (not where a ride's destination is built: both can exist at once if the player starts a journey during the warm-up)
 	ws.visible = false
 	ws.slice_us = 10000          # (the menu is cheap to draw; start_journey cuts it to 1.5 ms if the player does not wait)
 	_warm_station = ws

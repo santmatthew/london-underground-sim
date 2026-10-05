@@ -205,8 +205,8 @@ static func finish_async(kit: MeshKit, parent: Node3D, node_name: String, statio
 	if station.async_mode and station.is_inside_tree() and pm != null and pm.bend != null and parent.transform == Transform3D.IDENTITY and not kit.surfaces.is_empty():
 		var bd: Bend = pm.bend
 		var task := WorkerThreadPool.add_task(func(): kit.bend(bd, 3.0), false, "bend posters")
-		while not WorkerThreadPool.is_task_completed(task):
-			await station.get_tree().process_frame
-		WorkerThreadPool.wait_for_task_completion(task)
+		await MeshKit.wait_task(task, station)
+		if not is_instance_valid(station) or not is_instance_valid(parent):
+			return null          # (the station was freed while it was built)
 		bent = true
 	return finish(kit, parent, node_name, bent)

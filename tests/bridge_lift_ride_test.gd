@@ -47,7 +47,7 @@ func run():
 	g.player.velocity = Vector3.ZERO
 	for i in 3:
 		await get_tree().process_frame
-	check(g._nearest_lift_door() == door, "the player finds the door in front of them")
+	check(door != null and g._nearest_lift_door() == door, "the player finds the door in front of them")
 	var to: Vector3 = st.to_global(door.get_meta("to"))
 	g._on_interact()
 	check(g._lift_busy, "the ride starts")
@@ -55,7 +55,8 @@ func run():
 	while g._lift_busy and Time.get_ticks_msec() - w0 < 60000:
 		await get_tree().process_frame
 	check(not g._lift_busy and g.player.global_position.distance_to(to) < 0.4, "the player comes out in the lobby on the deck (%.2f m from the other door's front)" % g.player.global_position.distance_to(to))
-	check(g.player.global_position.y > st.global_position.y + Footbridge.DECK_Y - 4.0, "... above the platforms (y %.1f)" % g.player.global_position.y)
+	var plat_y: float = (door as Node3D).global_position.y          # (the platform door's own floor: where the ride began)
+	check(g.player.global_position.y > plat_y + Footbridge.DECK_Y - 0.5 and g.player.global_position.y < plat_y + Footbridge.DECK_Y + 0.5, "... on the deck, %.1f m above the platform (y %.1f, the deck is %.1f m up)" % [g.player.global_position.y - plat_y, g.player.global_position.y, Footbridge.DECK_Y])
 	var out: Vector3 = st.global_transform.basis * (door.get_meta("to_out") as Vector3)
 	check(g.player.forward().dot(out) > 0.9, "facing out of the door")
 	# and the way back: the upper door takes the player down to the platform
@@ -65,7 +66,7 @@ func run():
 			up_door = d
 	for i in 3:
 		await get_tree().process_frame
-	check(g._nearest_lift_door() == up_door, "the lift door on the deck is found")
+	check(up_door != null and g._nearest_lift_door() == up_door, "the lift door on the deck is found")
 	var back: Vector3 = st.to_global(up_door.get_meta("to"))
 	g._on_interact()
 	var w1 := Time.get_ticks_msec()

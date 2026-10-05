@@ -9,6 +9,15 @@ var surfaces: Dictionary = {}     # mat name -> {v, n, uv, t, c, i}
 var _rng := RandomNumberGenerator.new()
 
 
+## Waits for a worker-thread task from a coroutine that belongs to `node`, a frame at a time, and always collects the task: a station freed while its parts are built (the player left the ride, a new journey) no longer
+## leaves the task waiting for nobody or asks the tree of a node that has gone for the next frame (the tree is taken once). The caller may still be resumed on a freed object: the engine says so and stops that coroutine.
+static func wait_task(task: int, node: Node) -> void:
+	var tree := node.get_tree() if is_instance_valid(node) and node.is_inside_tree() else null
+	while tree != null and not WorkerThreadPool.is_task_completed(task):
+		await tree.process_frame
+	WorkerThreadPool.wait_for_task_completion(task)
+
+
 func _surf(mat: String) -> Dictionary:
 	if not surfaces.has(mat):
 		surfaces[mat] = {

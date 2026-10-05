@@ -156,9 +156,7 @@ func build(p_spec: Dictionary, p_async := false) -> void:
 		if p_async and is_inside_tree():
 			# (a quarter of a second of vertex work: on a worker thread, the frames go on meanwhile)
 			var task := WorkerThreadPool.add_task(func(): kit.bend(bend, 3.0), false, "bend platform")
-			while not WorkerThreadPool.is_task_completed(task):
-				await get_tree().process_frame
-			WorkerThreadPool.wait_for_task_completion(task)
+			await MeshKit.wait_task(task, self)
 		else:
 			kit.bend(bend, 3.0)
 		meta["bend_ms"] = (Time.get_ticks_usec() - tb) / 1000
@@ -170,9 +168,7 @@ func build(p_spec: Dictionary, p_async := false) -> void:
 		# thread safe - "Attempting to initialize the wrong RID" in the tests - where the real one queues the calls)
 		var built: Array = [null]
 		var task_b := WorkerThreadPool.add_task(func(): built[0] = kit.build(mats), false, "build platform shell")
-		while not WorkerThreadPool.is_task_completed(task_b):
-			await get_tree().process_frame
-		WorkerThreadPool.wait_for_task_completion(task_b)
+		await MeshKit.wait_task(task_b, self)
 		mi.mesh = built[0]
 	else:
 		mi.mesh = kit.build(mats)

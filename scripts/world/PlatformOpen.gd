@@ -100,7 +100,7 @@ static func canopy(pm: PlatformModule, st: Dictionary, x0: float, x1: float, ope
 	pm.column_extra = []
 	# the way in from the cross-passages is under a flat roof of its own where the style's roofs do not reach back to the platform's west end (umbrellas, short shelters)
 	var entry_end := x0
-	if kind == "mushroom" or (st.has("spans") and (spans[0] as Vector2).x > x0 + 0.5):
+	if kind == "mushroom" or (st.has("spans") and (spans.is_empty() or (spans[0] as Vector2).x > x0 + 0.5)):          # (all of the style's spans cut away by a bridge: the way in is under its own flat roof, as where they start late)
 		var last_open := x0
 		for ox in openings:
 			last_open = maxf(last_open, float(ox))
