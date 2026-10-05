@@ -205,7 +205,7 @@ func _set_scenes(a: String, b: String, dist: float, kmin: int, kmax: int, prof: 
 	if secs.is_empty():
 		secs = _guess_secs(a, b, dist)
 	single = is_single(a, b)
-	plan_scenes(secs, ss, pair_seed(a, b), kmin, kmax, dist)
+	plan_scenes(secs, ss, pair_seed(a, b), kmin, kmax, dist, StationPlan.is_split(a), StationPlan.is_split(b))
 
 
 ## The vertical profile. Two parts. The REAL one: the platform levels of the two stations (data/platform_levels.json, TfL FOI depth table via tubedepths, metres above Ordnance Datum) give how far the track
@@ -299,10 +299,10 @@ static func _guess_secs(a: String, b: String, dist: float) -> Array:
 
 
 ## what the cells show for a line that runs through `p_secs` ([[sec code, metres], ...]); the cells from kmin to kmax
-func plan_scenes(p_secs: Array, p_ss: bool, seed: int, kmin: int, kmax: int, p_dist := -1.0) -> void:
+func plan_scenes(p_secs: Array, p_ss: bool, seed: int, kmin: int, kmax: int, p_dist := -1.0, split_a := false, split_b := false) -> void:
 	secs = p_secs
 	ss = p_ss
-	_scenes = RunScenery.cell_scenes(secs, ss, seed, kmin, kmax, p_dist, single)
+	_scenes = RunScenery.cell_scenes(secs, ss, seed, kmin, kmax, p_dist, single, split_a, split_b)
 
 
 ## RunScenery's scene number of cell k (the bore beyond the cells that were planned)

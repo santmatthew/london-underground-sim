@@ -190,6 +190,8 @@ static func _platform(pm: PlatformModule, plan: StationPlan, mi: int, rng: Rando
 	holder.name = "Props"
 	pm.add_child(holder)
 	for fi in faces.size():
+		if faces[fi] == null:
+			continue          # (a split module has only the one face: its slot's)
 		var s := 1.0 if fi == 0 else -1.0
 		# benches against the platform-side wall
 		var n_b := clampi(int(L / 34.0), 2, 4)

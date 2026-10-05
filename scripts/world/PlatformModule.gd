@@ -61,6 +61,8 @@ static func half_width(pw: float) -> float:
 
 
 ## a frame break between the big steps of a module's build when it is built in the background (the ride builds its destination while the player rides: no step may hold a frame for long)
+var split := false          # one platform of a pair of side platforms (spec "split"): the other module lies across the tracks, no wall between them (see StationPlan)
+var solo := 0.0              # the side (+1 / -1 in z) of the only face of a module that has just one, else 0
 var _async_b := false          # (build() was called to run in the background: the big steps give the frame back, see _brk)
 
 
@@ -76,6 +78,11 @@ func _brk(p_async: bool) -> void:
 func build(p_spec: Dictionary, p_async := false) -> void:
 	spec = p_spec
 	_async_b = p_async
+	split = bool(spec.get("split", false))
+	solo = 0.0
+	var fl0: Array = spec.get("faces", [{}, {}])
+	if fl0.size() == 2 and (fl0[0] == null) != (fl0[1] == null):
+		solo = 1.0 if fl0[0] != null else -1.0
 	box = spec.get("style", "arch") == "box"
 	var L: float = spec.get("length", 110.0)
 	var pw: float = spec.get("pw", 3.0)
@@ -261,7 +268,12 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 				var tmp := MeshKit.new()
 				tmp.seed_rng(5 + int(r[5]))
 				var kk: int = r[5]
-				RunScenery.add_scene(tmp, ext_scene(int(r[0]), two_faces), (0 if posmod(kk, 2) == 0 else 3) + posmod(kk, 3), float(r[3]), float(r[4]), ztrack, {"u0": float(r[3]), "near_flat": two_faces})
+				var oz := {"u0": float(r[3]), "near_flat": two_faces or split}
+				if split:
+					oz["ns"] = 1.0          # (the other track lies on the far side from the platform, SPLIT_SPACING away: ground between ends half way)
+					oz["flat0"] = ztrack + RunScenery.SPLIT_SPACING * 0.5
+					oz["flat1"] = ztrack + RunScenery.SPLIT_SPACING * 0.5
+				RunScenery.add_scene(tmp, ext_scene(int(r[0]), two_faces or split), (0 if posmod(kk, 2) == 0 else 3) + posmod(kk, 3), float(r[3]), float(r[4]), ztrack, oz)
 				if west:
 					tmp.mirror_x()
 				if s < 0.0:
@@ -335,7 +347,9 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 	kit.box("rail", Vector3((xa + xb) * 0.5, RAIL_Y - 0.07, s * ztrack - s * 1.05), Vector3(xb - xa, 0.10, 0.06), BED_Y)         # outer (positive) rail
 	# sleepers: a textured strip under the rails (2.6 m wide)
 	kit.horiz("track_sleepers", xa, xb, s * ztrack - 1.3, s * ztrack + 1.3, BED_Y + 0.004, true, BED_Y)
-	if open:
+	if split:
+		pass          # (the other platform's track lies right beside: no wall across the track)
+	elif open:
 		PlatformOpen.track_wall(self, open_style, s, x0, x1, zfar, wall_mat)
 	elif box:
 		_box_track_wall(s, x0, x1, zfar, wall_mat)
@@ -349,7 +363,8 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 		var y0: float = st["y0"]
 		var soff := 0.004 + 0.0025 * stripe_i          # (stripes that overlap - an inset one over a wider one - must not lie in the same plane)
 		stripe_i += 1
-		_band(key, s * zfar, x0 - rin_w, x1 + rin_e, y0, st["y1"], s < 0.0, true, [], soff)
+		if not split:
+			_band(key, s * zfar, x0 - rin_w, x1 + rin_e, y0, st["y1"], s < 0.0, true, [], soff)
 		if not box:
 			_band(key, s * zwall, x0, x1, y0, st["y1"], s < 0.0, false, holes, soff)
 	if not box:
@@ -359,7 +374,8 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 			_ribs(s, x0, x1, zwall, zfar, character["ribs"])
 	# cable tray on the track-side wall
 	# (one low tray: real platforms carry the poster run down to platform level, see StationDressing._far_wall)
-	kit.box("metal", Vector3((x0 + x1) * 0.5, 0.10, s * (zfar - 0.15)), Vector3(x1 - x0, 0.08, 0.3), 0.0)
+	if not split:
+		kit.box("metal", Vector3((x0 + x1) * 0.5, 0.10, s * (zfar - 0.15)), Vector3(x1 - x0, 0.08, 0.3), 0.0)
 
 	await _brk(_async_b)
 	# --- collision ---
@@ -371,7 +387,9 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 		_cols.append([Vector3(ex, 0.9, s * (zedge + 0.15)), Vector3(1.0, 1.8, 0.3), "edge", s])
 		ex += 1.0
 	# track-side wall & tunnel floor (only matter near platform)
-	if open:
+	if split:
+		pass
+	elif open:
 		_cols.append([Vector3((x0 + x1) * 0.5, 2.5, s * (zfar + 0.5)), Vector3(x1 - x0 + 4.0, 6.0, 1.0), "open"])       # (open to the sky: the wall's own box does not occlude)
 	else:
 		_cols.append([Vector3((x0 + x1) * 0.5, 2.5, s * (zfar + 0.5)), Vector3(x1 - x0 + 4.0, 6.0, 1.0)])
@@ -502,6 +520,10 @@ func _build_box_hall(x0: float, x1: float, zwall: float, zedge: float, ztrack: f
 	kit.horiz(String(character.get("floor", "floor_platform")), x0, x1, -zwall, zwall, 0.0, true, 0.0)
 	_cols.append([Vector3((x0 + x1) * 0.5, -0.5, 0.0), Vector3(x1 - x0, 1.0, GAP)])
 	if open:
+		if solo != 0.0:
+			# the back of the only platform: the retaining wall and palisade fence that the far side of a track has, where the other platform would have been
+			PlatformOpen.track_wall(self, open_style, -solo, x0, x1, zwall, wall_mat)
+			_cols.append([Vector3((x0 + x1) * 0.5, 2.5, -solo * (zwall + 0.5)), Vector3(x1 - x0 + 4.0, 6.0, 1.0), "open"])
 		_build_open_hall(x0, x1, zwall, ztrack, zfar, wall_mat, openings)
 		return
 	# ceiling
@@ -570,8 +592,11 @@ func _build_open_hall(x0: float, x1: float, zwall: float, ztrack: float, zfar: f
 		var lx2 := x0 + 4.0
 		while lx2 < x1:
 			if PlatformOpen.covered(self, lx2):
-				_lights.append([Vector3(lx2, ly, 3.2), 2.2, 13.0])
-				_lights.append([Vector3(lx2, ly, -3.2), 2.2, 13.0])
+				if solo != 0.0:
+					_lights.append([Vector3(lx2, ly, solo * 3.2), 2.2, 13.0])
+				else:
+					_lights.append([Vector3(lx2, ly, 3.2), 2.2, 13.0])
+					_lights.append([Vector3(lx2, ly, -3.2), 2.2, 13.0])
 			lx2 += 8.0
 	for cx in column_xs:
 		for zz in column_zs:
@@ -585,6 +610,10 @@ func _build_open_hall(x0: float, x1: float, zwall: float, ztrack: float, zfar: f
 func _box_end_wall(x: float, west: bool, zwall: float, ztrack: float, zfar: float, wall_mat: String, doorway: bool) -> void:
 	# openings (z_lo, z_hi, y_lo, y_hi)
 	var ops: Array = [[-ztrack - 1.9, -ztrack + 1.65, BED_Y, 3.4], [ztrack - 1.65, ztrack + 1.9, BED_Y, 3.4]]
+	if solo > 0.0:
+		ops.remove_at(0)          # (one face: no track on the other side)
+	elif solo < 0.0:
+		ops.remove_at(1)
 	if doorway:
 		ops.append([-zwall, zwall, 0.0, SPINE_H])
 	ops.sort_custom(func(a, b): return a[0] < b[0])

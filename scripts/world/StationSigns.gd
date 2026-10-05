@@ -418,6 +418,8 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 	var rows: Array = []
 	var faces: Array = spec["faces"]
 	for fi in faces.size():
+		if faces[fi] == null:
+			continue          # (a split module has only the one face: its slot's)
 		var f: Dictionary = faces[fi]
 		var pid: String = f["pid"]
 		var side := Vector3(0, 0, 1.0 if fi == 0 else -1.0)
@@ -443,6 +445,8 @@ static func _module_signs(station: Station, root: Node3D, plan: StationPlan, mi:
 			hang_room(root, Signs.board([{"text": "Way out", "bold": true, "arrow": 1}], 1.9, 0.4), Vector3(mp.x + wxx, mp.y + minf(roof_y - 1.3, PlatformModule.BOX_H - 1.3), mp.z), Vector3(1, 0, 0), mp.y, mp.y + roof_y, 2.4)
 	# --- per face: roundels, indicators, boards
 	for fi in faces.size():
+		if faces[fi] == null:
+			continue
 		var f2: Dictionary = faces[fi]
 		var s := 1.0 if fi == 0 else -1.0
 		var pid2: String = f2["pid"]

@@ -63,6 +63,8 @@ static func place(station: Station) -> void:
 		holder.name = "Decals"
 		pm.add_child(holder)
 		for fi in (m["spec"]["faces"] as Array).size():
+			if m["spec"]["faces"][fi] == null:
+				continue
 			var s := 1.0 if fi == 0 else -1.0
 			var z0 := minf(s * zw, s * (zw + m["spec"]["pw"]))
 			var z1 := maxf(s * zw, s * (zw + m["spec"]["pw"]))

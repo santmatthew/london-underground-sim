@@ -516,6 +516,8 @@ func _platform(mi: int) -> void:          # (a coroutine: it breaks for a frame 
 	var kit := MeshKit.new()
 	kit.seed_rng(plan.seed_value + mi * 31)
 	for fi in faces.size():
+		if faces[fi] == null:
+			continue          # (a split module has only the one face: its slot's)
 		var s := 1.0 if fi == 0 else -1.0
 		if not Station.debug_off("posters"):
 			if not pm.open:

@@ -1,0 +1,604 @@
+{
+ "_comment": "Layout of the Elizabeth line's surface stations from OpenStreetMap platform outlines and footways (tools/build_el_platforms.py). Derived numbers only; (c) OpenStreetMap contributors, ODbL.",
+ "910GABWDXR": {
+  "name": "Abbey Wood",
+  "arrangement": "island",
+  "gap": 0.0,
+  "length": {
+   "elizabeth:Eastbound": 217
+  },
+  "axis": [
+   0.9979,
+   0.0654
+  ],
+  "across": {
+   "elizabeth:Eastbound": -2.3
+  },
+  "bridges": [
+   24
+  ],
+  "stairs": [
+   [
+    14,
+    -0.2
+   ],
+   [
+    35,
+    -0.6
+   ]
+  ]
+ },
+ "910GACTONML": {
+  "name": "Acton Main Line",
+  "arrangement": "side",
+  "gap": 6.1,
+  "length": {
+   "elizabeth:Westbound": 219,
+   "elizabeth:Eastbound": 250
+  },
+  "axis": [
+   0.9491,
+   0.315
+  ],
+  "across": {
+   "elizabeth:Westbound": -6.2,
+   "elizabeth:Eastbound": 5.1
+  },
+  "bridges": [
+   54
+  ],
+  "stairs": []
+ },
+ "910GBRTWOOD": {
+  "name": "Brentwood",
+  "arrangement": "side",
+  "gap": 5.4,
+  "length": {
+   "elizabeth:Eastbound": 219,
+   "elizabeth:Westbound": 217
+  },
+  "axis": [
+   0.9867,
+   -0.1625
+  ],
+  "across": {
+   "elizabeth:Eastbound": 5.1,
+   "elizabeth:Westbound": -8.3
+  },
+  "bridges": [
+   -62
+  ],
+  "stairs": []
+ },
+ "910GBNHAM": {
+  "name": "Burnham (Berks)",
+  "arrangement": "island",
+  "gap": 0.0,
+  "length": {
+   "elizabeth:Westbound": 195,
+   "elizabeth:Eastbound": 190
+  },
+  "axis": [
+   0.989,
+   -0.1477
+  ],
+  "across": {
+   "elizabeth:Westbound": -3.2,
+   "elizabeth:Eastbound": 3.0
+  },
+  "bridges": [],
+  "stairs": []
+ },
+ "910GCHDWLHT": {
+  "name": "Chadwell Heath",
+  "arrangement": "side",
+  "gap": 6.3,
+  "length": {
+   "elizabeth:Westbound": 213,
+   "elizabeth:Eastbound": 216
+  },
+  "axis": [
+   0.9771,
+   0.213
+  ],
+  "across": {
+   "elizabeth:Westbound": -5.5,
+   "elizabeth:Eastbound": 6.3
+  },
+  "bridges": [],
+  "stairs": []
+ },
+ "910GFRSTGT": {
+  "name": "Forest Gate",
+  "arrangement": "side",
+  "gap": 6.4,
+  "length": {
+   "elizabeth:Westbound": 173,
+   "elizabeth:Eastbound": 186
+  },
+  "axis": [
+   0.9572,
+   0.2893
+  ],
+  "across": {
+   "elizabeth:Westbound": -4.7,
+   "elizabeth:Eastbound": 7.6
+  },
+  "bridges": [],
+  "stairs": []
+ },
+ "910GGIDEAPK": {
+  "name": "Gidea Park",
+  "arrangement": "island",
+  "gap": 0.0,
+  "length": {
+   "elizabeth:Westbound": 236,
+   "elizabeth:Eastbound": 236
+  },
+  "axis": [
+   0.84,
+   0.5426
+  ],
+  "across": {
+   "elizabeth:Westbound": -1.7,
+   "elizabeth:Eastbound": 1.2
+  },
+  "bridges": [
+   -36
+  ],
+  "stairs": [
+   [
+    -28,
+    -0.4
+   ]
+  ]
+ },
+ "910GGODMAYS": {
+  "name": "Goodmayes",
+  "arrangement": "side",
+  "gap": 6.2,
+  "length": {
+   "elizabeth:Westbound": 214,
+   "elizabeth:Eastbound": 213
+  },
+  "axis": [
+   0.9772,
+   0.2122
+  ],
+  "across": {
+   "elizabeth:Westbound": -6.5,
+   "elizabeth:Eastbound": 4.9
+  },
+  "bridges": [
+   -116
+  ],
+  "stairs": [
+   [
+    -110,
+    -8.9
+   ],
+   [
+    -110,
+    6.6
+   ]
+  ]
+ },
+ "910GHANWELL": {
+  "name": "Hanwell",
+  "arrangement": "side",
+  "gap": 6.6,
+  "length": {
+   "elizabeth:Eastbound": 144,
+   "elizabeth:Westbound": 145
+  },
+  "axis": [
+   0.9771,
+   0.2129
+  ],
+  "across": {
+   "elizabeth:Eastbound": 3.8,
+   "elizabeth:Westbound": -6.0
+  },
+  "bridges": [],
+  "stairs": []
+ },
+ "910GHRLDWOD": {
+  "name": "Harold Wood",
+  "arrangement": "side",
+  "gap": 6.5,
+  "length": {
+   "elizabeth:Eastbound": 181,
+   "elizabeth:Westbound": 180
+  },
+  "axis": [
+   0.8599,
+   0.5104
+  ],
+  "across": {
+   "elizabeth:Eastbound": 3.5,
+   "elizabeth:Westbound": -7.4
+  },
+  "bridges": [
+   -96,
+   -57
+  ],
+  "stairs": [
+   [
+    -48,
+    2.8
+   ],
+   [
+    -47,
+    -10.8
+   ]
+  ]
+ },
+ "910GHAYESAH": {
+  "name": "Hayes & Harlington",
+  "arrangement": "side",
+  "gap": 5.8,
+  "length": {
+   "elizabeth:Eastbound": 235,
+   "elizabeth:Westbound": 232
+  },
+  "axis": [
+   0.9979,
+   -0.0644
+  ],
+  "across": {
+   "elizabeth:Eastbound": 5.6,
+   "elizabeth:Westbound": -5.6
+  },
+  "bridges": [
+   -23
+  ],
+  "stairs": [
+   [
+    -75,
+    -7.5
+   ],
+   [
+    -68,
+    6.9
+   ],
+   [
+    -31,
+    6.5
+   ],
+   [
+    -30,
+    -7.4
+   ]
+  ]
+ },
+ "910GILFORD": {
+  "name": "Ilford",
+  "arrangement": "side",
+  "gap": 6.3,
+  "length": {
+   "elizabeth:Eastbound": 212,
+   "elizabeth:Westbound": 216
+  },
+  "axis": [
+   0.9437,
+   0.3307
+  ],
+  "across": {
+   "elizabeth:Eastbound": 4.2,
+   "elizabeth:Westbound": -6.9
+  },
+  "bridges": [
+   -66
+  ],
+  "stairs": []
+ },
+ "910GIVER": {
+  "name": "Iver",
+  "arrangement": "side",
+  "gap": 5.5,
+  "length": {
+   "elizabeth:Eastbound": 186,
+   "elizabeth:Westbound": 186
+  },
+  "axis": [
+   0.9923,
+   0.1242
+  ],
+  "across": {
+   "elizabeth:Eastbound": 4.1,
+   "elizabeth:Westbound": -5.2
+  },
+  "bridges": [
+   42
+  ],
+  "stairs": []
+ },
+ "910GLANGLEY": {
+  "name": "Langley (Berks)",
+  "arrangement": "side",
+  "gap": 5.5,
+  "length": {
+   "elizabeth:Eastbound": 171,
+   "elizabeth:Westbound": 171
+  },
+  "axis": [
+   0.9973,
+   -0.0741
+  ],
+  "across": {
+   "elizabeth:Eastbound": 5.0,
+   "elizabeth:Westbound": -5.4
+  },
+  "bridges": [
+   -76,
+   7
+  ],
+  "stairs": [
+   [
+    -73,
+    3.4
+   ],
+   [
+    -71,
+    -8.5
+   ]
+  ]
+ },
+ "910GMDNHEAD": {
+  "name": "Maidenhead",
+  "arrangement": "side",
+  "gap": 7.5,
+  "length": {
+   "elizabeth:Westbound": 213,
+   "elizabeth:Eastbound": 211
+  },
+  "axis": [
+   0.9674,
+   0.2533
+  ],
+  "across": {
+   "elizabeth:Westbound": -6.0,
+   "elizabeth:Eastbound": 6.8
+  },
+  "bridges": [],
+  "stairs": []
+ },
+ "910GMANRPK": {
+  "name": "Manor Park",
+  "arrangement": "side",
+  "gap": 5.8,
+  "length": {
+   "elizabeth:Eastbound": 191,
+   "elizabeth:Westbound": 187
+  },
+  "axis": [
+   0.953,
+   0.303
+  ],
+  "across": {
+   "elizabeth:Eastbound": 7.3,
+   "elizabeth:Westbound": -3.4
+  },
+  "bridges": [],
+  "stairs": []
+ },
+ "910GMRYLAND": {
+  "name": "Maryland",
+  "arrangement": "side",
+  "gap": 5.5,
+  "length": {
+   "elizabeth:Westbound": 168,
+   "elizabeth:Eastbound": 168
+  },
+  "axis": [
+   0.9465,
+   0.3228
+  ],
+  "across": {
+   "elizabeth:Westbound": -4.4,
+   "elizabeth:Eastbound": 5.1
+  },
+  "bridges": [
+   -93,
+   3,
+   4,
+   78,
+   94
+  ],
+  "stairs": []
+ },
+ "910GROMFORD": {
+  "name": "Romford",
+  "arrangement": "side",
+  "gap": 5.5,
+  "length": {
+   "elizabeth:Eastbound": 210,
+   "elizabeth:Westbound": 210
+  },
+  "axis": [
+   0.9096,
+   0.4154
+  ],
+  "across": {
+   "elizabeth:Eastbound": 6.3,
+   "elizabeth:Westbound": -4.9
+  },
+  "bridges": [],
+  "stairs": []
+ },
+ "910GSVNKNGS": {
+  "name": "Seven Kings",
+  "arrangement": "side",
+  "gap": 6.3,
+  "length": {
+   "elizabeth:Eastbound": 172,
+   "elizabeth:Westbound": 173
+  },
+  "axis": [
+   0.9902,
+   0.1395
+  ],
+  "across": {
+   "elizabeth:Eastbound": 5.1,
+   "elizabeth:Westbound": -6.1
+  },
+  "bridges": [
+   114
+  ],
+  "stairs": []
+ },
+ "910GSHENFLD": {
+  "name": "Shenfield",
+  "arrangement": "island",
+  "gap": 0.0,
+  "length": {
+   "elizabeth:Eastbound": 230
+  },
+  "axis": [
+   0.4431,
+   0.8965
+  ],
+  "across": {
+   "elizabeth:Eastbound": 2.7
+  },
+  "bridges": [],
+  "stairs": []
+ },
+ "910GSLOUGH": {
+  "name": "Slough",
+  "arrangement": "side",
+  "gap": 5.9,
+  "length": {
+   "elizabeth:Westbound": 251,
+   "elizabeth:Eastbound": 252
+  },
+  "axis": [
+   0.9693,
+   -0.2459
+  ],
+  "across": {
+   "elizabeth:Westbound": -5.4,
+   "elizabeth:Eastbound": 8.1
+  },
+  "bridges": [
+   -56,
+   23
+  ],
+  "stairs": [
+   [
+    15,
+    -8.7
+   ]
+  ]
+ },
+ "910GSTHALL": {
+  "name": "Southall",
+  "arrangement": "side",
+  "gap": 6.3,
+  "length": {
+   "elizabeth:Eastbound": 215,
+   "elizabeth:Westbound": 226
+  },
+  "axis": [
+   0.9786,
+   0.2058
+  ],
+  "across": {
+   "elizabeth:Eastbound": 5.6,
+   "elizabeth:Westbound": -6.2
+  },
+  "bridges": [
+   -28
+  ],
+  "stairs": [
+   [
+    2,
+    -7.3
+   ]
+  ]
+ },
+ "910GTAPLOW": {
+  "name": "Taplow",
+  "arrangement": "side",
+  "gap": 6.3,
+  "length": {
+   "elizabeth:Westbound": 184,
+   "elizabeth:Eastbound": 186
+  },
+  "axis": [
+   0.9815,
+   0.1917
+  ],
+  "across": {
+   "elizabeth:Westbound": -9.7,
+   "elizabeth:Eastbound": 4.3
+  },
+  "bridges": [
+   55
+  ],
+  "stairs": []
+ },
+ "910GTWYFORD": {
+  "name": "Twyford",
+  "arrangement": "side",
+  "gap": 7.2,
+  "length": {
+   "elizabeth:Eastbound": 253,
+   "elizabeth:Westbound": 245
+  },
+  "axis": [
+   0.8945,
+   0.4471
+  ],
+  "across": {
+   "elizabeth:Eastbound": 5.0,
+   "elizabeth:Westbound": -10.0
+  },
+  "bridges": [
+   11
+  ],
+  "stairs": []
+ },
+ "910GWDRYTON": {
+  "name": "West Drayton",
+  "arrangement": "side",
+  "gap": 6.5,
+  "length": {
+   "elizabeth:Eastbound": 222,
+   "elizabeth:Westbound": 285
+  },
+  "axis": [
+   0.993,
+   -0.1181
+  ],
+  "across": {
+   "elizabeth:Eastbound": 7.0,
+   "elizabeth:Westbound": -4.7
+  },
+  "bridges": [
+   -3
+  ],
+  "stairs": []
+ },
+ "910GWEALING": {
+  "name": "West Ealing",
+  "arrangement": "side",
+  "gap": 5.9,
+  "length": {
+   "elizabeth:Eastbound": 210,
+   "elizabeth:Westbound": 203
+  },
+  "axis": [
+   0.989,
+   0.1482
+  ],
+  "across": {
+   "elizabeth:Eastbound": 4.9,
+   "elizabeth:Westbound": -7.0
+  },
+  "bridges": [
+   17
+  ],
+  "stairs": []
+ }
+}

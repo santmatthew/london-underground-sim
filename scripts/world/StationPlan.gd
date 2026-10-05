@@ -117,6 +117,25 @@ func _edge(a: String, b: String, cost_override := -1.0, speed := PLAN_WALK) -> v
 	adj[ib].append([ia, c, edges.size() - 1])
 
 
+## does the generator draw this station as a pair of side platforms with the tracks between them (the Elizabeth line's surface stations that OpenStreetMap shows so, data/el_platforms.json)?
+## The ride needs to know too: the two tracks keep that spacing out to the first bend (RunScenery.cell_scenes).
+static func is_split(naptan: String) -> bool:
+	var i: int = Net.id_to_idx.get(naptan, -1)
+	if i < 0 or String(RealData.el_platforms(naptan).get("arrangement", "")) != "side":
+		return false
+	var st: Dictionary = Net.stations[i]
+	if String(st["kind"]) != "surface" or not RealData.layout_spec(naptan).is_empty():
+		return false
+	var n := 0
+	for pid in st["platforms"]:
+		var p: Dictionary = st["platforms"][pid]
+		if String(p["group"]) == "elizabeth":
+			if bool(p["terminal"]):
+				return false
+			n += 1
+	return n == 2
+
+
 func generate(station_idx: int) -> void:
 	idx = station_idx
 	var st: Dictionary = Net.stations[idx]
@@ -159,6 +178,13 @@ func generate(station_idx: int) -> void:
 			facelist.append({"pid": pid, "face": 0})
 			if terminal:
 				facelist.append({"pid": pid, "face": 1})
+		# the Elizabeth line's surface stations with two side platforms (data/el_platforms.json, from OpenStreetMap): one module a platform, the tracks between them (see PlatformModule.split)
+		if g == "elizabeth" and facelist.size() == 2 and is_split(naptan):
+			for k in 2:
+				var fd0: Dictionary = (facelist[k] as Dictionary).duplicate()
+				fd0["slot"] = k          # (which side of its module's middle the platform lies: 0 = +z, 1 = -z; the two modules then have their tracks side by side)
+				mod_defs.append({"group": g, "faces": [fd0], "split": true})
+			continue
 		var i := 0
 		while i < facelist.size():
 			var fl: Array = [facelist[i]]
@@ -168,6 +194,7 @@ func generate(station_idx: int) -> void:
 			i += 2
 	# ---- 2. depth per module, sorted shallow -> deep, min 7 m apart -----------------------------------------------
 	var nth_of_group := {}
+	var split_depth := -1.0
 	for md in mod_defs:
 		var d: float = BASE_DEPTH.get(String(md["group"]).get_slice(".", 0), 24.0) + rng.randf_range(-2.0, 2.5)
 		if imp < 1.6:
@@ -183,6 +210,10 @@ func generate(station_idx: int) -> void:
 			var nth: int = nth_of_group.get(g, 0)
 			nth_of_group[g] = nth + 1
 			d = maxf(float(lst[mini(nth, lst.size() - 1)]) - hall_drop, 3.5)
+		if bool(md.get("split", false)):
+			if split_depth < 0.0:
+				split_depth = d
+			d = split_depth          # (the two platforms of a pair are at one level)
 		md["depth"] = d
 	mod_defs.sort_custom(func(a, b): return a["depth"] < b["depth"])
 	# cluster modules into levels: those within 4 m share a level (max 2 per level)
@@ -252,19 +283,25 @@ func generate(station_idx: int) -> void:
 		prev_room = lname
 
 	# ---- 5. modules east of each landing --------------------------------------------------------------------------------
+	var split_corr := -1.0
 	for li in lvl.size():
 		var Ld: Dictionary = lvl[li]["landing"]
 		var rect: Array = Ld["rect"]
 		var mods: Array = lvl[li]["mods"]
 		for mi in mods.size():
 			var md: Dictionary = mods[mi]
-			var lane_z: float = (rect[2] + rect[3]) * 0.5 if mods.size() == 1 else (rect[2] + 6.5 + mi * 16.0)
+			var pitch := RunScenery.TRACK_SPACING + RunScenery.SPLIT_SPACING if bool(md.get("split", false)) else 16.0          # (a pair of side platforms: the tracks SPLIT_SPACING apart, each 6.45 m from its module's middle)
+			var lane_z: float = (rect[2] + rect[3]) * 0.5 if mods.size() == 1 else (rect[2] + 6.5 + mi * pitch)
 			var group: String = md["group"]
 			var line_id := _line_of_group(st, group)
 			var cars: Array = CARS.get(line_id, [6, 16.0])
 			var L: float = cars[0] * cars[1] + 10.0
 			var pw := PlatformModule.PW_RUN
 			var corr_len := PlatformModule.TUNNEL_MIN + 6.0 + rng.randf() * 10.0      # the platform tunnel stops before the landing, so the passage is at least as long as the tunnel we keep
+			if bool(md.get("split", false)):
+				if split_corr < 0.0:
+					split_corr = corr_len
+				corr_len = split_corr          # (a pair of side platforms lies opposite each other)
 			var is_box: bool = StationCharacter.platform_is_box(name, line_id, kind)
 			var spine_x0 := -L * 0.5 if is_box else -L * 0.5 - 6.0
 			var mx: float = rect[1] + corr_len - spine_x0
@@ -283,21 +320,28 @@ func generate(station_idx: int) -> void:
 				wall_style = character["wall"]
 				stripes = character["stripes"]
 			var tun_w := corr_len - spine_x0 - L * 0.5 - 1.0     # distance from the platform's west end to the landing wall, minus a metre of rock
-			var mspec := {"tun_w": tun_w, "style": "box" if is_box else "arch", "roof": StationCharacter.platform_roof(name, line_id, kind), "length": L, "pw": pw, "wall": wall_style, "stripes": stripes, "seed": seed_value + li * 7 + mi, "faces": faces_spec, "character": character,
+			var spec_faces: Array = faces_spec.duplicate()
+			if bool(md.get("split", false)):
+				if int((md["faces"][0] as Dictionary).get("slot", 0)) == 1:
+					spec_faces.push_front(null)          # (the only face is the one on the -z side: slot 0 stays empty)
+				else:
+					spec_faces.append(null)          # (... and on the +z side: slot 1)
+			var mspec := {"split": bool(md.get("split", false)), "tun_w": tun_w, "style": "box" if is_box else "arch", "roof": StationCharacter.platform_roof(name, line_id, kind), "length": L, "pw": pw, "wall": wall_style, "stripes": stripes, "seed": seed_value + li * 7 + mi, "faces": spec_faces, "character": character,
 				"openings_x": openings_x, "spine_x0": spine_x0, "spine_x1": -L * 0.5 + 8.0 + 14.0 + 6.0, "name": name, "group": group}
 			var midx := modules.size()
-			modules.append({"pos": mpos, "spec": mspec, "faces": md["faces"], "level": li, "group": group, "lane_z": lane_z, "corr": [rect[1], mpos.x + spine_x0]})
+			modules.append({"pos": mpos, "spec": mspec, "faces": md["faces"], "level": li, "group": group, "lane_z": lane_z, "corr": [rect[1], mpos.x + spine_x0], "split": bool(md.get("split", false))})
 			Ld["openings"].append({"side": "E", "c": lane_z, "w": CORR_W, "h": SPINE_H, "id": "corr%d_%d" % [li, mi]})
 			rooms.append({"name": "corridor%d_%d" % [li, mi], "rect": [rect[1], mpos.x + spine_x0, lane_z - CORR_W * 0.5, lane_z + CORR_W * 0.5], "y": mpos.y, "h": SPINE_H,
 				"open_ends": ["E", "W"], "wall": wall_style, "floor": "floor_platform", "lights": "strip_x", "light_dx": 4.0, "seed": seed_value + midx,
 				"bands": StationCharacter.stripe_bands(stripes, SPINE_H) if not character.is_empty() else []})
 			for fi in faces_spec.size():
 				var f: Dictionary = faces_spec[fi]
-				var side: float = 1.0 if fi == 0 else -1.0
+				var slot: int = int((md["faces"][fi] as Dictionary).get("slot", fi))
+				var side: float = 1.0 if slot == 0 else -1.0
 				var key := "%s#%d" % [f["pid"], f["face"]]
 				var zwall := PlatformModule.GAP * 0.5
 				var edge_z := side * (zwall + pw)
-				faces[key] = {"module": midx, "face": fi, "pid": f["pid"], "face_no": f["face"], "line": f["line"],
+				faces[key] = {"module": midx, "face": slot, "pid": f["pid"], "face_no": f["face"], "line": f["line"],
 					"pos": mpos + Vector3(0, 0, edge_z - side * 1.0), "edge_z": mpos.z + edge_z, "side": side, "x0": mpos.x - L * 0.5, "x1": mpos.x + L * 0.5, "y": mpos.y,
 					"track_z": mpos.z + side * (zwall + pw + PlatformModule.TRACK_TO_EDGE), "length": L, "pw": pw, "cars": cars}
 
@@ -407,8 +451,8 @@ func generate(station_idx: int) -> void:
 			var mid := "face:" + key
 			_node(mid, Vector3(mp.x, mp.y, fc["pos"].z))
 			for oi in ox.size():
-				# entering the platform through the opening: walk to the platform centre along the platform
-				var pn2 := "m%d_open%d_p%d" % [mi, oi, fi]
+				# entering the platform through the opening: walk to the platform centre along the platform (named by the face's slot, as CrowdManager._open_node asks)
+				var pn2 := "m%d_open%d_p%d" % [mi, oi, int(fc["face"])]
 				_node(pn2, Vector3(mp.x + ox[oi], mp.y, fc["pos"].z))
 				_edge("m%d_open%d" % [mi, oi], pn2)
 				_edge(pn2, mid)
@@ -466,7 +510,7 @@ func _ext_for(mi: int) -> Array:
 	for fi in (m["faces"] as Array).size():
 		var pid := String(m["faces"][fi]["pid"])
 		var nb := PlatformCurve.neighbours(sid, pid)
-		var canon := ds if fi == 0 else -ds
+		var canon := ds if int(m["faces"][fi].get("slot", fi)) == 0 else -ds
 		var east: String = nb[1] if canon > 0 else nb[0]
 		var west: String = nb[0] if canon > 0 else nb[1]
 		var lines: Array = Net.stations[idx]["platforms"][pid]["lines"]
@@ -489,6 +533,11 @@ func _ext_for(mi: int) -> Array:
 				if (out[fi][end] as Array).is_empty():
 					out[fi][end] = out[donor][end]
 					out[fi][sk] = out[donor][sk]
+	if bool(m.get("split", false)):
+		if int((m["faces"][0] as Dictionary).get("slot", 0)) == 1:
+			out.push_front(null)          # (the module's face is its slot 1: PlatformModule reads the ext by slot)
+		else:
+			out.append(null)
 	return out
 
 

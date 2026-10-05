@@ -153,7 +153,8 @@ const PAIR_RIGHT := 1 << 21     # scene bit (a ride sets it, never the data): th
 const PAIR := 1 << 12          # scene bit: the other track of the pair lies beside this one (12.9 m off, on the platform side, the same distance as the two tracks of a station): in the open the line is double track
 
 const TRACK_SPACING := 2.0 * (PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE)          # (the two tracks of a station module)
-const SPACING_MIN := 4.0       # ... and of the line between the stations (the real 3.5 - 4 m), reached in 15 steps over RAMP_LEN
+const SPLIT_SPACING := 3.5     # the two tracks between a pair of side platforms (StationPlan.is_split): module pitch = TRACK_SPACING + this; the ride keeps it out to the first bend
+const SPACING_MIN := SPLIT_SPACING       # ... and of the line between the stations (the real 3.5 - 4 m), reached in 15 steps over RAMP_LEN
 const PAIR_LEVELS := 15
 const RAMP_STATION := 200.0    # within this far of a stop (the module's own running track) the two tracks keep the station's spacing
 const RAMP_LEN := 180.0        # ... and, coming out of a tunnel, they narrow over this far (scene bits 13-16: spacing level at the cell's entry, 17-20: at its exit)
@@ -175,7 +176,8 @@ static func pair_level(d_stop: float, d_tunnel: float) -> int:
 
 
 ## `secs`: [[sec code, metres], ...] of the line from the stop (0 = open, 1 tunnel, 2 cutting, 3 embankment, 4 viaduct); cells k0..k1 (cell k covers k * 12 +- 6 m; before the start and past the end the first / last stretch goes on)
-static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int, dist := -1.0, single := false) -> PackedInt32Array:
+## `split_a` / `split_b`: the stop at the start / end of the ride is a pair of side platforms (StationPlan.is_split), where the tracks already lie SPACING_MIN apart: no ramp there
+static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int, dist := -1.0, single := false, split_a := false, split_b := false) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	out.resize(k1 - k0 + 1)
 	if secs.is_empty():
@@ -238,6 +240,10 @@ static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int, dist
 				if enc[m - m0]:
 					d_tun = minf(d_tun, maxf(absf(pb - float(m) * CELL) - CELL * 0.5, 0.0))
 			var d_stop := -pb if pb < 0.0 else (pb - dist if pb > dist else minf(pb, dist - pb))
+			if split_a or split_b:
+				var da := 1e9 if split_a else absf(pb)          # (distance from the stop at the start / the end of the ride)
+				var db := 1e9 if split_b else absf(pb - dist)
+				d_stop = minf(da, db)
 			lv[j - k0] = pair_level(d_stop, d_tun)
 	for k in range(k0, k1 + 1):
 		var sc := float(k) * CELL

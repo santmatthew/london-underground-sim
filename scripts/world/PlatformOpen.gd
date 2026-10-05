@@ -56,11 +56,28 @@ static func roof_h(st: Dictionary) -> float:
 	return float(st.get("roof_h", PlatformModule.BOX_H))
 
 
+## the z range the canopy covers: both platforms of an island (-CANOPY_HALF .. CANOPY_HALF), or from the back of the only platform of a module with one face to the same overhang beyond its edge
+static func canopy_z(pm: PlatformModule) -> Vector2:
+	if pm.solo > 0.0:
+		return Vector2(-PlatformModule.GAP * 0.5, CANOPY_HALF)
+	if pm.solo < 0.0:
+		return Vector2(-CANOPY_HALF, PlatformModule.GAP * 0.5)
+	return Vector2(-CANOPY_HALF, CANOPY_HALF)
+
+
+## the z of the lights under the canopy: one row over the two platforms' middles and the median of an island, or two over the platform and its back strip
+static func light_zs(pm: PlatformModule) -> Array:
+	if pm.solo != 0.0:
+		return [pm.solo * 3.2, pm.solo * 0.3]
+	return [-3.2, 3.2, 0.0]
+
+
 ## the roof over the island: see the style keys above. Writes pm.roof_spans / pm.roof_info (what is overhead where) for the signs and fittings that hang from it
 static func canopy(pm: PlatformModule, st: Dictionary, x0: float, x1: float, openings: Array) -> void:
 	var kind := String(st.get("canopy", "slab"))
 	var spans := _spans(st, x0, x1)
-	pm.roof_info = {"kind": kind, "h": roof_h(st), "rise": float(st.get("rise", 0.0)) if kind == "gable" else 0.0, "zc": CANOPY_HALF, "caps": []}
+	var zr := canopy_z(pm)          # the roof's reach across the module: the island's both platforms, or (a single platform of a pair of side platforms) its own half
+	pm.roof_info = {"kind": kind, "h": roof_h(st), "rise": float(st.get("rise", 0.0)) if kind == "gable" else 0.0, "zc": (zr.y - zr.x) * 0.5, "zm": (zr.y + zr.x) * 0.5, "caps": []}
 	pm.column_extra = []
 	# the way in from the cross-passages is under a flat roof of its own where the style's roofs do not reach back to the platform's west end (umbrellas, short shelters)
 	var entry_end := x0
@@ -93,7 +110,7 @@ static func _entry_roof(pm: PlatformModule, st: Dictionary, x0: float, x1: float
 	var col_z := PlatformModule.GAP * 0.5 + 0.85
 	var shaft := "flat:" + (st.get("col_main", Color(0.88, 0.88, 0.85)) as Color).to_html(false)
 	for cx in [x0 + 3.5, x1 - 0.5]:
-		for zz in [-col_z, col_z]:
+		for zz in ([pm.solo * col_z] if pm.solo != 0.0 else [-col_z, col_z]):
 			pm.kit.box(shaft, Vector3(cx, h * 0.5, zz), Vector3(0.42, h, 0.42), 0.0)
 			pm.column_extra.append(Vector2(cx, zz))
 	pm.roof_spans.append(Vector2(x0, x1))
@@ -102,7 +119,8 @@ static func _entry_roof(pm: PlatformModule, st: Dictionary, x0: float, x1: float
 static func _roof(pm: PlatformModule, st: Dictionary, kind: String, x0: float, x1: float) -> void:
 	var kit := pm.kit
 	var h := roof_h(st)
-	var zc := CANOPY_HALF
+	var zc: float = float(pm.roof_info.get("zc", CANOPY_HALF))          # (half the roof's width, and where its middle is)
+	var zm: float = float(pm.roof_info.get("zm", 0.0))
 	var soffit := String(st.get("soffit", "ceiling"))
 	var fascia := "flat:" + (st.get("fascia", Color(0.85, 0.85, 0.82)) as Color).to_html(false)
 	var top := String(st.get("top", "concrete"))
@@ -110,36 +128,37 @@ static func _roof(pm: PlatformModule, st: Dictionary, kind: String, x0: float, x
 	if kind == "gable":
 		_gable(pm, st, x0, x1, h)
 	else:
-		kit.horiz(soffit, x0, x1, -zc, zc, h, false, 0.0)
+		kit.horiz(soffit, x0, x1, zm - zc, zm + zc, h, false, 0.0)
 		# ribs under the soffit every 3.6 m (they also carry the strip lights)
 		var bx := x0 + 1.8
 		while bx < x1:
-			kit.box(soffit if kind == "timber" else "ceiling", Vector3(bx, h - 0.09, 0.0), Vector3(0.18, 0.18, zc * 2.0), 0.0)
+			kit.box(soffit if kind == "timber" else "ceiling", Vector3(bx, h - 0.09, zm), Vector3(0.18, 0.18, zc * 2.0), 0.0)
 			bx += 3.6
 	match kind:
 		"valanced", "timber":
 			# a shallow gable on top and a scalloped valance hanging from each long edge
-			kit.horiz(top, x0, x1, -zc, zc, h + 0.05, true, 0.0)
+			kit.horiz(top, x0, x1, zm - zc, zm + zc, h + 0.05, true, 0.0)
 			for sd: float in [1.0, -1.0]:
-				kit.box(fascia, Vector3((x0 + x1) * 0.5, h + 0.02, sd * zc), Vector3(x1 - x0, 0.1, 0.06), 0.0)
+				kit.box(fascia, Vector3((x0 + x1) * 0.5, h + 0.02, zm + sd * zc), Vector3(x1 - x0, 0.1, 0.06), 0.0)
 		"gable":
 			pass
 		_:
 			# a plain slab with a deep fascia all round
-			kit.horiz(top, x0, x1, -zc, zc, h + CANOPY_T, true, 0.0)
+			kit.horiz(top, x0, x1, zm - zc, zm + zc, h + CANOPY_T, true, 0.0)
 			for sd: float in [1.0, -1.0]:
-				kit.box(fascia, Vector3((x0 + x1) * 0.5, h + CANOPY_T * 0.5, sd * zc), Vector3(x1 - x0, CANOPY_T, 0.06), 0.0)
+				kit.box(fascia, Vector3((x0 + x1) * 0.5, h + CANOPY_T * 0.5, zm + sd * zc), Vector3(x1 - x0, CANOPY_T, 0.06), 0.0)
 			for ex in [x0, x1]:
-				kit.box(fascia, Vector3(ex, h + CANOPY_T * 0.5, 0.0), Vector3(0.06, CANOPY_T, zc * 2.0), 0.0)
+				kit.box(fascia, Vector3(ex, h + CANOPY_T * 0.5, zm), Vector3(0.06, CANOPY_T, zc * 2.0), 0.0)
 	if valance != "none" and not Station.debug_off("valance"):
 		for sd: float in [1.0, -1.0]:
-			_valance(kit, sd * zc, x0, x1, h, sd, valance)
+			_valance(kit, zm + sd * zc, x0, x1, h, sd, valance)
 
 
 ## a pitched roof over the island: ridge along the middle, two slopes with rafters, soffit and top, optional strips of rooflight glass
 static func _gable(pm: PlatformModule, st: Dictionary, x0: float, x1: float, h: float) -> void:
 	var kit := pm.kit
-	var zc := CANOPY_HALF
+	var zc: float = float(pm.roof_info.get("zc", CANOPY_HALF))
+	var zm: float = float(pm.roof_info.get("zm", 0.0))
 	var rise := float(st.get("rise", 0.9))
 	var soffit := String(st.get("soffit", "timber_slab"))
 	var top := String(st.get("top", "concrete"))
@@ -164,8 +183,8 @@ static func _gable(pm: PlatformModule, st: Dictionary, x0: float, x1: float, h: 
 			for pc in pieces:
 				var ta: float = pc[0]
 				var tb: float = pc[1]
-				var za := sd * zc * ta
-				var zb := sd * zc * tb
+				var za := zm + sd * zc * ta
+				var zb := zm + sd * zc * tb
 				var ya := h + rise * (1.0 - ta)
 				var yb := h + rise * (1.0 - tb)
 				var s_mat := "glass_roof" if pc[2] else soffit
@@ -185,20 +204,20 @@ static func _gable(pm: PlatformModule, st: Dictionary, x0: float, x1: float, h: 
 	var bx := x0 + 1.2
 	while bx < x1:
 		for sd: float in [1.0, -1.0]:
-			var mid := Vector3(bx, h + rise * 0.5 - 0.05, sd * zc * 0.5)
+			var mid := Vector3(bx, h + rise * 0.5 - 0.05, zm + sd * zc * 0.5)
 			var xf := Transform3D(Basis(Vector3.RIGHT, sd * slope), mid)
 			kit.box_xf(soffit, xf, Vector3(0.1, 0.16, sqrt(zc * zc + rise * rise)), 0.0)
 		bx += 2.4
-	kit.box(soffit, Vector3((x0 + x1) * 0.5, h + rise - 0.06, 0.0), Vector3(x1 - x0, 0.16, 0.2), 0.0)
+	kit.box(soffit, Vector3((x0 + x1) * 0.5, h + rise - 0.06, zm), Vector3(x1 - x0, 0.16, 0.2), 0.0)
 	for sd: float in [1.0, -1.0]:
-		kit.box("flat:" + (st.get("fascia", Color(0.85, 0.85, 0.82)) as Color).to_html(false), Vector3((x0 + x1) * 0.5, h + 0.08, sd * zc), Vector3(x1 - x0, 0.2, 0.06), 0.0)
+		kit.box("flat:" + (st.get("fascia", Color(0.85, 0.85, 0.82)) as Color).to_html(false), Vector3((x0 + x1) * 0.5, h + 0.08, zm + sd * zc), Vector3(x1 - x0, 0.2, 0.06), 0.0)
 	# the end gables: a triangle of boarding at each end (seen from outside and from under the roof)
 	var fc := "flat:" + (st.get("fascia", Color(0.85, 0.85, 0.82)) as Color).to_html(false)
 	for ex in [x0, x1]:
-		var a := Vector3(ex, h, -zc)
-		var b := Vector3(ex, h + rise, 0.0)
-		var c := Vector3(ex, h, zc)
-		var m := Vector3(ex, h, 0.0)
+		var a := Vector3(ex, h, zm - zc)
+		var b := Vector3(ex, h + rise, zm)
+		var c := Vector3(ex, h, zm + zc)
+		var m := Vector3(ex, h, zm)
 		kit.quad(fc, a, b, c, m, 0.0)
 		kit.quad(fc, m, c, b, a, 0.0)
 
@@ -227,7 +246,7 @@ static func _columns(pm: PlatformModule, st: Dictionary, spans: Array, x0: float
 	var kind := String(st.get("col", "square"))
 	var pitch := float(st.get("pitch", 7.2))
 	pm.column_xs = []
-	pm.column_zs = [-col_z, col_z]
+	pm.column_zs = [pm.solo * col_z] if pm.solo != 0.0 else [-col_z, col_z]
 	var xs: Array = []
 	if not st.has("spans"):
 		var cx := x0 + 5.0
@@ -393,7 +412,7 @@ static func soffit_y(pm: PlatformModule, x: float, z: float) -> float:
 		return h
 	match String(info["kind"]):
 		"gable":
-			return h + float(info["rise"]) * (1.0 - clampf(absf(z) / float(info["zc"]), 0.0, 1.0))
+			return h + float(info["rise"]) * (1.0 - clampf(absf(z - float(info.get("zm", 0.0))) / float(info["zc"]), 0.0, 1.0))
 		"mushroom":
 			var best := NAN
 			var r: float = info["cap_r"]
@@ -447,7 +466,7 @@ static func _strip_lights(pm: PlatformModule, x0: float, x1: float, h: float, pe
 	var kit := pm.kit
 	var lx := x0 + 3.0
 	while lx < x1:
-		for zz in [-3.2, 3.2, 0.0]:
+		for zz in light_zs(pm):
 			kit.box("light_emissive", Vector3(lx, h - 0.2, zz), Vector3(1.3, 0.06, 0.3), 0.0)
 		lx += 3.2
 

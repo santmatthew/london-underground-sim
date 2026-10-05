@@ -49,7 +49,7 @@ static func for_module(plan: StationPlan, mi: int) -> Dictionary:
 			var d := face_dh(sid, String(fd["pid"]))
 			if is_nan(d):
 				continue
-			sum += d * float(dsign if fi == 0 else -dsign)          # (a face whose trains run toward -x: a left turn for them is a right turn along +x)
+			sum += d * float(dsign if int(fd.get("slot", fi)) == 0 else -dsign)          # (a face whose trains run toward -x: a left turn for them is a right turn along +x)
 			n += 1
 		if n == 0:
 			return {}
