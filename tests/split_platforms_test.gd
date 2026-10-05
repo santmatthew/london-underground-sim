@@ -103,4 +103,18 @@ func run():
 			n_pair += 1
 			worst = maxf(worst, absf(p_h.spacing_at(float(s)) - RunScenery.SPLIT_SPACING))
 	check(n_pair > 0 and worst < 0.01, "Harlesden - Stonebridge Park: the tracks stay %.1f m apart where there is a pair (%d samples, worst error %.3f m)" % [RunScenery.SPLIT_SPACING, n_pair, worst])
+	# where two lines share the platforms (the Piccadilly line's trains use the Metropolitan line's two platforms at Eastcote ... Hillingdon: one "ss" pair), a ride of either line starts from the pair
+	for nm in ["Eastcote", "Ruislip", "Ickenham", "Hillingdon"]:
+		check(StationPlan.group_of(_id(nm), "piccadilly") == "ss" and StationPlan.group_of(_id(nm), "metropolitan") == "ss", "%s: both lines' trains use the same group of platforms" % nm)
+		check(StationPlan.is_split(_id(nm), "ss") and (Net.stations[Net.name_to_idx[nm]]["platforms"] as Dictionary).size() == 2, "%s: two platforms, drawn as a split pair" % nm)
+	check(StationPlan.group_of(_id("Rayners Lane"), "piccadilly") == "piccadilly" and StationPlan.group_of(_id("Acton Town"), "district") == "ss", "elsewhere a line's platforms are its own group's")
+	for ln in ["piccadilly", "metropolitan"]:
+		var p_e := TrackPath.between(_id("Eastcote"), _id("Ruislip"), 2400.0, 100.0, 130.0, [], [], [], [], false, 0.0, 0.0, ln)
+		worst = 0.0
+		n_pair = 0
+		for s in [0.0, 60.0, 200.0, 1200.0, 2200.0, 2350.0]:
+			if (p_e.cell_scene(int(roundf(float(s) / 12.0))) & RunScenery.PAIR) != 0:
+				n_pair += 1
+				worst = maxf(worst, absf(p_e.spacing_at(float(s)) - RunScenery.SPLIT_SPACING))
+		check(n_pair > 0 and worst < 0.01, "Eastcote - Ruislip by the %s line: the tracks stay %.1f m apart where there is a pair (%d samples, worst error %.3f m)" % [ln, RunScenery.SPLIT_SPACING, n_pair, worst])
 	print("OK" if ok else "FAILED")

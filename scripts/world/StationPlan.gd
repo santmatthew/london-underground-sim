@@ -118,6 +118,17 @@ func _edge(a: String, b: String, cost_override := -1.0, speed := PLAN_WALK) -> v
 	adj[ib].append([ia, c, edges.size() - 1])
 
 
+## the group of the platforms of station `naptan` that the trains of `line` use (usually the line's own group; where lines share platforms, the shared platforms' group: the Piccadilly line's at Eastcote is the "ss" one)
+static func group_of(naptan: String, line: String) -> String:
+	var i: int = Net.id_to_idx.get(naptan, -1)
+	if i >= 0:
+		for pid in Net.stations[i]["platforms"]:
+			var p: Dictionary = Net.stations[i]["platforms"][pid]
+			if (p["lines"] as Array).has(line):
+				return String(p["group"])
+	return String((Net.lines.get(line, {}) as Dictionary).get("group", "elizabeth"))
+
+
 ## does the generator draw the platforms of line group `group` at this station as a pair of side platforms with the tracks between them (the generated surface stations that OpenStreetMap shows so:
 ## data/el_platforms.json for the Elizabeth line, data/surface_platforms.json for the other groups)? The ride needs to know too: the two tracks keep that spacing out to the first bend
 ## (RunScenery.cell_scenes).

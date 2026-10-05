@@ -28,7 +28,7 @@ var _th := PackedFloat32Array()      # heading at the start of each cell (n + 1 
 var _p := PackedVector3Array()       # position at the start of each cell (n + 1 values)
 var single := false                  # the track is a single one (data/single_track.json): no second track beside it
 var ss := false                      # a sub-surface line: its tunnels are cut-and-cover boxes
-var _line_group := "elizabeth"       # the line group of the ride (a station may be a pair of side platforms for one group and not for another: StationPlan.is_split)
+var _line := "elizabeth"             # the line of the ride (a station may be a pair of side platforms for one group and not for another, and a platform's group is not always its line's: StationPlan.group_of)
 var secs: Array = []                 # what the track runs through, [[sec code, metres], ...] (data "sec": 0 open, 1 tunnel, 2 cutting, 3 embankment, 4 viaduct), scaled to the ride's length
 var _scenes := PackedInt32Array()    # per cell, from k_first(): RunScenery's scene number
 var pitch := PackedFloat32Array()    # per cell, from k_first(): the climb of the track (radians, + = up); the tunnels between deep stations dip between them
@@ -77,7 +77,7 @@ static func between(a: String, b: String, dist: float, fade_in: float, fade_out:
 	var kmin := -BACK
 	var kmax := int(ceil((dist + 6.0) / CELL)) + AHEAD
 	tp.ss = p_ss
-	tp._line_group = String((Net.lines.get(p_line, {}) as Dictionary).get("group", "elizabeth")) if p_line != "" else "elizabeth"
+	tp._line = p_line if p_line != "" else "elizabeth"
 	tp._set_scenes(a, b, dist, kmin, kmax, h)
 	tp._plan_pitch = tp._plan_grade(a, b, p_line, dist, fade_in + v_pad_in, fade_out + v_pad_out, kmin, kmax)
 	var n := kmax - kmin + 1
@@ -225,7 +225,7 @@ func _set_scenes(a: String, b: String, dist: float, kmin: int, kmax: int, prof: 
 	var wat: Array = []          # (the rivers under the viaducts, in the ride's own distances)
 	for w in water(a, b):
 		wat.append([float(warp.call(float(w[0]))), float(w[1])])
-	plan_scenes(secs, ss, pair_seed(a, b), kmin, kmax, dist, StationPlan.is_split(a, _line_group), StationPlan.is_split(b, _line_group), wat)
+	plan_scenes(secs, ss, pair_seed(a, b), kmin, kmax, dist, StationPlan.is_split(a, StationPlan.group_of(a, _line)), StationPlan.is_split(b, StationPlan.group_of(b, _line)), wat)
 
 
 ## The vertical profile. Two parts. The REAL one: the platform levels of the two stations (data/platform_levels.json, TfL FOI depth table via tubedepths, metres above Ordnance Datum) give how far the track
