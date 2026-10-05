@@ -267,6 +267,31 @@ func _warm_up_people() -> void:
 	_stage("frame 2 after _ready")
 	await CrowdWarmup.run(self)
 	_stage("CrowdWarmup done")
+	await _warm_up_station()
+
+
+## Builds one big station off to the side (y = -5000, as a ride's destination is) in 5 ms slices and throws it away, while the menu is up: the first build of a process pays for loading the prop
+## models, making materials and prop footprints, and a ride's destination would pay it in the middle of the ride (tests/dest_build_test --props=1 --prewarm="Oxford Circus": Bank's first build,
+## worst frame 79 - 87 ms -> 38, Slough's 83 -> 22; about 2.5 s of work in slices). Not in headless runs (the tests), and not once a journey has been chosen (its own build warms things).
+var _warm_station: Station = null          # the throwaway station of _warm_up_station while it is being built
+
+func _warm_up_station() -> void:
+	if DisplayServer.get_name() == "headless" or cli.has("autopilot") or cli.has("auto-start") or cli.has("explore"):
+		return
+	await get_tree().create_timer(1.5).timeout          # (the menu is up, the plans and the people have had their turn)
+	if state != State.MENU or not Net.name_to_idx.has("Oxford Circus"):
+		return
+	var t0 := Time.get_ticks_msec()
+	var ws := Station.new()
+	add_child(ws)
+	ws.global_position = Vector3(0.0, -5000.0, 0.0)
+	ws.visible = false
+	ws.slice_us = 10000          # (the menu is cheap to draw; start_journey cuts it to 1.5 ms if the player does not wait)
+	_warm_station = ws
+	await ws.build_async(StationPlan.for_station(int(Net.name_to_idx["Oxford Circus"])))
+	ws.queue_free()
+	_warm_station = null
+	_stage("station warm-up done (%d ms)" % (Time.get_ticks_msec() - t0))
 
 
 func _preload() -> void:
@@ -642,6 +667,8 @@ func _stage(label: String) -> void:
 
 func start_journey() -> void:
 	_stage("(before start_journey)")
+	if _warm_station != null and is_instance_valid(_warm_station):
+		_warm_station.slice_us = 1500          # (the player did not wait for the warm-up: the real build comes first)
 	_hide_all_panels()
 	announcer.greeted = false
 	StationPlan.lifts_enabled = true

@@ -34,6 +34,22 @@ func _ready() -> void:
 	var cam := Camera3D.new()
 	cam.far = 400.0
 	add_child(cam)
+	if arg("props", "0") == "1":
+		StationProps.preload_async()          # (the game does it behind the menu: the prop models load on worker threads)
+		await get_tree().create_timer(4.0).timeout
+	var pre := arg("prewarm", "")
+	if pre != "":
+		# a throwaway station built the way a destination is (8 ms slices) and freed: what a start-up warm-up would do
+		var pws := Station.new()
+		add_child(pws)
+		pws.global_position = Vector3(0.0, -5000.0, 0.0)
+		pws.slice_us = 8000
+		var tw := Time.get_ticks_usec()
+		await pws.build_async(StationPlan.for_station(Net.name_to_idx[pre]))
+		print("DESTBUILD prewarm %s: %.0f ms" % [pre, float(Time.get_ticks_usec() - tw) / 1000.0])
+		pws.queue_free()
+		for _i in 10:
+			await get_tree().process_frame
 	var warm := Station.new()
 	add_child(warm)
 	var pw := StationPlan.for_station(Net.name_to_idx[arg("warm", "Epping")])

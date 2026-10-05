@@ -432,6 +432,7 @@ func merge(other: MeshKit) -> void:
 
 func build(materials: Dictionary, default_mat: Material = null) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
+	var n_surf := 0          # (counted here: `get_surface_count()` asks the rendering server, and from a worker thread that waits for a frame - a platform's shell took a second at 60 fps)
 	for name in surfaces:
 		var s: Dictionary = surfaces[name]
 		var arrays := []
@@ -443,7 +444,8 @@ func build(materials: Dictionary, default_mat: Material = null) -> ArrayMesh:
 		arrays[Mesh.ARRAY_COLOR] = s["c"]
 		arrays[Mesh.ARRAY_INDEX] = s["i"]
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-		var idx := mesh.get_surface_count() - 1
+		var idx := n_surf
+		n_surf += 1
 		mesh.surface_set_name(idx, name)
 		mesh.surface_set_material(idx, materials.get(name, default_mat))
 	return mesh
