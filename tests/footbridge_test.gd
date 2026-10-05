@@ -1,5 +1,5 @@
 extends Node3D
-## The footbridges over the Elizabeth line's side platforms (Footbridge, StationPlan._add_footbridges): which stations get one (those whose OpenStreetMap data maps a footbridge, nothing where it does
+## The footbridges over the side platforms of the Elizabeth line and of the Underground's generated stations (Footbridge, StationPlan._add_footbridges): which stations get one (those whose OpenStreetMap data maps a footbridge, nothing where it does
 ## not, nothing at an island), that they lie inside the platform and clear of the way in, that the canopy is cut where they stand, and - on the real built station, with the player's capsule - that one
 ## can walk from one platform up the steps, over the deck and down to the other, and that the parapets and the edge of the deck stop the player.
 const RADIUS := 0.26
@@ -23,7 +23,7 @@ func run():
 	_shape.radius = RADIUS
 	_shape.height = HEIGHT
 	_plans()
-	for nm in ["West Ealing", "Slough", "Southall"]:
+	for nm in ["West Ealing", "Slough", "Southall", "Buckhurst Hill", "Harlesden"]:
 		await _walk(nm)
 	await _graph("West Ealing", false)
 	await _graph("Slough", true)          # (built for step-free journeys: the lifts are there)
@@ -33,49 +33,65 @@ func run():
 func _plans() -> void:
 	var with_data := 0
 	var drawn := 0
+	var ug_with := 0
+	var ug_drawn := 0
 	for i in Net.stations.size():
 		var sid: String = Net.station_ids[i]
-		var el: Dictionary = RealData.el_platforms(sid)
-		if el.is_empty():
-			continue
-		var plan := StationPlan.for_station(i)
-		var nm: String = Net.stations[i]["name"]
-		var fbs: Array = []
-		for m in plan.modules:
-			fbs.append_array((m["spec"] as Dictionary).get("footbridges", []))
-		if not StationPlan.is_split(sid):
-			check(fbs.is_empty(), "%s (not a pair of side platforms) has no footbridge" % nm)
-			continue
-		var want: Array = el.get("footbridges", [])
-		if want.is_empty():
-			check(fbs.is_empty(), "%s: no footbridge in the data, none drawn" % nm)
-			continue
-		with_data += 1
-		check(not fbs.is_empty(), "%s: the data maps a footbridge, one is drawn" % nm)
-		if fbs.is_empty():
-			continue
-		drawn += 1
-		var ma: Dictionary = plan.modules[0] if (plan.modules[0]["spec"] as Dictionary).has("footbridges") else plan.modules[1]
-		var L: float = ma["spec"]["length"]
-		var cuts: Array = ma["spec"]["cuts"]
-		var prev := Vector2(-1e9, -1e9)
-		for f in fbs:
-			var fp := Footbridge.footprint(float(f["x"]), float(f["d"]))
-			var west_lim := -L * 0.5
-			for ox in (ma["spec"]["openings_x"] as Array):
-				west_lim = maxf(west_lim, float(ox) + 4.0)
-			check(fp.x >= west_lim - 0.01 and fp.y <= L * 0.5 - 2.9, "%s: the bridge at x %.0f (%.0f .. %.0f) lies inside the platform, clear of the way in (from %.0f)" % [nm, float(f["x"]), fp.x, fp.y, west_lim])
-			check(fp.x > prev.y, "%s: two bridges do not overlap" % nm)
-			prev = fp
-			var cut_ok := false
-			for c in cuts:
-				if float(c[0]) <= fp.x and float(c[1]) >= fp.y:
-					cut_ok = true
-			check(cut_ok, "%s: the canopy is cut over the bridge at x %.0f" % [nm, float(f["x"])])
-		for m in plan.modules:
-			if bool((m["spec"] as Dictionary).get("split", false)):
-				check(((m["spec"] as Dictionary).get("cuts", []) as Array).size() == cuts.size(), "%s: both modules of the pair have the cuts" % nm)
+		var groups := {}
+		for pid in Net.stations[i]["platforms"]:
+			groups[String(Net.stations[i]["platforms"][pid]["group"])] = true
+		for g in groups:
+			var el: Dictionary = RealData.platform_layout(sid, g)
+			if el.is_empty():
+				continue
+			var plan := StationPlan.for_station(i)
+			var nm: String = "%s (%s)" % [Net.stations[i]["name"], g]
+			var fbs: Array = []
+			for m in plan.modules:
+				if String(m["group"]) == g:
+					fbs.append_array((m["spec"] as Dictionary).get("footbridges", []))
+			if not StationPlan.is_split(sid, g):
+				check(fbs.is_empty(), "%s (not a pair of side platforms) has no footbridge" % nm)
+				continue
+			var want: Array = el.get("footbridges", [])
+			if want.is_empty():
+				check(fbs.is_empty(), "%s: no footbridge in the data, none drawn" % nm)
+				continue
+			with_data += 1
+			var ug: bool = g != "elizabeth"
+			if ug:
+				ug_with += 1
+			check(not fbs.is_empty(), "%s: the data maps a footbridge, one is drawn" % nm)
+			if fbs.is_empty():
+				continue
+			drawn += 1
+			if ug:
+				ug_drawn += 1
+			var ma: Dictionary = {}
+			for m in plan.modules:
+				if String(m["group"]) == g and (m["spec"] as Dictionary).has("footbridges"):
+					ma = m
+			var L: float = ma["spec"]["length"]
+			var cuts: Array = ma["spec"]["cuts"]
+			var prev := Vector2(-1e9, -1e9)
+			for f in fbs:
+				var fp := Footbridge.footprint(float(f["x"]), float(f["d"]))
+				var west_lim := -L * 0.5
+				for ox in (ma["spec"]["openings_x"] as Array):
+					west_lim = maxf(west_lim, float(ox) + 4.0)
+				check(fp.x >= west_lim - 0.01 and fp.y <= L * 0.5 - 2.9, "%s: the bridge at x %.0f (%.0f .. %.0f) lies inside the platform, clear of the way in (from %.0f)" % [nm, float(f["x"]), fp.x, fp.y, west_lim])
+				check(fp.x > prev.y, "%s: two bridges do not overlap" % nm)
+				prev = fp
+				var cut_ok := false
+				for c in cuts:
+					if float(c[0]) <= fp.x and float(c[1]) >= fp.y:
+						cut_ok = true
+				check(cut_ok, "%s: the canopy is cut over the bridge at x %.0f" % [nm, float(f["x"])])
+			for m in plan.modules:
+				if bool((m["spec"] as Dictionary).get("split", false)) and String(m["group"]) == g:
+					check(((m["spec"] as Dictionary).get("cuts", []) as Array).size() == cuts.size(), "%s: both modules of the pair have the cuts" % nm)
 	check(with_data >= 12 and drawn == with_data, "footbridges are drawn at %d of %d stations whose data has one" % [drawn, with_data])
+	check(ug_with >= 8 and ug_drawn == ug_with, "... and at %d of %d Underground ones" % [ug_drawn, ug_with])
 
 
 func _walk(nm: String) -> void:

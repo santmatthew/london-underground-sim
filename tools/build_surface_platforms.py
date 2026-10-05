@@ -25,6 +25,7 @@ OUT = os.path.join(ROOT, "data", "surface_platforms.json")
 MIN_LEN = 60              # an outline shorter than this is a stair or a fragment, not a platform
 STAGGER_LEN_DIFF = 25     # the two outlines must be this alike in length (metres) for their offset to be a stagger
 STAGGER_MIN = 5.0
+LEN_DIFF_MAX = 40         # side platforms whose outlines differ more than this are not read as a pair (one is merged with a neighbour, say): their middle, and so the footbridges' places, would be wrong
 
 
 def ints(s):
@@ -45,6 +46,9 @@ def main():
     for sid, st in sorted(geo.items(), key=lambda kv: kv[1]["name"]):
         if sid not in net or sid not in pn:
             continue
+        if os.path.exists(os.path.join(ROOT, "data", "layouts", sid + ".json")):
+            stats["authored"] = stats.get("authored", 0) + 1       # an authored layout is the station's own: it is not generated
+            continue
         ns = net[sid]
         lat0, lon0 = st["lat"], st["lon"]
         # the platform outlines near the station, with the platform numbers they carry
@@ -54,8 +58,8 @@ def main():
             if (t.get("railway") == "platform" or t.get("public_transport") == "platform") and w.get("geometry"):
                 pts = [xy(p, lat0, lon0) for p in w["geometry"] if p]
                 refs = ints(t.get("ref", "")) | ints(t.get("local_ref", ""))
-                if len(pts) >= 3 and refs:
-                    outlines.append({"pts": pts, "refs": refs})
+                if len(pts) >= 3:
+                    outlines.append({"pts": pts, "refs": refs, "id": len(outlines)})
         groups = {}
         for pid, pl in ns["platforms"].items():
             groups.setdefault(pl["group"], []).append(pid)
@@ -71,6 +75,12 @@ def main():
                     refs |= ints(pn[sid].get("%s|%s" % (ln, d), []))
                 pid_refs[pid] = refs
                 group_refs.setdefault(g, set()).update(refs)
+        used = {}                 # outline id -> the groups whose numbers fit it
+        for g, pids in groups.items():
+            if g != "elizabeth" and len(pids) == 2:
+                for o in outlines:
+                    if o["refs"] & group_refs[g]:
+                        used.setdefault(o["id"], set()).add(g)
         done_any = False
         entry = {"name": ns["name"], "groups": {}}
         for g, pids in groups.items():
@@ -81,17 +91,25 @@ def main():
                 continue
             pa, pb = sorted(pids)
             ra, rb = pid_refs[pa], pid_refs[pb]
-            if not ra or not rb:
-                skip("no platform numbers")
-                continue
-            if any(g2 != g and (group_refs[g2] & (ra | rb)) for g2 in group_refs):
-                skip("a number another group uses")
-                continue
-            oa = [o for o in outlines if o["refs"] & ra]
-            ob = [o for o in outlines if o["refs"] & rb]
-            if not oa or not ob:
-                skip("outline not found")
-                continue
+            unmapped = not ra or not rb
+            if unmapped:
+                # (no numbers from TfL: a station whose only group this is and that has exactly two platform outlines has them as its pair - which outline is which platform is not known, so no stagger, and no `across`)
+                if len(groups) != 1 or len(outlines) != 2:
+                    skip("no platform numbers")
+                    continue
+                oa, ob = [outlines[0]], [outlines[1]]
+            else:
+                if any(g2 != g and (group_refs[g2] & (ra | rb)) for g2 in group_refs):
+                    skip("a number another group uses")
+                    continue
+                oa = [o for o in outlines if o["refs"] & ra]
+                ob = [o for o in outlines if o["refs"] & rb]
+                if not oa or not ob:
+                    skip("outline not found")
+                    continue
+                if any(len(used[o["id"]]) > 1 for o in oa + ob):
+                    skip("an outline another group's numbers fit")
+                    continue
             # one outline for both (an island's: one polygon carrying both numbers) or one per platform
             A = [p for o in oa for p in o["pts"]]
             B = [p for o in ob for p in o["pts"]]
@@ -100,6 +118,9 @@ def main():
                 gap = 0.0
             else:
                 gap = min(poly_dist(o1["pts"], o2["pts"]) for o1 in oa for o2 in ob)
+            if 2.0 <= gap < 4.0:
+                skip("a gap too narrow for two tracks and too wide for an island (%.1f)" % gap)
+                continue
             arrangement = "island" if gap < 2.0 else "side"
             axis, centre = pca_axis(A + B)
             perp = (-axis[1], axis[0])
@@ -109,11 +130,20 @@ def main():
             lb = along(B)
             length = {pa: round(max(la) - min(la)), pb: round(max(lb) - min(lb))}
             across_of = {pa: round(sum(across(A)) / len(A), 1), pb: round(sum(across(B)) / len(B), 1)}
-            if arrangement == "side" and (min(length.values()) < MIN_LEN or gap > 14.0):
+            if unmapped:
+                across_of = {}
+            if arrangement == "side" and (min(length.values()) < MIN_LEN or gap > 14.0 or abs(length[pa] - length[pb]) > LEN_DIFF_MAX):
                 skip("outlines do not look like a pair of platforms (length %s, gap %.1f)" % (str(list(length.values())), gap))
                 continue
+            if arrangement == "side" and not unmapped:
+                lo, hi = sorted(across_of.values())
+                ids = set(o["id"] for o in oa + ob)
+                between = [o for o in outlines if o["id"] not in ids and lo + 1.0 < sum(across(o["pts"])) / len(o["pts"]) < hi - 1.0 and min(along(o["pts"])) < max(la) and max(along(o["pts"])) > min(la)]
+                if between:
+                    skip("another platform lies between the two")
+                    continue
             stagger = 0
-            if arrangement == "side" and abs(length[pa] - length[pb]) <= STAGGER_LEN_DIFF:
+            if arrangement == "side" and not unmapped and abs(length[pa] - length[pb]) <= STAGGER_LEN_DIFF:
                 off = (max(la) + min(la)) * 0.5 - (max(lb) + min(lb)) * 0.5
                 if abs(off) >= STAGGER_MIN:
                     stagger = round(off)

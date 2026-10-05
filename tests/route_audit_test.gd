@@ -173,12 +173,14 @@ func _sweep(st: Station, pts: Array, step: float) -> String:
 
 
 func _floor(x: float, z: float, from_y: float, depth: float) -> float:
-	var q := PhysicsRayQueryParameters3D.create(Vector3(x, from_y, z), Vector3(x, from_y - depth, z))
-	q.collision_mask = 1
-	var h := _space.intersect_ray(q)
-	if h.is_empty():
-		return NAN
-	return (h["position"] as Vector3).y
+	# (a ray that lands exactly on the seam of two shapes that touch can pass between them: a hole is a miss at these four neighbours too, and the capsule is 0.52 m across)
+	for o in [Vector2.ZERO, Vector2(0.03, 0.0), Vector2(-0.03, 0.0), Vector2(0.0, 0.03), Vector2(0.0, -0.03)]:
+		var q := PhysicsRayQueryParameters3D.create(Vector3(x + o.x, from_y, z + o.y), Vector3(x + o.x, from_y - depth, z + o.y))
+		q.collision_mask = 1
+		var h := _space.intersect_ray(q)
+		if not h.is_empty():
+			return (h["position"] as Vector3).y
+	return NAN
 
 
 func _len(pts: Array, seg: int, t: float) -> float:

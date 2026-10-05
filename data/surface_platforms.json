@@ -1,0 +1,1559 @@
+{
+ "_comment": "How the Underground's generated surface stations' platforms lie (tools/build_surface_platforms.py): side platforms or an island, the stagger and the footbridges, from OpenStreetMap platform outlines and footways. Derived numbers only; (c) OpenStreetMap contributors, ODbL.",
+ "940GZZLUALP": {
+  "name": "Alperton",
+  "groups": {
+   "piccadilly": {
+    "arrangement": "side",
+    "gap": 6.1,
+    "axis": [
+     0.8477,
+     -0.5305
+    ],
+    "length": {
+     "piccadilly:Northbound": 120,
+     "piccadilly:Southbound": 120
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUBSC": {
+  "name": "Barons Court",
+  "groups": {
+   "piccadilly": {
+    "arrangement": "side",
+    "gap": 4.8,
+    "axis": [
+     0.9999,
+     -0.012
+    ],
+    "length": {
+     "piccadilly:Eastbound": 130,
+     "piccadilly:Westbound": 123
+    },
+    "across": {
+     "piccadilly:Eastbound": 4.0,
+     "piccadilly:Westbound": -3.0
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUBEC": {
+  "name": "Becontree",
+  "groups": {
+   "ss": {
+    "arrangement": "side",
+    "gap": 6.1,
+    "axis": [
+     0.9954,
+     0.0954
+    ],
+    "length": {
+     "ss:Eastbound": 139,
+     "ss:Westbound": 138
+    },
+    "across": {
+     "ss:Eastbound": 5.4,
+     "ss:Westbound": -8.1
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUBOS": {
+  "name": "Boston Manor",
+  "groups": {
+   "piccadilly": {
+    "arrangement": "side",
+    "gap": 6.9,
+    "axis": [
+     0.7047,
+     0.7095
+    ],
+    "length": {
+     "piccadilly:Eastbound": 109,
+     "piccadilly:Westbound": 113
+    },
+    "across": {
+     "piccadilly:Eastbound": 6.3,
+     "piccadilly:Westbound": -8.6
+    },
+    "stagger": 0,
+    "bridges": [
+     60,
+     66
+    ],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUBKH": {
+  "name": "Buckhurst Hill",
+  "groups": {
+   "central": {
+    "arrangement": "side",
+    "gap": 5.4,
+    "axis": [
+     0.1717,
+     0.9851
+    ],
+    "length": {
+     "central:Eastbound": 115,
+     "central:Westbound": 115
+    },
+    "across": {
+     "central:Eastbound": 6.6,
+     "central:Westbound": -5.5
+    },
+    "stagger": 0,
+    "bridges": [
+     70
+    ],
+    "footbridges": [
+     {
+      "x": 70,
+      "covered": true
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUCPK": {
+  "name": "Canons Park",
+  "groups": {
+   "jubilee": {
+    "arrangement": "side",
+    "gap": 6.5,
+    "axis": [
+     0.2179,
+     -0.976
+    ],
+    "length": {
+     "jubilee:Northbound": 126,
+     "jubilee:Southbound": 128
+    },
+    "across": {
+     "jubilee:Northbound": -4.8,
+     "jubilee:Southbound": 4.8
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUCWL": {
+  "name": "Chigwell",
+  "groups": {
+   "central": {
+    "arrangement": "side",
+    "gap": 4.5,
+    "axis": [
+     0.9578,
+     -0.2873
+    ],
+    "length": {
+     "central:Eastbound": 137,
+     "central:Westbound": 136
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUCXY": {
+  "name": "Croxley",
+  "groups": {
+   "ss": {
+    "arrangement": "side",
+    "gap": 8.5,
+    "axis": [
+     0.6384,
+     0.7697
+    ],
+    "length": {
+     "ss:Eastbound": 122,
+     "ss:Southbound": 124
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUDGY": {
+  "name": "Dagenham Heathway",
+  "groups": {
+   "ss": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.9949,
+     0.1013
+    ],
+    "length": {
+     "ss:Eastbound": 220,
+     "ss:Westbound": 220
+    },
+    "across": {
+     "ss:Eastbound": 2.1,
+     "ss:Westbound": -3.0
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUDBN": {
+  "name": "Debden",
+  "groups": {
+   "central": {
+    "arrangement": "side",
+    "gap": 5.8,
+    "axis": [
+     0.8163,
+     0.5776
+    ],
+    "length": {
+     "central:Eastbound": 148,
+     "central:Westbound": 150
+    },
+    "across": {
+     "central:Eastbound": 2.8,
+     "central:Westbound": -7.1
+    },
+    "stagger": 0,
+    "bridges": [
+     -9,
+     22,
+     55
+    ],
+    "footbridges": [
+     {
+      "x": -9,
+      "covered": false
+     },
+     {
+      "x": 22,
+      "covered": false
+     },
+     {
+      "x": 55,
+      "covered": false
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUDOH": {
+  "name": "Dollis Hill",
+  "groups": {
+   "jubilee": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.9693,
+     -0.2461
+    ],
+    "length": {
+     "jubilee:Eastbound": 135,
+     "jubilee:Westbound": 135
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUEAN": {
+  "name": "East Acton",
+  "groups": {
+   "central": {
+    "arrangement": "side",
+    "gap": 6.8,
+    "axis": [
+     0.5795,
+     -0.815
+    ],
+    "length": {
+     "central:Eastbound": 132,
+     "central:Westbound": 133
+    },
+    "across": {
+     "central:Eastbound": 3.4,
+     "central:Westbound": -4.1
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUEHM": {
+  "name": "East Ham",
+  "groups": {
+   "ss": {
+    "arrangement": "side",
+    "gap": 6.4,
+    "axis": [
+     0.9018,
+     0.4322
+    ],
+    "length": {
+     "ss:Eastbound": 119,
+     "ss:Westbound": 122
+    },
+    "across": {
+     "ss:Eastbound": 6.3,
+     "ss:Westbound": -5.2
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUEPK": {
+  "name": "Elm Park",
+  "groups": {
+   "ss": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.9661,
+     0.2581
+    ],
+    "length": {
+     "ss:Eastbound": 138,
+     "ss:Westbound": 138
+    },
+    "across": {
+     "ss:Eastbound": 2.4,
+     "ss:Westbound": -2.4
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUFLP": {
+  "name": "Fairlop",
+  "groups": {
+   "central": {
+    "arrangement": "side",
+    "gap": 6.2,
+    "axis": [
+     0.1856,
+     0.9826
+    ],
+    "length": {
+     "central:Eastbound": 184,
+     "central:Westbound": 184
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUGGH": {
+  "name": "Grange Hill",
+  "groups": {
+   "central": {
+    "arrangement": "side",
+    "gap": 5.8,
+    "axis": [
+     0.5678,
+     -0.8232
+    ],
+    "length": {
+     "central:Eastbound": 182,
+     "central:Westbound": 160
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [
+     -98,
+     -97
+    ],
+    "footbridges": [
+     {
+      "x": -98,
+      "covered": false
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUGFD": {
+  "name": "Greenford",
+  "groups": {
+   "central": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.9237,
+     -0.3832
+    ],
+    "length": {
+     "central:Eastbound": 142,
+     "central:Westbound": 142
+    },
+    "across": {
+     "central:Eastbound": 3.1,
+     "central:Westbound": -2.6
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUGBY": {
+  "name": "Gunnersbury",
+  "groups": {
+   "ss": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.5251,
+     0.851
+    ],
+    "length": {
+     "ss:Eastbound": 108,
+     "ss:Westbound": 107
+    },
+    "across": {
+     "ss:Eastbound": 1.7,
+     "ss:Westbound": -1.9
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUHSN": {
+  "name": "Harlesden",
+  "groups": {
+   "bakerloo": {
+    "arrangement": "side",
+    "gap": 6.0,
+    "axis": [
+     0.8068,
+     -0.5908
+    ],
+    "length": {
+     "bakerloo:Northbound": 124,
+     "bakerloo:Southbound": 123
+    },
+    "across": {
+     "bakerloo:Northbound": -5.5,
+     "bakerloo:Southbound": 5.5
+    },
+    "stagger": 0,
+    "bridges": [
+     52,
+     71
+    ],
+    "footbridges": [
+     {
+      "x": 52,
+      "covered": false
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUHCL": {
+  "name": "Hendon Central",
+  "groups": {
+   "northern": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.6342,
+     -0.7732
+    ],
+    "length": {
+     "northern:Northbound": 156,
+     "northern:Southbound": 156
+    },
+    "across": {
+     "northern:Northbound": -0.0,
+     "northern:Southbound": -0.0
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUHCH": {
+  "name": "Hornchurch",
+  "groups": {
+   "ss": {
+    "arrangement": "side",
+    "gap": 5.9,
+    "axis": [
+     0.9482,
+     0.3176
+    ],
+    "length": {
+     "ss:Eastbound": 132,
+     "ss:Westbound": 137
+    },
+    "across": {
+     "ss:Eastbound": 4.9,
+     "ss:Westbound": -5.6
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUHWC": {
+  "name": "Hounslow Central",
+  "groups": {
+   "piccadilly": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.9984,
+     0.0567
+    ],
+    "length": {
+     "piccadilly:Eastbound": 117,
+     "piccadilly:Westbound": 117
+    },
+    "across": {
+     "piccadilly:Eastbound": 1.7,
+     "piccadilly:Westbound": -2.5
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUHWE": {
+  "name": "Hounslow East",
+  "groups": {
+   "piccadilly": {
+    "arrangement": "side",
+    "gap": 6.4,
+    "axis": [
+     0.7886,
+     0.6149
+    ],
+    "length": {
+     "piccadilly:Northbound": 110,
+     "piccadilly:Westbound": 114
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUKEN": {
+  "name": "Kenton",
+  "groups": {
+   "bakerloo": {
+    "arrangement": "side",
+    "gap": 6.3,
+    "axis": [
+     0.5805,
+     -0.8143
+    ],
+    "length": {
+     "bakerloo:Northbound": 126,
+     "bakerloo:Southbound": 122
+    },
+    "across": {
+     "bakerloo:Northbound": -6.0,
+     "bakerloo:Southbound": 6.5
+    },
+    "stagger": 0,
+    "bridges": [
+     -62
+    ],
+    "footbridges": [
+     {
+      "x": -62,
+      "covered": false
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUKBN": {
+  "name": "Kilburn",
+  "groups": {
+   "jubilee": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.9958,
+     -0.0918
+    ],
+    "length": {
+     "jubilee:Eastbound": 137,
+     "jubilee:Westbound": 135
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUKBY": {
+  "name": "Kingsbury",
+  "groups": {
+   "jubilee": {
+    "arrangement": "side",
+    "gap": 9.7,
+    "axis": [
+     0.1775,
+     0.9841
+    ],
+    "length": {
+     "jubilee:Northbound": 129,
+     "jubilee:Southbound": 128
+    },
+    "across": {
+     "jubilee:Northbound": 5.0,
+     "jubilee:Southbound": -5.0
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLULYS": {
+  "name": "Leytonstone",
+  "groups": {
+   "central": {
+    "arrangement": "side",
+    "gap": 5.6,
+    "axis": [
+     0.4649,
+     0.8854
+    ],
+    "length": {
+     "central:Eastbound": 148,
+     "central:Westbound": 144
+    },
+    "across": {
+     "central:Eastbound": 7.3,
+     "central:Westbound": -3.6
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUNDN": {
+  "name": "Neasden",
+  "groups": {
+   "jubilee": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.9252,
+     -0.3795
+    ],
+    "length": {
+     "jubilee:Eastbound": 130,
+     "jubilee:Westbound": 129
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUNEN": {
+  "name": "North Ealing",
+  "groups": {
+   "piccadilly": {
+    "arrangement": "side",
+    "gap": 9.6,
+    "axis": [
+     0.5632,
+     0.8263
+    ],
+    "length": {
+     "piccadilly:Northbound": 126,
+     "piccadilly:Southbound": 122
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [
+     -31
+    ],
+    "footbridges": [
+     {
+      "x": -31,
+      "covered": false
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUNHA": {
+  "name": "North Harrow",
+  "groups": {
+   "ss": {
+    "arrangement": "side",
+    "gap": 9.8,
+    "axis": [
+     0.8437,
+     -0.5368
+    ],
+    "length": {
+     "ss:Eastbound": 133,
+     "ss:Westbound": 132
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUNWY": {
+  "name": "North Wembley",
+  "groups": {
+   "bakerloo": {
+    "arrangement": "side",
+    "gap": 5.8,
+    "axis": [
+     0.3333,
+     -0.9428
+    ],
+    "length": {
+     "bakerloo:Northbound": 124,
+     "bakerloo:Southbound": 123
+    },
+    "across": {
+     "bakerloo:Northbound": -5.4,
+     "bakerloo:Southbound": 4.7
+    },
+    "stagger": 0,
+    "bridges": [
+     -59
+    ],
+    "footbridges": [
+     {
+      "x": -59,
+      "covered": false
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUNFD": {
+  "name": "Northfields",
+  "groups": {
+   "piccadilly": {
+    "arrangement": "side",
+    "gap": 6.0,
+    "axis": [
+     0.9523,
+     0.3053
+    ],
+    "length": {
+     "piccadilly:Eastbound": 133,
+     "piccadilly:Westbound": 128
+    },
+    "across": {
+     "piccadilly:Eastbound": 6.3,
+     "piccadilly:Westbound": -7.3
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUNHT": {
+  "name": "Northolt",
+  "groups": {
+   "central": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.9277,
+     -0.3733
+    ],
+    "length": {
+     "central:Eastbound": 141,
+     "central:Westbound": 141
+    },
+    "across": {
+     "central:Eastbound": 2.0,
+     "central:Westbound": -2.0
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUNKP": {
+  "name": "Northwick Park",
+  "groups": {
+   "ss": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.9829,
+     -0.1843
+    ],
+    "length": {
+     "ss:Eastbound": 134,
+     "ss:Westbound": 134
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUNOW": {
+  "name": "Northwood",
+  "groups": {
+   "ss": {
+    "arrangement": "side",
+    "gap": 9.3,
+    "axis": [
+     0.2534,
+     -0.9673
+    ],
+    "length": {
+     "ss:Northbound": 130,
+     "ss:Southbound": 129
+    },
+    "across": {
+     "ss:Northbound": -5.0,
+     "ss:Southbound": 5.0
+    },
+    "stagger": 0,
+    "bridges": [
+     53
+    ],
+    "footbridges": [
+     {
+      "x": 53,
+      "covered": false
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUNWH": {
+  "name": "Northwood Hills",
+  "groups": {
+   "ss": {
+    "arrangement": "side",
+    "gap": 6.2,
+    "axis": [
+     0.8074,
+     -0.59
+    ],
+    "length": {
+     "ss:Eastbound": 131,
+     "ss:Northbound": 133
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUOAK": {
+  "name": "Oakwood",
+  "groups": {
+   "piccadilly": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.8139,
+     -0.581
+    ],
+    "length": {
+     "piccadilly:Southbound": 131,
+     "piccadilly:Westbound": 131
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUOSY": {
+  "name": "Osterley",
+  "groups": {
+   "piccadilly": {
+    "arrangement": "side",
+    "gap": 7.4,
+    "axis": [
+     0.6341,
+     0.7732
+    ],
+    "length": {
+     "piccadilly:Eastbound": 120,
+     "piccadilly:Southbound": 119
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [
+     -58,
+     -32
+    ],
+    "footbridges": [
+     {
+      "x": -58,
+      "covered": false
+     },
+     {
+      "x": -32,
+      "covered": false
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUPKR": {
+  "name": "Park Royal",
+  "groups": {
+   "piccadilly": {
+    "arrangement": "side",
+    "gap": 5.4,
+    "axis": [
+     0.2082,
+     -0.9781
+    ],
+    "length": {
+     "piccadilly:Northbound": 121,
+     "piccadilly:Southbound": 123
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUPVL": {
+  "name": "Perivale",
+  "groups": {
+   "central": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.9291,
+     -0.3698
+    ],
+    "length": {
+     "central:Eastbound": 134,
+     "central:Westbound": 134
+    },
+    "across": {
+     "central:Eastbound": 2.5,
+     "central:Westbound": -1.8
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUPNR": {
+  "name": "Pinner",
+  "groups": {
+   "ss": {
+    "arrangement": "side",
+    "gap": 6.4,
+    "axis": [
+     0.7888,
+     -0.6146
+    ],
+    "length": {
+     "ss:Eastbound": 137,
+     "ss:Westbound": 137
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [
+     48
+    ],
+    "footbridges": [
+     {
+      "x": 48,
+      "covered": false
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUPRD": {
+  "name": "Preston Road",
+  "groups": {
+   "ss": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.8823,
+     -0.4707
+    ],
+    "length": {
+     "ss:Eastbound": 136,
+     "ss:Westbound": 135
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUQPS": {
+  "name": "Queen's Park",
+  "groups": {
+   "bakerloo": {
+    "arrangement": "side",
+    "gap": 5.6,
+    "axis": [
+     0.9638,
+     0.2666
+    ],
+    "length": {
+     "bakerloo:Northbound": 123,
+     "bakerloo:Southbound": 117
+    },
+    "across": {
+     "bakerloo:Northbound": -4.8,
+     "bakerloo:Southbound": 3.6
+    },
+    "stagger": 0,
+    "bridges": [
+     69,
+     81
+    ],
+    "footbridges": [
+     {
+      "x": 69,
+      "covered": false
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUQBY": {
+  "name": "Queensbury",
+  "groups": {
+   "jubilee": {
+    "arrangement": "side",
+    "gap": 8.7,
+    "axis": [
+     0.8244,
+     -0.566
+    ],
+    "length": {
+     "jubilee:Northbound": 128,
+     "jubilee:Southbound": 126
+    },
+    "across": {
+     "jubilee:Northbound": -4.7,
+     "jubilee:Southbound": 4.7
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLURKW": {
+  "name": "Rickmansworth",
+  "groups": {
+   "ss": {
+    "arrangement": "side",
+    "gap": 6.4,
+    "axis": [
+     0.9866,
+     -0.163
+    ],
+    "length": {
+     "ss:Eastbound": 133,
+     "ss:Westbound": 139
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLURVY": {
+  "name": "Roding Valley",
+  "groups": {
+   "central": {
+    "arrangement": "side",
+    "gap": 6.1,
+    "axis": [
+     0.945,
+     0.3271
+    ],
+    "length": {
+     "central:Eastbound": 135,
+     "central:Westbound": 134
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [
+     3
+    ],
+    "footbridges": [
+     {
+      "x": 3,
+      "covered": false
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLURSG": {
+  "name": "Ruislip Gardens",
+  "groups": {
+   "central": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.8802,
+     -0.4746
+    ],
+    "length": {
+     "central:Eastbound": 147,
+     "central:Westbound": 147
+    },
+    "across": {
+     "central:Eastbound": 1.6,
+     "central:Westbound": -1.3
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUSNB": {
+  "name": "Snaresbrook",
+  "groups": {
+   "central": {
+    "arrangement": "side",
+    "gap": 6.3,
+    "axis": [
+     0.4332,
+     0.9013
+    ],
+    "length": {
+     "central:Eastbound": 172,
+     "central:Westbound": 148
+    },
+    "across": {
+     "central:Eastbound": 5.6,
+     "central:Westbound": -5.6
+    },
+    "stagger": -11,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUSEA": {
+  "name": "South Ealing",
+  "groups": {
+   "piccadilly": {
+    "arrangement": "side",
+    "gap": 6.0,
+    "axis": [
+     0.9021,
+     0.4315
+    ],
+    "length": {
+     "piccadilly:Eastbound": 128,
+     "piccadilly:Westbound": 127
+    },
+    "across": {
+     "piccadilly:Eastbound": 6.7,
+     "piccadilly:Westbound": -5.5
+    },
+    "stagger": 0,
+    "bridges": [
+     60
+    ],
+    "footbridges": [
+     {
+      "x": 60,
+      "covered": false
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUSKT": {
+  "name": "South Kenton",
+  "groups": {
+   "bakerloo": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.3646,
+     -0.9311
+    ],
+    "length": {
+     "bakerloo:Northbound": 130,
+     "bakerloo:Southbound": 130
+    },
+    "across": {
+     "bakerloo:Northbound": -1.9,
+     "bakerloo:Southbound": 1.9
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUSRP": {
+  "name": "South Ruislip",
+  "groups": {
+   "central": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.8814,
+     -0.4723
+    ],
+    "length": {
+     "central:Eastbound": 142,
+     "central:Westbound": 142
+    },
+    "across": {
+     "central:Eastbound": 0.0,
+     "central:Westbound": 0.0
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUSFS": {
+  "name": "Southfields",
+  "groups": {
+   "ss": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.0725,
+     -0.9974
+    ],
+    "length": {
+     "ss:Eastbound": 114,
+     "ss:Westbound": 115
+    },
+    "across": {
+     "ss:Eastbound": -2.5,
+     "ss:Westbound": 2.0
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUSGP": {
+  "name": "Stonebridge Park",
+  "groups": {
+   "bakerloo": {
+    "arrangement": "side",
+    "gap": 6.2,
+    "axis": [
+     0.861,
+     -0.5085
+    ],
+    "length": {
+     "bakerloo:Northbound": 119,
+     "bakerloo:Southbound": 114
+    },
+    "across": {
+     "bakerloo:Northbound": -5.3,
+     "bakerloo:Southbound": 5.3
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUSUH": {
+  "name": "Sudbury Hill",
+  "groups": {
+   "piccadilly": {
+    "arrangement": "side",
+    "gap": 6.8,
+    "axis": [
+     0.9403,
+     -0.3404
+    ],
+    "length": {
+     "piccadilly:Eastbound": 90,
+     "piccadilly:Westbound": 90
+    },
+    "across": {
+     "piccadilly:Eastbound": -7.3,
+     "piccadilly:Westbound": 7.3
+    },
+    "stagger": 0,
+    "bridges": [
+     29,
+     56
+    ],
+    "footbridges": [
+     {
+      "x": 29,
+      "covered": false
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUSUT": {
+  "name": "Sudbury Town",
+  "groups": {
+   "piccadilly": {
+    "arrangement": "side",
+    "gap": 9.2,
+    "axis": [
+     0.8054,
+     -0.5927
+    ],
+    "length": {
+     "piccadilly:Southbound": 109,
+     "piccadilly:Westbound": 111
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [
+     4
+    ],
+    "footbridges": [
+     {
+      "x": 4,
+      "covered": true
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUTHB": {
+  "name": "Theydon Bois",
+  "groups": {
+   "central": {
+    "arrangement": "side",
+    "gap": 5.3,
+    "axis": [
+     0.2709,
+     0.9626
+    ],
+    "length": {
+     "central:Eastbound": 144,
+     "central:Westbound": 145
+    },
+    "across": {
+     "central:Eastbound": 4.2,
+     "central:Westbound": -5.0
+    },
+    "stagger": 0,
+    "bridges": [
+     -76
+    ],
+    "footbridges": [
+     {
+      "x": -76,
+      "covered": false
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUTNG": {
+  "name": "Turnham Green",
+  "groups": {
+   "piccadilly": {
+    "arrangement": "side",
+    "gap": 6.2,
+    "axis": [
+     0.9997,
+     0.024
+    ],
+    "length": {
+     "piccadilly:Eastbound": 127,
+     "piccadilly:Westbound": 113
+    },
+    "across": {
+     "piccadilly:Eastbound": 4.3,
+     "piccadilly:Westbound": -5.3
+    },
+    "stagger": -7,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUUPB": {
+  "name": "Upminster Bridge",
+  "groups": {
+   "ss": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.902,
+     0.4317
+    ],
+    "length": {
+     "ss:Eastbound": 140,
+     "ss:Westbound": 139
+    },
+    "across": {
+     "ss:Eastbound": 2.3,
+     "ss:Westbound": -2.3
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUUPY": {
+  "name": "Upney",
+  "groups": {
+   "ss": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.9916,
+     0.1292
+    ],
+    "length": {
+     "ss:Eastbound": 138,
+     "ss:Westbound": 138
+    },
+    "across": {
+     "ss:Eastbound": 2.1,
+     "ss:Westbound": -3.1
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUWHM": {
+  "name": "West Ham",
+  "groups": {
+   "ss": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.943,
+     0.3328
+    ],
+    "length": {
+     "ss:Eastbound": 136,
+     "ss:Westbound": 120
+    },
+    "across": {
+     "ss:Eastbound": 0.9,
+     "ss:Westbound": -2.6
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUWHW": {
+  "name": "West Harrow",
+  "groups": {
+   "ss": {
+    "arrangement": "side",
+    "gap": 9.5,
+    "axis": [
+     0.8882,
+     0.4595
+    ],
+    "length": {
+     "ss:Eastbound": 139,
+     "ss:Westbound": 134
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUWJN": {
+  "name": "Willesden Junction",
+  "groups": {
+   "bakerloo": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.9904,
+     -0.1386
+    ],
+    "length": {
+     "bakerloo:Northbound": 124,
+     "bakerloo:Southbound": 125
+    },
+    "across": {
+     "bakerloo:Northbound": -5.4,
+     "bakerloo:Southbound": 6.8
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ }
+}
