@@ -14,6 +14,7 @@ func run():
 	OS.set_environment("UG_CURVE", "8")
 	Timetable.build(9)
 	var g: Game = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	g.cli = {"seed": "9"}          # (a random start station sometimes has no through train in the next quarter of an hour: the test flaked)
 	add_child(g)
 	g.opts["time"] = "am_peak"
 	await get_tree().process_frame
