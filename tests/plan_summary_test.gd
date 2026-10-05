@@ -24,6 +24,10 @@ func run():
 			var m: Dictionary = plan.modules[mi]
 			var sp: Dictionary = m["spec"]
 			print("  module %d: length %.0f style %s faces %s dir_sign %s depth %.1f" % [mi, sp["length"], sp.get("style", "?"), str((m["faces"] as Array).map(func(f): return f["pid"])), str(m.get("dir_sign", 1)), -float(m["pos"].y)])
+			if sp.has("footbridges"):
+				print("    footbridges: %s cuts %s" % [str(sp["footbridges"]), str(sp.get("cuts", []))])
+			if not (m.get("bend", {}) as Dictionary).is_empty():
+				print("    bend: kappa %.5f (R %.0f m) x %.0f .. %.0f" % [float(m["bend"]["kappa"]), 1.0 / absf(float(m["bend"]["kappa"])), float(m["bend"]["x0"]), float(m["bend"]["x1"])])
 		if StationPlan.is_split(Net.station_ids[idx]):
 			for fk in plan.faces:
 				var f: Dictionary = plan.faces[fk]

@@ -52,6 +52,25 @@ static func _spans(st: Dictionary, x0: float, x1: float) -> Array:
 	return out
 
 
+## the spans with the stretches `cuts` ([[x0, x1], ...]) taken out; a piece shorter than a metre goes
+static func _cut(spans: Array, cuts: Array) -> Array:
+	var out: Array = spans
+	for c in cuts:
+		var lo := float(c[0])
+		var hi := float(c[1])
+		var nxt: Array = []
+		for sp: Vector2 in out:
+			if sp.y <= lo or sp.x >= hi:
+				nxt.append(sp)
+				continue
+			if lo - sp.x >= 1.0:
+				nxt.append(Vector2(sp.x, lo))
+			if sp.y - hi >= 1.0:
+				nxt.append(Vector2(hi, sp.y))
+		out = nxt
+	return out
+
+
 static func roof_h(st: Dictionary) -> float:
 	return float(st.get("roof_h", PlatformModule.BOX_H))
 
@@ -75,7 +94,7 @@ static func light_zs(pm: PlatformModule) -> Array:
 ## the roof over the island: see the style keys above. Writes pm.roof_spans / pm.roof_info (what is overhead where) for the signs and fittings that hang from it
 static func canopy(pm: PlatformModule, st: Dictionary, x0: float, x1: float, openings: Array) -> void:
 	var kind := String(st.get("canopy", "slab"))
-	var spans := _spans(st, x0, x1)
+	var spans := _cut(_spans(st, x0, x1), pm.spec.get("cuts", []))          # (a footbridge and its steps stand where the canopy would be)
 	var zr := canopy_z(pm)          # the roof's reach across the module: the island's both platforms, or (a single platform of a pair of side platforms) its own half
 	pm.roof_info = {"kind": kind, "h": roof_h(st), "rise": float(st.get("rise", 0.0)) if kind == "gable" else 0.0, "zc": (zr.y - zr.x) * 0.5, "zm": (zr.y + zr.x) * 0.5, "caps": []}
 	pm.column_extra = []
@@ -90,7 +109,7 @@ static func canopy(pm: PlatformModule, st: Dictionary, x0: float, x1: float, ope
 	if kind == "mushroom":
 		_mushrooms(pm, st, x0, x1, openings, entry_end)
 	else:
-		pm.roof_spans = spans
+		pm.roof_spans = spans if not spans.is_empty() else [Vector2(x0, x0)]          # (an empty list means roof all along)
 		for sp in spans:
 			_roof(pm, st, kind, sp.x, sp.y)
 		_columns(pm, st, spans, x0, x1, openings)
@@ -145,10 +164,11 @@ static func _roof(pm: PlatformModule, st: Dictionary, kind: String, x0: float, x
 		_:
 			# a plain slab with a deep fascia all round
 			kit.horiz(top, x0, x1, zm - zc, zm + zc, h + CANOPY_T, true, 0.0)
+			# (the boards are a centimetre shorter than the slab at the top and the bottom: their faces would lie in the planes of the soffit and the top and flicker)
 			for sd: float in [1.0, -1.0]:
-				kit.box(fascia, Vector3((x0 + x1) * 0.5, h + CANOPY_T * 0.5, zm + sd * zc), Vector3(x1 - x0, CANOPY_T, 0.06), 0.0)
+				kit.box(fascia, Vector3((x0 + x1) * 0.5, h + CANOPY_T * 0.5, zm + sd * zc), Vector3(x1 - x0, CANOPY_T - 0.02, 0.06), 0.0)
 			for ex in [x0, x1]:
-				kit.box(fascia, Vector3(ex, h + CANOPY_T * 0.5, zm), Vector3(0.06, CANOPY_T, zc * 2.0), 0.0)
+				kit.box(fascia, Vector3(ex, h + CANOPY_T * 0.5, zm), Vector3(0.06, CANOPY_T - 0.02, zc * 2.0), 0.0)
 	if valance != "none" and not Station.debug_off("valance"):
 		for sd: float in [1.0, -1.0]:
 			_valance(kit, zm + sd * zc, x0, x1, h, sd, valance)

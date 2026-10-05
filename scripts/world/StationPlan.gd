@@ -496,8 +496,78 @@ func finish_common(rng: RandomNumberGenerator = null) -> void:
 		modules[mi]["bend"] = PlatformCurve.for_module(self, mi)         # curved platforms (Bank, Liverpool Street ...): {} for a straight one
 	for mi in modules.size():
 		modules[mi]["ext"] = _ext_for(mi)                                  # what the track beyond the platform ends runs through (cuttings, viaducts, cut-and-cover ...)
+	_add_footbridges()
 	_add_start_spots(rng)
 	_add_lifts()
+
+
+## +1 when module `m`'s +x runs along the platforms' axis in data/el_platforms.json (whose sign is arbitrary), else -1: the neighbour the module's +x leads to is compared with the axis
+func _axis_sign(m: Dictionary, el: Dictionary) -> float:
+	var sid: String = Net.station_ids[idx]
+	var nb := PlatformCurve.neighbours(sid, String((m["faces"][0] as Dictionary)["pid"]))
+	var east: String = nb[1] if int(m.get("dir_sign", 1)) > 0 else nb[0]          # (the module's first face is its slot 0, as in _ext_for)
+	if east == "" or not Net.id_to_idx.has(east):
+		return 1.0
+	var s0: Dictionary = Net.stations[idx]
+	var s1: Dictionary = Net.stations[int(Net.id_to_idx[east])]
+	var e := (float(s1["lon"]) - float(s0["lon"])) * 111320.0 * cos(deg_to_rad(float(s0["lat"])))
+	var n := (float(s1["lat"]) - float(s0["lat"])) * 110574.0
+	var axis: Array = el.get("axis", [1.0, 0.0])
+	return 1.0 if e * float(axis[0]) + n * float(axis[1]) >= 0.0 else -1.0
+
+
+## Footbridges over a pair of side platforms (Footbridge), where OpenStreetMap maps one (data/el_platforms.json "footbridges": metres along the platforms from their middle). The module of the +z
+## platform carries the bridge (spec "footbridges"); both modules lose the stretch of canopy the bridge and its steps stand on (spec "cuts"). The bridge keeps off the cross-passages at the west end
+## and inside the platform, so a position the data puts outside is moved to the nearest one that fits (the sim's platforms are all as long as the train, the real ones are not).
+func _add_footbridges() -> void:
+	var a := -1
+	var b := -1
+	for mi in modules.size():
+		if bool(modules[mi].get("split", false)):
+			if int((modules[mi]["faces"][0] as Dictionary).get("slot", 0)) == 0:
+				a = mi
+			else:
+				b = mi
+	if a < 0 or b < 0:
+		return
+	var el: Dictionary = RealData.el_platforms(Net.station_ids[idx])
+	var fbs: Array = el.get("footbridges", [])
+	if fbs.is_empty():
+		return
+	var ma: Dictionary = modules[a]
+	var spec_a: Dictionary = ma["spec"]
+	var sgn := _axis_sign(ma, el)
+	var L: float = spec_a["length"]
+	var west_lim := -L * 0.5
+	for ox in (spec_a["openings_x"] as Array):
+		west_lim = maxf(west_lim, float(ox) + 4.0)
+	var east_lim := L * 0.5 - 3.0
+	var pitch: float = (modules[b]["pos"] as Vector3).z - (ma["pos"] as Vector3).z
+	var xs: Array = []
+	for f in fbs:
+		xs.append(sgn * float((f as Dictionary)["x"]))
+	xs.sort()
+	var out: Array = []
+	var cuts: Array = []
+	for xr in xs:
+		var d := 1.0 if float(xr) <= 0.0 else -1.0          # (the steps go toward the middle of the platform)
+		var lo := west_lim + Footbridge.HW + 0.5 + (Footbridge.RUN if d < 0.0 else 0.0)
+		var hi := east_lim - Footbridge.HW - (Footbridge.RUN if d > 0.0 else 0.0)
+		var xb := clampf(float(xr), lo, hi)
+		var fp := Footbridge.footprint(xb, d)
+		var clash := false
+		for c in cuts:
+			if fp.x < float(c[1]) + 2.0 and fp.y > float(c[0]) - 2.0:
+				clash = true
+		if clash or lo > hi:
+			continue
+		out.append({"x": xb, "d": d, "za": -0.5, "zb": pitch + 0.5})
+		cuts.append([fp.x - 0.6, fp.y + 0.6])
+	if out.is_empty():
+		return
+	spec_a["footbridges"] = out
+	spec_a["cuts"] = cuts
+	(modules[b]["spec"] as Dictionary)["cuts"] = cuts
 
 
 ## what the track runs through beyond each end of module `mi`, per face: {"w": sections, "e": sections, "ss", "seed_w", "seed_e"} with sections [[code, metres], ...] going away from the stop

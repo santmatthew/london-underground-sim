@@ -17,6 +17,12 @@
   "bridges": [
    24
   ],
+  "footbridges": [
+   {
+    "x": 24,
+    "covered": false
+   }
+  ],
   "stairs": [
    [
     14,
@@ -47,6 +53,12 @@
   "bridges": [
    54
   ],
+  "footbridges": [
+   {
+    "x": 54,
+    "covered": true
+   }
+  ],
   "stairs": []
  },
  "910GBRTWOOD": {
@@ -68,6 +80,12 @@
   "bridges": [
    -62
   ],
+  "footbridges": [
+   {
+    "x": -62,
+    "covered": true
+   }
+  ],
   "stairs": []
  },
  "910GBNHAM": {
@@ -87,6 +105,7 @@
    "elizabeth:Eastbound": 3.0
   },
   "bridges": [],
+  "footbridges": [],
   "stairs": []
  },
  "910GCHDWLHT": {
@@ -106,6 +125,7 @@
    "elizabeth:Eastbound": 6.3
   },
   "bridges": [],
+  "footbridges": [],
   "stairs": []
  },
  "910GFRSTGT": {
@@ -125,6 +145,7 @@
    "elizabeth:Eastbound": 7.6
   },
   "bridges": [],
+  "footbridges": [],
   "stairs": []
  },
  "910GGIDEAPK": {
@@ -145,6 +166,12 @@
   },
   "bridges": [
    -36
+  ],
+  "footbridges": [
+   {
+    "x": -36,
+    "covered": false
+   }
   ],
   "stairs": [
    [
@@ -171,6 +198,12 @@
   },
   "bridges": [
    -116
+  ],
+  "footbridges": [
+   {
+    "x": -116,
+    "covered": false
+   }
   ],
   "stairs": [
    [
@@ -200,6 +233,7 @@
    "elizabeth:Westbound": -6.0
   },
   "bridges": [],
+  "footbridges": [],
   "stairs": []
  },
  "910GHRLDWOD": {
@@ -221,6 +255,12 @@
   "bridges": [
    -96,
    -57
+  ],
+  "footbridges": [
+   {
+    "x": -57,
+    "covered": false
+   }
   ],
   "stairs": [
    [
@@ -251,6 +291,12 @@
   },
   "bridges": [
    -23
+  ],
+  "footbridges": [
+   {
+    "x": -23,
+    "covered": false
+   }
   ],
   "stairs": [
    [
@@ -290,6 +336,12 @@
   "bridges": [
    -66
   ],
+  "footbridges": [
+   {
+    "x": -66,
+    "covered": false
+   }
+  ],
   "stairs": []
  },
  "910GIVER": {
@@ -310,6 +362,12 @@
   },
   "bridges": [
    42
+  ],
+  "footbridges": [
+   {
+    "x": 42,
+    "covered": false
+   }
   ],
   "stairs": []
  },
@@ -332,6 +390,16 @@
   "bridges": [
    -76,
    7
+  ],
+  "footbridges": [
+   {
+    "x": -76,
+    "covered": false
+   },
+   {
+    "x": 7,
+    "covered": false
+   }
   ],
   "stairs": [
    [
@@ -361,6 +429,7 @@
    "elizabeth:Eastbound": 6.8
   },
   "bridges": [],
+  "footbridges": [],
   "stairs": []
  },
  "910GMANRPK": {
@@ -380,6 +449,7 @@
    "elizabeth:Westbound": -3.4
   },
   "bridges": [],
+  "footbridges": [],
   "stairs": []
  },
  "910GMRYLAND": {
@@ -405,6 +475,12 @@
    78,
    94
   ],
+  "footbridges": [
+   {
+    "x": 3,
+    "covered": false
+   }
+  ],
   "stairs": []
  },
  "910GROMFORD": {
@@ -424,6 +500,7 @@
    "elizabeth:Westbound": -4.9
   },
   "bridges": [],
+  "footbridges": [],
   "stairs": []
  },
  "910GSVNKNGS": {
@@ -445,6 +522,12 @@
   "bridges": [
    114
   ],
+  "footbridges": [
+   {
+    "x": 114,
+    "covered": false
+   }
+  ],
   "stairs": []
  },
  "910GSHENFLD": {
@@ -462,6 +545,7 @@
    "elizabeth:Eastbound": 2.7
   },
   "bridges": [],
+  "footbridges": [],
   "stairs": []
  },
  "910GSLOUGH": {
@@ -483,6 +567,16 @@
   "bridges": [
    -56,
    23
+  ],
+  "footbridges": [
+   {
+    "x": -56,
+    "covered": false
+   },
+   {
+    "x": 23,
+    "covered": false
+   }
   ],
   "stairs": [
    [
@@ -510,6 +604,12 @@
   "bridges": [
    -28
   ],
+  "footbridges": [
+   {
+    "x": -28,
+    "covered": false
+   }
+  ],
   "stairs": [
    [
     2,
@@ -536,6 +636,12 @@
   "bridges": [
    55
   ],
+  "footbridges": [
+   {
+    "x": 55,
+    "covered": false
+   }
+  ],
   "stairs": []
  },
  "910GTWYFORD": {
@@ -556,6 +662,12 @@
   },
   "bridges": [
    11
+  ],
+  "footbridges": [
+   {
+    "x": 11,
+    "covered": false
+   }
   ],
   "stairs": []
  },
@@ -578,6 +690,12 @@
   "bridges": [
    -3
   ],
+  "footbridges": [
+   {
+    "x": -3,
+    "covered": false
+   }
+  ],
   "stairs": []
  },
  "910GWEALING": {
@@ -598,6 +716,12 @@
   },
   "bridges": [
    17
+  ],
+  "footbridges": [
+   {
+    "x": 17,
+    "covered": false
+   }
   ],
   "stairs": []
  }

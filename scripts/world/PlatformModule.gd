@@ -171,6 +171,7 @@ func build(p_spec: Dictionary, p_async := false) -> void:
 	await _brk(p_async)
 	_add_collision()
 	_add_lights()
+	await _add_footbridges(p_async)
 	await _brk(p_async)
 	if open:
 		var ztr := GAP * 0.5 + float(spec.get("pw", 3.0)) + TRACK_TO_EDGE + TRACK_TO_WALL
@@ -1108,6 +1109,17 @@ func set_edge_open(face_sign: float, x_from: float, x_to: float, open: bool) -> 
 	for e in edge_shapes[face_sign]:
 		if e[0] >= x_from - 0.5 and e[0] <= x_to + 0.5:
 			(e[1] as CollisionShape3D).set_deferred("disabled", open)
+
+
+## the footbridges over this module and the one across the tracks (spec "footbridges", from StationPlan._add_footbridges)
+func _add_footbridges(p_async := false) -> void:
+	if bend != null or Station.debug_off("footbridge"):
+		return
+	for fbd: Dictionary in spec.get("footbridges", []):
+		var fb := Footbridge.new()
+		fb.name = "Footbridge"
+		add_child(fb)
+		await fb.build(float(fbd["x"]), float(fbd["d"]), float(fbd["za"]), float(fbd["zb"]), String(spec.get("wall", "brick_red")), self, p_async)
 
 
 func _add_lights() -> void:

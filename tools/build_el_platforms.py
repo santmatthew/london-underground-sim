@@ -7,7 +7,8 @@ TfL's platform numbers (data/platform_numbers.json). Writes data/el_platforms.js
                "length": {"<pid>": metres of the platform outline along the track},
                "axis": [east, north]      unit vector along the platforms (its sign is arbitrary: the offsets below use the same one; the game turns it toward the neighbour a module's trains head for),
                "across": {"<pid>": metres},    where each platform's middle lies, perpendicular to `axis` (to the left of it, looking along `axis`, positive)
-               "bridges": [metres from the middle of the platforms along `axis`, ...]     footbridges (a bridge footway / steps that spans both platforms)
+               "bridges": [metres from the middle of the platforms along `axis`, ...]     every bridge footway / steps that spans both platforms (road bridges' pavements too)
+               "footbridges": [{"x": metres along `axis`, "covered": bool}, ...]     the footbridges proper among them (no pavements of road bridges, crossings, private ways)
                "stairs": [[metres along `axis`, metres across], ...]   steps ways that touch a platform outline }
   python3 tools/build_el_platforms.py
 """
@@ -100,7 +101,7 @@ def main():
                 length[pid] = round(max(ps) - min(ps))
                 across_of[pid] = round(sum(cs) / len(cs), 1)
         # footbridges and steps
-        bridges, stairs = [], []
+        bridges, stairs, foot = [], [], []
         for w in st["ways"]:
             t = w.get("tags", {})
             hw = t.get("highway")
@@ -113,10 +114,21 @@ def main():
             across = [(p[0] - centre[0]) * perp[0] + (p[1] - centre[1]) * perp[1] for p in g]
             if t.get("bridge") == "yes" and hw in ("footway", "steps", "pedestrian") and dA < 25 and dB < 25 and (max(across) - min(across)) >= gap + 4.0:
                 bridges.append(round(sum(along) / len(along)))
+                # a footbridge proper: not the pavement of a road bridge (footway=sidewalk), a crossing, a private way, nor the flight of steps itself
+                if hw != "steps" and t.get("footway") not in ("sidewalk", "crossing") and t.get("access") not in ("no", "private"):
+                    foot.append((round(sum(along) / len(along)), t.get("covered") == "yes"))
             elif hw == "steps" and min(dA, dB) < 6.0:
                 stairs.append([round(sum(along) / len(along)), round(sum(across) / len(across), 1)])
+        # the footbridge ways that lie within 12 m of each other (the span and its approaches) are one footbridge
+        foot.sort()
+        fb = []
+        for along_v, cov in foot:
+            if fb and along_v - fb[-1]["x"] < 12:
+                fb[-1]["covered"] = fb[-1]["covered"] or cov
+            else:
+                fb.append({"x": along_v, "covered": cov})
         out[sid] = {"name": st["name"], "arrangement": arrangement, "gap": round(gap, 1), "length": length, "axis": [round(axis[0], 4), round(axis[1], 4)], "across": across_of,
-                    "bridges": sorted(set(bridges)), "stairs": sorted(stairs)}
+                    "bridges": sorted(set(bridges)), "footbridges": fb, "stairs": sorted(stairs)}
         print("%-22s %-6s gap %.1f  lengths %s  bridges %s  stairs %s" % (st["name"], arrangement, gap, length, sorted(set(bridges)), sorted(stairs)[:6]))
     json.dump(out, open(OUT, "w"), indent=1)
     print("wrote", OUT, len(out) - 1, "stations")
