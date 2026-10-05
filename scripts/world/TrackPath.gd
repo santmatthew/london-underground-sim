@@ -28,6 +28,7 @@ var _th := PackedFloat32Array()      # heading at the start of each cell (n + 1 
 var _p := PackedVector3Array()       # position at the start of each cell (n + 1 values)
 var single := false                  # the track is a single one (data/single_track.json): no second track beside it
 var ss := false                      # a sub-surface line: its tunnels are cut-and-cover boxes
+var _line_group := "elizabeth"       # the line group of the ride (a station may be a pair of side platforms for one group and not for another: StationPlan.is_split)
 var secs: Array = []                 # what the track runs through, [[sec code, metres], ...] (data "sec": 0 open, 1 tunnel, 2 cutting, 3 embankment, 4 viaduct), scaled to the ride's length
 var _scenes := PackedInt32Array()    # per cell, from k_first(): RunScenery's scene number
 var pitch := PackedFloat32Array()    # per cell, from k_first(): the climb of the track (radians, + = up); the tunnels between deep stations dip between them
@@ -76,6 +77,7 @@ static func between(a: String, b: String, dist: float, fade_in: float, fade_out:
 	var kmin := -BACK
 	var kmax := int(ceil((dist + 6.0) / CELL)) + AHEAD
 	tp.ss = p_ss
+	tp._line_group = String((Net.lines.get(p_line, {}) as Dictionary).get("group", "elizabeth")) if p_line != "" else "elizabeth"
 	tp._set_scenes(a, b, dist, kmin, kmax, h)
 	tp._plan_pitch = tp._plan_grade(a, b, p_line, dist, fade_in + v_pad_in, fade_out + v_pad_out, kmin, kmax)
 	var n := kmax - kmin + 1
@@ -180,6 +182,21 @@ static func sections(a: String, b: String) -> Array:
 	return []
 
 
+## the waterways the hop's track crosses on a viaduct, [[metres from the stop, width], ...] (data "wat"; the same source pair as `sections`, reversed for the other direction)
+static func water(a: String, b: String) -> Array:
+	var pairs: Dictionary = data().get("pairs", {})
+	var fwd: Dictionary = pairs.get(a + ">" + b, {})
+	var rev: Dictionary = pairs.get(b + ">" + a, {})
+	var use_rev: bool = (a > b and rev.has("sec")) or (not fwd.has("sec") and rev.has("sec"))
+	var src: Dictionary = rev if use_rev else fwd
+	var out: Array = []
+	var length: float = float(src.get("len", 0.0))
+	for w in src.get("wat", []):
+		out.append([length - float(w[0]), float(w[1])] if use_rev else [float(w[0]), float(w[1])])
+	out.sort_custom(func(x, y): return x[0] < y[0])
+	return out
+
+
 func _set_scenes(a: String, b: String, dist: float, kmin: int, kmax: int, prof: Array) -> void:
 	var raw := sections(a, b)
 	var real_len := 0.0
@@ -205,7 +222,10 @@ func _set_scenes(a: String, b: String, dist: float, kmin: int, kmax: int, prof: 
 	if secs.is_empty():
 		secs = _guess_secs(a, b, dist)
 	single = is_single(a, b)
-	plan_scenes(secs, ss, pair_seed(a, b), kmin, kmax, dist, StationPlan.is_split(a), StationPlan.is_split(b))
+	var wat: Array = []          # (the rivers under the viaducts, in the ride's own distances)
+	for w in water(a, b):
+		wat.append([float(warp.call(float(w[0]))), float(w[1])])
+	plan_scenes(secs, ss, pair_seed(a, b), kmin, kmax, dist, StationPlan.is_split(a, _line_group), StationPlan.is_split(b, _line_group), wat)
 
 
 ## The vertical profile. Two parts. The REAL one: the platform levels of the two stations (data/platform_levels.json, TfL FOI depth table via tubedepths, metres above Ordnance Datum) give how far the track
@@ -299,10 +319,10 @@ static func _guess_secs(a: String, b: String, dist: float) -> Array:
 
 
 ## what the cells show for a line that runs through `p_secs` ([[sec code, metres], ...]); the cells from kmin to kmax
-func plan_scenes(p_secs: Array, p_ss: bool, seed: int, kmin: int, kmax: int, p_dist := -1.0, split_a := false, split_b := false) -> void:
+func plan_scenes(p_secs: Array, p_ss: bool, seed: int, kmin: int, kmax: int, p_dist := -1.0, split_a := false, split_b := false, p_water := []) -> void:
 	secs = p_secs
 	ss = p_ss
-	_scenes = RunScenery.cell_scenes(secs, ss, seed, kmin, kmax, p_dist, single, split_a, split_b)
+	_scenes = RunScenery.cell_scenes(secs, ss, seed, kmin, kmax, p_dist, single, split_a, split_b, p_water)
 
 
 ## RunScenery's scene number of cell k (the bore beyond the cells that were planned)

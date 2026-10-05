@@ -100,6 +100,14 @@ static func get_mat(name: String) -> Material:
 			m = _surface("gen/brick_red", "png", 1.0 / 1.72, Color(1, 1, 1), {"dirt": 0.6, "ceiling_soot": 0.3, "floor_dirt_height": 0.4})
 		"brick_blue":
 			m = _surface("gen/brick_blue", "png", 1.0 / 1.72, Color(1, 1, 1), {"dirt": 0.5, "ceiling_soot": 0.3, "floor_dirt_height": 0.4})
+		"water":
+			# a river seen from a viaduct: dark, slightly green, glossy
+			var wm := StandardMaterial3D.new()
+			wm.albedo_color = Color(0.13, 0.20, 0.22)
+			wm.roughness = 0.07
+			wm.metallic = 0.25
+			wm.metallic_specular = 0.9
+			m = wm
 		"ballast":
 			m = _surface("gen/ballast", "png", 1.0 / 2.0, Color(1, 1, 1), {"dirt": 0.3, "floor_dirt_height": 0.0})
 		"tactile_buff":

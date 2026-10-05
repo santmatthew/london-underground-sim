@@ -28,6 +28,9 @@ KINDS = {
     "cutting_berks": 'way[%s]["cutting"~"^(yes|left|right|both)$"](%s);out tags geom;' % (RAILS, BERKS_BBOX),
     "embankment_berks": 'way[%s]["embankment"~"^(yes|left|right|both)$"](%s);out tags geom;' % (RAILS, BERKS_BBOX),
     "bridge_berks": 'way[%s]["bridge"~"^(yes|viaduct|aqueduct|movable)$"](%s);out tags geom;' % (RAILS, BERKS_BBOX),
+    # the waterways the track crosses on a viaduct (build_line_geometry.py: "wat" of a hop; RunScenery shows the river under the viaduct)
+    "waterway": 'way["waterway"~"^(river|canal|stream)$"](%s);out tags geom;' % BBOX,
+    "waterway_berks": 'way["waterway"~"^(river|canal|stream)$"](%s);out tags geom;' % BERKS_BBOX,
     "elizabeth_gaps": '(way["railway"="rail"]["service"!~"^(siding|yard|spur)$"](51.46,-0.90,51.56,-0.60);way["railway"="rail"]["service"!~"^(siding|yard|spur)$"](51.45,-0.52,51.50,-0.43););out tags geom;',
 }
 

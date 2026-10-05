@@ -23,6 +23,7 @@ const CUT_H := 6.0              # a cutting this deep (at full depth)
 const EMB_H := 4.2              # an embankment this high
 const VIA_H := 6.5              # a viaduct this high
 const VIA_HALF := 3.0           # half the width of the viaduct deck, between its parapets
+const WATER_REACH := 60.0       # how far a river under a viaduct reaches from the deck: the far banks, where the backdrops of trees and houses stand
 const PARAPET := 1.1
 const BOX_TOP := 3.6            # ceiling of the box tunnel
 const TILE := 36.0              # the backdrops repeat every 36 m (3 cells of the ride)
@@ -177,7 +178,8 @@ static func pair_level(d_stop: float, d_tunnel: float) -> int:
 
 ## `secs`: [[sec code, metres], ...] of the line from the stop (0 = open, 1 tunnel, 2 cutting, 3 embankment, 4 viaduct); cells k0..k1 (cell k covers k * 12 +- 6 m; before the start and past the end the first / last stretch goes on)
 ## `split_a` / `split_b`: the stop at the start / end of the ride is a pair of side platforms (StationPlan.is_split), where the tracks already lie SPACING_MIN apart: no ramp there
-static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int, dist := -1.0, single := false, split_a := false, split_b := false) -> PackedInt32Array:
+## `water`: [[metres from the start, width], ...] of the rivers under the viaducts: a viaduct cell within a river's width gets scene bit 10 (the brick bit, which only a cutting reads otherwise) and shows water under it
+static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int, dist := -1.0, single := false, split_a := false, split_b := false, water := []) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	out.resize(k1 - k0 + 1)
 	if secs.is_empty():
@@ -268,6 +270,10 @@ static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int, dist
 					if int(secs[i][0]) == 4:
 						tall = 1
 				prof = VIADUCT if (code == 4 and la == 3 and lb == 3) else EMBANK
+		if prof == VIADUCT and not water.is_empty():
+			for w in water:
+				if absf(sc - float(w[0])) <= float(w[1]) * 0.5 + CELL * 0.5:
+					brick = 1          # (over a river)
 		var pa := 0
 		var pb := 0
 		if not enclosed(prof):
@@ -322,6 +328,7 @@ static func _scene_kit(kit: MeshKit, scene: int, v: int, x0: float, x1: float, t
 	oo["lb"] = (scene >> 5) & 3
 	oo["tall"] = ((scene >> 7) & 1) == 1
 	oo["seed"] = 0 if ((scene >> 10) & 1) == 1 else 1
+	oo["water"] = prof == VIADUCT and ((scene >> 10) & 1) == 1          # (the brick bit of a viaduct cell: a river runs under it)
 	oo["v"] = v
 	if near_flat:
 		oo["near_flat"] = true
@@ -555,6 +562,11 @@ static func _viaduct(kit: MeshKit, x0: float, x1: float, t: float, o: Dictionary
 	var fl := _flat(o)
 	if near_flat and _gap(fl, t + ns * VIA_HALF, ns):
 		_strip(kit, "ballast", x0, x1, fl.x, PlatformModule.BED_Y, fl.y, PlatformModule.BED_Y, t + ns * VIA_HALF, PlatformModule.BED_Y, t + ns * VIA_HALF, PlatformModule.BED_Y)
+	if o.get("water", false):
+		# a river under the viaduct: water out to the far bank, 60 m either side (seen over the parapet at a shallow angle, not from just beside the track), where the trees and the houses stand
+		kit.horiz("water", x0, x1, t - (VIA_HALF + WATER_REACH), t + (VIA_HALF + WATER_REACH), gy + 0.06, true, gy)
+		_backdrops(kit, x0, x1, t, o, VIA_HALF + WATER_REACH + 2.0, VIA_HALF + WATER_REACH + 20.0, gy + 0.06, gy + 0.06)
+		return
 	_backdrops(kit, x0, x1, t, o, VIA_HALF + 12.0, VIA_HALF + 28.0, gy, gy)
 
 

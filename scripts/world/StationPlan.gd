@@ -118,11 +118,12 @@ func _edge(a: String, b: String, cost_override := -1.0, speed := PLAN_WALK) -> v
 	adj[ib].append([ia, c, edges.size() - 1])
 
 
-## does the generator draw this station as a pair of side platforms with the tracks between them (the Elizabeth line's surface stations that OpenStreetMap shows so, data/el_platforms.json)?
-## The ride needs to know too: the two tracks keep that spacing out to the first bend (RunScenery.cell_scenes).
-static func is_split(naptan: String) -> bool:
+## does the generator draw the platforms of line group `group` at this station as a pair of side platforms with the tracks between them (the generated surface stations that OpenStreetMap shows so:
+## data/el_platforms.json for the Elizabeth line, data/surface_platforms.json for the other groups)? The ride needs to know too: the two tracks keep that spacing out to the first bend
+## (RunScenery.cell_scenes).
+static func is_split(naptan: String, group := "elizabeth") -> bool:
 	var i: int = Net.id_to_idx.get(naptan, -1)
-	if i < 0 or String(RealData.el_platforms(naptan).get("arrangement", "")) != "side":
+	if i < 0 or String(RealData.platform_layout(naptan, group).get("arrangement", "")) != "side":
 		return false
 	var st: Dictionary = Net.stations[i]
 	if String(st["kind"]) != "surface" or not RealData.layout_spec(naptan).is_empty():
@@ -130,7 +131,7 @@ static func is_split(naptan: String) -> bool:
 	var n := 0
 	for pid in st["platforms"]:
 		var p: Dictionary = st["platforms"][pid]
-		if String(p["group"]) == "elizabeth":
+		if String(p["group"]) == group:
 			if bool(p["terminal"]):
 				return false
 			# (side platforms of a line that runs on the left have their platforms on the left of the trains: a door side the data gives that says otherwise - Stratford's - is not a pair of side platforms)
@@ -183,9 +184,9 @@ func generate(station_idx: int) -> void:
 			if terminal:
 				facelist.append({"pid": pid, "face": 1})
 		# the Elizabeth line's surface stations with two side platforms (data/el_platforms.json, from OpenStreetMap): one module a platform, the tracks between them (see PlatformModule.split)
-		if g == "elizabeth" and facelist.size() == 2 and is_split(naptan):
+		if facelist.size() == 2 and is_split(naptan, g):
 			# the platforms' stagger along the line (data/el_platforms.json, only where it is firm): the one further along has the longer passage
-			var el_here: Dictionary = RealData.el_platforms(naptan)
+			var el_here: Dictionary = RealData.platform_layout(naptan, g)
 			var dx_ab := _axis_sign_pid(String(facelist[0]["pid"]), 1, el_here) * float(el_here.get("stagger", 0.0))          # (module A's middle minus module B's, along the modules' x)
 			for k in 2:
 				var fd0: Dictionary = (facelist[k] as Dictionary).duplicate()
@@ -201,7 +202,7 @@ func generate(station_idx: int) -> void:
 			i += 2
 	# ---- 2. depth per module, sorted shallow -> deep, min 7 m apart -----------------------------------------------
 	var nth_of_group := {}
-	var split_depth := -1.0
+	var split_depth := {}
 	for md in mod_defs:
 		var d: float = BASE_DEPTH.get(String(md["group"]).get_slice(".", 0), 24.0) + rng.randf_range(-2.0, 2.5)
 		if imp < 1.6:
@@ -218,9 +219,10 @@ func generate(station_idx: int) -> void:
 			nth_of_group[g] = nth + 1
 			d = maxf(float(lst[mini(nth, lst.size() - 1)]) - hall_drop, 3.5)
 		if bool(md.get("split", false)):
-			if split_depth < 0.0:
-				split_depth = d
-			d = split_depth          # (the two platforms of a pair are at one level)
+			var sg: String = md["group"]
+			if not split_depth.has(sg):
+				split_depth[sg] = d
+			d = float(split_depth[sg])          # (the two platforms of a pair are at one level)
 		md["depth"] = d
 	mod_defs.sort_custom(func(a, b): return a["depth"] < b["depth"])
 	# cluster modules into levels: those within 4 m share a level (max 2 per level)
@@ -291,7 +293,7 @@ func generate(station_idx: int) -> void:
 		prev_room = lname
 
 	# ---- 5. modules east of each landing --------------------------------------------------------------------------------
-	var split_corr := -1.0
+	var split_corr := {}          # line group -> the passage length of its pair of side platforms
 	for li in lvl.size():
 		var Ld: Dictionary = lvl[li]["landing"]
 		var rect: Array = Ld["rect"]
@@ -307,9 +309,9 @@ func generate(station_idx: int) -> void:
 			var pw := PlatformModule.PW_RUN
 			var corr_len := PlatformModule.TUNNEL_MIN + 6.0 + rng.randf() * 10.0      # the platform tunnel stops before the landing, so the passage is at least as long as the tunnel we keep
 			if bool(md.get("split", false)):
-				if split_corr < 0.0:
-					split_corr = corr_len
-				corr_len = split_corr + float(md.get("shift", 0.0))          # (a pair of side platforms lies opposite each other, or staggered as the data says)
+				if not split_corr.has(group):
+					split_corr[group] = corr_len
+				corr_len = float(split_corr[group]) + float(md.get("shift", 0.0))          # (a pair of side platforms lies opposite each other, or staggered as the data says)
 			var is_box: bool = StationCharacter.platform_is_box(name, line_id, kind)
 			var spine_x0 := -L * 0.5 if is_box else -L * 0.5 - 6.0
 			var mx: float = rect[1] + corr_len - spine_x0
@@ -533,17 +535,22 @@ func _axis_sign_pid(pid: String, ds: int, el: Dictionary) -> float:
 ## platform carries the bridge (spec "footbridges"); both modules lose the stretch of canopy the bridge and its steps stand on (spec "cuts"). The bridge keeps off the cross-passages at the west end
 ## and inside the platform, so a position the data puts outside is moved to the nearest one that fits (the sim's platforms are all as long as the train, the real ones are not).
 func _add_footbridges() -> void:
-	var a := -1
-	var b := -1
+	var groups := {}          # line group -> [module of slot 0, module of slot 1]
 	for mi in modules.size():
 		if bool(modules[mi].get("split", false)):
-			if int((modules[mi]["faces"][0] as Dictionary).get("slot", 0)) == 0:
-				a = mi
-			else:
-				b = mi
-	if a < 0 or b < 0:
-		return
-	var el: Dictionary = RealData.el_platforms(Net.station_ids[idx])
+			var gk: String = modules[mi]["group"]
+			if not groups.has(gk):
+				groups[gk] = [-1, -1]
+			(groups[gk] as Array)[0 if int((modules[mi]["faces"][0] as Dictionary).get("slot", 0)) == 0 else 1] = mi
+	for gk in groups:
+		var a: int = (groups[gk] as Array)[0]
+		var b: int = (groups[gk] as Array)[1]
+		if a >= 0 and b >= 0:
+			_add_footbridges_of(String(gk), a, b)
+
+
+func _add_footbridges_of(group: String, a: int, b: int) -> void:
+	var el: Dictionary = RealData.platform_layout(Net.station_ids[idx], group)
 	var fbs: Array = el.get("footbridges", [])
 	if fbs.is_empty():
 		return
@@ -590,7 +597,7 @@ func _add_footbridges() -> void:
 		cuts_b.append([float(c[0]) - dxb, float(c[1]) - dxb])          # (in the other module's own x)
 	(modules[b]["spec"] as Dictionary)["cuts"] = cuts_b
 	for k in out.size():
-		_bridge_graph(k, out[k], a, b)
+		_bridge_graph(bridges.size(), out[k], a, b)
 
 
 ## the walking graph of footbridge `k` (module `a` carries it, `b` is the platform across the tracks): for each platform a node on the platform's walking line at the foot of the steps (_pf), the foot of

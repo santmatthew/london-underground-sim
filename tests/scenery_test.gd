@@ -320,4 +320,23 @@ func run():
 				zn2 += 1
 		var want_z := 6.45 - RunScenery.spacing_of_level(lv)
 		check(zn2 > 0 and absf(zs / float(zn2) - (want_z + 0.2625)) < 0.1, "level %d: the other track's rails lie %.1f m from this one (mean z %.2f, track at %.2f)" % [lv, RunScenery.spacing_of_level(lv), zs / maxf(float(zn2), 1.0), want_z])
+	# --- a river under a viaduct: the viaduct cells within its width carry the water flag (bit 10), the cells beyond it and every other kind of cell do not
+	var wsec := [[0, 120.0], [3, 120.0], [4, 300.0], [3, 60.0], [0, 100.0]]          # (open 0-120, embankment 120-240, viaduct 240-540, embankment 540-600, open 600-700)
+	var wsc := RunScenery.cell_scenes(wsec, false, 3, -4, 70, -1.0, false, false, false, [[390.0, 60.0]])
+	var wat := func(s: float) -> int: return wsc[int(roundf(s / 12.0)) + 4]
+	check(_prof(wat.call(390.0)) == RunScenery.VIADUCT and ((int(wat.call(390.0)) >> 10) & 1) == 1, "the viaduct cell over the river has the water flag")
+	check(((int(wat.call(250.0)) >> 10) & 1) == 0 and ((int(wat.call(520.0)) >> 10) & 1) == 0, "the viaduct cells away from it do not")
+	check(((int(wat.call(180.0)) >> 10) & 1) == 0, "an embankment is not flagged")
+	var wk: MeshKit = TunnelRun._cell_kit((16 << 25) | (int(wat.call(390.0)) << 3) | 1)
+	check(wk.surfaces.has("water"), "the cell builds its water")
+	var dk: MeshKit = TunnelRun._cell_kit((16 << 25) | (int(wat.call(250.0)) << 3) | 1)
+	check(not dk.surfaces.has("water"), "a dry viaduct cell does not")
+	# the data: Putney Bridge - East Putney crosses the Thames on the Fulham railway bridge; one direction is the other seen from the far end
+	var w_f := TrackPath.water(Net.station_ids[Net.name_to_idx["Putney Bridge"]], Net.station_ids[Net.name_to_idx["East Putney"]])
+	var w_b := TrackPath.water(Net.station_ids[Net.name_to_idx["East Putney"]], Net.station_ids[Net.name_to_idx["Putney Bridge"]])
+	check(not w_f.is_empty() and w_f.size() == w_b.size(), "the Thames is under the Putney Bridge - East Putney viaduct, both ways (%d, %d)" % [w_f.size(), w_b.size()])
+	if not w_f.is_empty() and w_f.size() == w_b.size():
+		var src: Dictionary = (TrackPath.data()["pairs"] as Dictionary)[Net.station_ids[Net.name_to_idx["East Putney"]] + ">" + Net.station_ids[Net.name_to_idx["Putney Bridge"]]]          # (the pair both directions read, as sections() does)
+		var len_pair := float(src["len"])
+		check(absf(float(w_f[0][0]) + float(w_b[0][0]) - len_pair) < 1.0 and float(w_f[0][1]) >= 100.0, "... at the same place from either end (%.0f m + %.0f m of %.0f m), as wide as the river (%.0f m)" % [w_f[0][0], w_b[0][0], len_pair, w_f[0][1]])
 	print("OK" if ok else "FAILED")

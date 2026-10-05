@@ -96,7 +96,7 @@ func _ready() -> void:
 				onc.update(cam_s, Clock.now, Transform3D.IDENTITY)
 				await get_tree().process_frame
 			var up0 := Vector3(0.0, eye, 0.0)
-			var dirs0 := {"left": Vector3(0, 0, -12), "right": Vector3(0, 0, 12), "ahead": Vector3(40, 0, 0), "back": Vector3(-40, 0, 0)}
+			var dirs0 := {"left": Vector3(0, 0, -12), "right": Vector3(0, 0, 12), "ahead": Vector3(40, 0, 0), "back": Vector3(-40, 0, 0), "rightdown": Vector3(0, -9, 10), "leftdown": Vector3(0, -9, -10)}
 			var d0: Vector3 = dirs0.get(look, dirs0["left"])
 			cam.global_transform = Transform3D(pose0.basis, pose0.origin + pose0.basis * up0)
 			cam.look_at(pose0.origin + pose0.basis * (up0 + d0))
@@ -121,7 +121,7 @@ func _ready() -> void:
 			await get_tree().process_frame
 		var pose := path.pose(s)
 		var up := Vector3(0.0, eye, 0.0)
-		var dirs := {"left": Vector3(0, 0, -20), "right": Vector3(0, 0, 20), "ahead": Vector3(40, 0, 0), "back": Vector3(-40, 0, 0)}
+		var dirs := {"left": Vector3(0, 0, -20), "right": Vector3(0, 0, 20), "ahead": Vector3(40, 0, 0), "back": Vector3(-40, 0, 0), "rightdown": Vector3(0, -9, 10), "leftdown": Vector3(0, -9, -10)}
 		var d: Vector3 = dirs.get(look, dirs["left"])
 		cam.global_transform = Transform3D(pose.basis, pose.origin + pose.basis * up)
 		cam.look_at(pose.origin + pose.basis * (up + d))

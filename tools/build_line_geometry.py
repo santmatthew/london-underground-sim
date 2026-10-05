@@ -209,6 +209,60 @@ def load_sections():
     return out
 
 
+WATER_W = {"thames": 180.0, "river": 25.0, "canal": 12.0, "stream": 5.0}          # (metres across, when the data does not say: only the kind of waterway is known)
+
+
+def load_water():
+    """{kind: SegIndex} of the rivers, canals and streams (tools/fetch_line_sections.py: waterway, waterway_berks), empty when not fetched; "thames" is the Thames' own centreline"""
+    out = {}
+    for fname in ("ways_waterway.json", "ways_waterway_berks.json"):
+        fp = os.path.join(GEOM, fname)
+        if not os.path.exists(fp):
+            continue
+        for e in json.load(open(fp)):
+            pts = [xy(p["lat"], p["lon"]) for p in e.get("geometry", []) if p]
+            if len(pts) < 2:
+                continue
+            t = e.get("tags", {})
+            kind = "thames" if (t.get("waterway") == "river" and "thames" in str(t.get("name", "")).lower()) else str(t.get("waterway", "stream"))
+            out.setdefault(kind, SegIndex()).add_way(pts)
+    return out
+
+
+def water_crossings(poly, sec, water):
+    """[[metres along the track of the middle of a crossing, its width], ...]: the waterways that cross the track inside a viaduct stretch (code 4) of `sec`: a bridge over a river, not a culvert or a
+    tunnel under one"""
+    if not water or not sec:
+        return []
+    cs = cum(poly)
+    out = []
+    s0 = 0.0
+    step = 3.0
+    for r in sec:
+        code, ln = r[0], r[1]
+        s1 = s0 + ln
+        if code == 4:
+            hits = []
+            s = s0
+            while s <= s1:
+                p = at(poly, cs, s)
+                for kind, ix in water.items():
+                    if ix.near(p, 4.0):
+                        hits.append((s, kind))
+                        break
+                s += step
+            i = 0
+            while i < len(hits):
+                j = i
+                while j + 1 < len(hits) and hits[j + 1][1] == hits[i][1] and hits[j + 1][0] - hits[j][0] <= 2 * step + 0.01:
+                    j += 1
+                width = max(WATER_W[hits[i][1]], hits[j][0] - hits[i][0] + step)
+                out.append([round((hits[i][0] + hits[j][0]) * 0.5, 1), int(round(width))])
+                i = j + 1
+        s0 = s1
+    return out
+
+
 def classify_path(poly, secs):
     """[[code, metres], ...] along the track `poly`: tunnel, else cutting, else embankment, else viaduct (a bridge of 60 m or more), else open; stretches under 40 m are absorbed by their neighbours"""
     cs = cum(poly)
@@ -257,7 +311,7 @@ def classify_path(poly, secs):
     return [[SECTION_CODES[r[0]], round(r[1] * L / n, 1)] for r in runs]
 
 
-def supplement_elizabeth(net, sxy, pairs, secs):
+def supplement_elizabeth(net, sxy, pairs, secs, water=None):
     """The Elizabeth line's relation has no track ways in the core tunnels (and none at Heathrow): the hops it lacks are found over the line's own ways (tools/fetch_line_sections.py, kind
     "elizabeth", tagged line=Elizabeth), the shortest way between the track nearest each station"""
     graphs = []
@@ -318,6 +372,9 @@ def supplement_elizabeth(net, sxy, pairs, secs):
         pairs[k] = {"len": round(ss[-1], 1), "h": [int(round(math.degrees(h - hh[0]) * 10.0)) for h in hh], "line": "elizabeth"}
         if secs:
             pairs[k]["sec"] = classify_path(pa, secs)
+            wat = water_crossings(pa, pairs[k]["sec"], water or {})
+            if wat:
+                pairs[k]["wat"] = wat
         added += 1
         print("  elizabeth: %s -> %s %.0f m" % (net["stations"][a]["name"], net["stations"][b]["name"], length))
     return added
@@ -455,6 +512,7 @@ def main():
     pairs, plats = {}, {}
     all_platforms = load_platforms()
     secs = load_sections()
+    water = load_water()
     stats = {"rel": 0, "pairs": 0, "nopath": 0, "nostation": 0}
     for fp in files:
         rel = json.load(open(fp))
@@ -527,6 +585,9 @@ def main():
             pairs[k] = {"len": round(ss[-1], 1), "h": [int(round(math.degrees(h - hh[0]) * 10.0)) for h in hh], "line": line}
             if secs:
                 pairs[k]["sec"] = classify_path(pa, secs)
+                wat = water_crossings(pa, pairs[k]["sec"], water)
+                if wat:
+                    pairs[k]["wat"] = wat
             stats["pairs"] += 1
         # the platform of stop i: the track PLAT_SPAN metres around it, from the end of the path that arrives and the start of the one that leaves
         for i in range(len(stops)):
@@ -554,7 +615,7 @@ def main():
             dh = (hb - ha + math.pi) % (2 * math.pi) - math.pi
             ent = plats.setdefault(sid, {}).setdefault(nxt, {"line": line})
             ent["dh"] = round(math.degrees(dh), 1)
-    stats["el_added"] = supplement_elizabeth(net, sxy, pairs, secs)
+    stats["el_added"] = supplement_elizabeth(net, sxy, pairs, secs, water)
     stats["dz"] = add_levels(net, pairs)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     json.dump({"step": STEP, "span": PLAT_SPAN, "pairs": pairs, "platforms": plats}, open(OUT, "w"), separators=(",", ":"))
