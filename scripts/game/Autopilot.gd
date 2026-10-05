@@ -140,12 +140,12 @@ func _physics_process(delta: float) -> void:
 				by_person = col is AnimatableBody3D
 				rel = ci.get_position() - player.global_position
 				blocker = "%s (%s) at %s" % [col.name, col.get_class(), str(ci.get_position().snapped(Vector3(0.1, 0.1, 0.1)))]
-			# step around whatever is in the way (usually a person)
+			# step around whatever is in the way (usually a person): away from it, to the side that is free (never through an open door of a standing train)
 			var fwd := Vector3(0, 0, -1).rotated(Vector3.UP, player.rotation.y)
-			var side_sign := -1.0 if fwd.cross(rel).y > 0.0 else 1.0
-			_side_dir = side_sign if by_person else (1.0 if _sidesteps % 2 == 0 else -1.0)
-			if mode != "board" and _side_enters_train(_side_dir):
-				_side_dir = -_side_dir          # never dodge a passenger through an open door of a standing train
+			var lateral := player.global_transform.basis.x
+			var right_free := not player.test_move(player.global_transform, lateral * 0.45) and (mode == "board" or not _side_enters_train(1.0))
+			var left_free := not player.test_move(player.global_transform, -lateral * 0.45) and (mode == "board" or not _side_enters_train(-1.0))
+			_side_dir = side_choice(fwd, rel if by_person else Vector3.ZERO, right_free, left_free, 1.0 if _sidesteps % 2 == 0 else -1.0)
 			_side_t = 0.9
 			_sidesteps += 1
 			if wp_i != _wp_sides_at:
@@ -553,6 +553,19 @@ func _open_train_around_us() -> Dictionary:
 		if v["doors"] and is_instance_valid(tr) and tr.contains_world_point(player.global_position):
 			return v
 	return {}
+
+
+## Which way to step round something in the way: +1 = the player's right, -1 = left. `fwd`: the way the player faces; `rel`: where the thing touches, relative to the player (zero when it is not a person);
+## `right_free` / `left_free`: the way there is clear. A single clear side is taken; with both clear, away from the thing (it is on the left when fwd x rel points up); with neither, `alt` (the bot alternates).
+## (Found at Seven Kings: two people waiting either side of the bot, which stepped toward them 48 times: the sign was the wrong way round.)
+static func side_choice(fwd: Vector3, rel: Vector3, right_free: bool, left_free: bool, alt: float) -> float:
+	if right_free != left_free:
+		return 1.0 if right_free else -1.0
+	if not right_free:
+		return alt
+	if absf(fwd.cross(rel).y) < 0.01:
+		return alt
+	return 1.0 if fwd.cross(rel).y > 0.0 else -1.0
 
 
 ## would a sidestep to `side` (+1 = the player's right) end up inside a train?
