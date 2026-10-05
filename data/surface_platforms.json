@@ -1,5 +1,14 @@
 {
  "_comment": "How the Underground's generated surface stations' platforms lie (tools/build_surface_platforms.py): side platforms or an island, the stagger and the footbridges, from OpenStreetMap platform outlines and footways. Derived numbers only; (c) OpenStreetMap contributors, ODbL.",
+ "940GZZLUACT": {
+  "name": "Acton Town",
+  "groups": {
+   "ss": {
+    "arrangement": "unsettled",
+    "why": "a number another group uses"
+   }
+  }
+ },
  "940GZZLUALP": {
   "name": "Alperton",
   "groups": {
@@ -42,6 +51,10 @@
     "stagger": 0,
     "bridges": [],
     "footbridges": []
+   },
+   "ss": {
+    "arrangement": "unsettled",
+    "why": "another platform lies between the two"
    }
   }
  },
@@ -172,6 +185,15 @@
    }
   }
  },
+ "940GZZLUCWP": {
+  "name": "Chiswick Park",
+  "groups": {
+   "ss": {
+    "arrangement": "unsettled",
+    "why": "outlines do not look like a pair of platforms (length [130, 130], gap 16.1)"
+   }
+  }
+ },
  "940GZZLUCXY": {
   "name": "Croxley",
   "groups": {
@@ -187,6 +209,30 @@
      "ss:Southbound": 124
     },
     "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUDGE": {
+  "name": "Dagenham East",
+  "groups": {
+   "ss": {
+    "arrangement": "side",
+    "gap": 6.1,
+    "axis": [
+     0.9653,
+     0.2613
+    ],
+    "length": {
+     "ss:Eastbound": 213,
+     "ss:Westbound": 138
+    },
+    "across": {
+     "ss:Eastbound": 5.0,
+     "ss:Westbound": -6.9
+    },
     "stagger": 0,
     "bridges": [],
     "footbridges": []
@@ -300,6 +346,15 @@
     "stagger": 0,
     "bridges": [],
     "footbridges": []
+   }
+  }
+ },
+ "940GZZLUEFY": {
+  "name": "East Finchley",
+  "groups": {
+   "northern": {
+    "arrangement": "unsettled",
+    "why": "another platform lies between the two"
    }
   }
  },
@@ -685,6 +740,30 @@
    }
   }
  },
+ "940GZZLUKWG": {
+  "name": "Kew Gardens",
+  "groups": {
+   "ss": {
+    "arrangement": "side",
+    "gap": 7.1,
+    "axis": [
+     0.2236,
+     0.9747
+    ],
+    "length": {
+     "ss:Eastbound": 168,
+     "ss:Westbound": 124
+    },
+    "across": {
+     "ss:Eastbound": 6.5,
+     "ss:Westbound": -4.9
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
  "940GZZLUKBN": {
   "name": "Kilburn",
   "groups": {
@@ -754,6 +833,15 @@
    }
   }
  },
+ "940GZZLULGN": {
+  "name": "Loughton",
+  "groups": {
+   "central": {
+    "arrangement": "unsettled",
+    "why": "another platform lies between the two"
+   }
+  }
+ },
  "940GZZLUNDN": {
   "name": "Neasden",
   "groups": {
@@ -772,6 +860,15 @@
     "stagger": 0,
     "bridges": [],
     "footbridges": []
+   }
+  }
+ },
+ "940GZZLUNAN": {
+  "name": "North Acton",
+  "groups": {
+   "central": {
+    "arrangement": "unsettled",
+    "why": "another platform lies between the two"
    }
   }
  },
@@ -1103,6 +1200,30 @@
    }
   }
  },
+ "940GZZLUPLW": {
+  "name": "Plaistow",
+  "groups": {
+   "ss": {
+    "arrangement": "side",
+    "gap": 6.2,
+    "axis": [
+     0.9293,
+     0.3694
+    ],
+    "length": {
+     "ss:Eastbound": 209,
+     "ss:Westbound": 130
+    },
+    "across": {
+     "ss:Eastbound": 3.0,
+     "ss:Westbound": -7.4
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
  "940GZZLUPRD": {
   "name": "Preston Road",
   "groups": {
@@ -1177,6 +1298,15 @@
     "stagger": 0,
     "bridges": [],
     "footbridges": []
+   }
+  }
+ },
+ "940GZZLURYL": {
+  "name": "Rayners Lane",
+  "groups": {
+   "ss": {
+    "arrangement": "unsettled",
+    "why": "a number another group uses"
    }
   }
  },
@@ -1665,6 +1795,15 @@
     "stagger": 0,
     "bridges": [],
     "footbridges": []
+   }
+  }
+ },
+ "940GZZLUWCY": {
+  "name": "White City",
+  "groups": {
+   "central": {
+    "arrangement": "unsettled",
+    "why": "a gap too narrow for two tracks and too wide for an island (2.6)"
    }
   }
  },

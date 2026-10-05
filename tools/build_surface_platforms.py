@@ -83,6 +83,13 @@ def main():
                         used.setdefault(o["id"], set()).add(g)
         done_any = False
         entry = {"name": ns["name"], "groups": {}}
+
+        def unsettled(g, why):
+            """the outlines are there but contradict each other: written, so that nothing is inferred for the group (StationPlan.is_split)"""
+            skip(why)
+            entry["groups"][g] = {"arrangement": "unsettled", "why": why}
+            stats["unsettled"] = stats.get("unsettled", 0) + 1
+            return True
         for g, pids in groups.items():
             if g == "elizabeth":
                 continue
@@ -100,7 +107,8 @@ def main():
                 oa, ob = [outlines[0]], [outlines[1]]
             else:
                 if any(g2 != g and (group_refs[g2] & (ra | rb)) for g2 in group_refs):
-                    skip("a number another group uses")
+                    unsettled(g, "a number another group uses")
+                    done_any = True
                     continue
                 oa = [o for o in outlines if o["refs"] & ra]
                 ob = [o for o in outlines if o["refs"] & rb]
@@ -108,7 +116,8 @@ def main():
                     skip("outline not found")
                     continue
                 if any(len(used[o["id"]]) > 1 for o in oa + ob):
-                    skip("an outline another group's numbers fit")
+                    unsettled(g, "an outline another group's numbers fit")
+                    done_any = True
                     continue
             # one outline for both (an island's: one polygon carrying both numbers) or one per platform
             A = [p for o in oa for p in o["pts"]]
@@ -119,7 +128,8 @@ def main():
             else:
                 gap = min(poly_dist(o1["pts"], o2["pts"]) for o1 in oa for o2 in ob)
             if 2.0 <= gap < 4.0:
-                skip("a gap too narrow for two tracks and too wide for an island (%.1f)" % gap)
+                unsettled(g, "a gap too narrow for two tracks and too wide for an island (%.1f)" % gap)
+                done_any = True
                 continue
             arrangement = "island" if gap < 2.0 else "side"
             axis, centre = pca_axis(A + B)
@@ -132,25 +142,29 @@ def main():
             across_of = {pa: round(sum(across(A)) / len(A), 1), pb: round(sum(across(B)) / len(B), 1)}
             if unmapped:
                 across_of = {}
-            if arrangement == "side" and (min(length.values()) < MIN_LEN or gap > 14.0 or abs(length[pa] - length[pb]) > LEN_DIFF_MAX):
-                skip("outlines do not look like a pair of platforms (length %s, gap %.1f)" % (str(list(length.values())), gap))
+            if arrangement == "side" and (min(length.values()) < MIN_LEN or gap > 14.0):
+                unsettled(g, "outlines do not look like a pair of platforms (length %s, gap %.1f)" % (str(list(length.values())), gap))
+                done_any = True
                 continue
+            # (a gap that holds two tracks but outlines of unlike length: one is merged with a neighbour. The pair is side platforms, but the middle - and so the stagger and the footbridges' places - is not known)
+            partial = arrangement == "side" and abs(length[pa] - length[pb]) > LEN_DIFF_MAX
             if arrangement == "side" and not unmapped:
                 lo, hi = sorted(across_of.values())
                 ids = set(o["id"] for o in oa + ob)
                 between = [o for o in outlines if o["id"] not in ids and lo + 1.0 < sum(across(o["pts"])) / len(o["pts"]) < hi - 1.0 and min(along(o["pts"])) < max(la) and max(along(o["pts"])) > min(la)]
                 if between:
-                    skip("another platform lies between the two")
+                    unsettled(g, "another platform lies between the two")
+                    done_any = True
                     continue
             stagger = 0
-            if arrangement == "side" and not unmapped and abs(length[pa] - length[pb]) <= STAGGER_LEN_DIFF:
+            if arrangement == "side" and not unmapped and not partial and abs(length[pa] - length[pb]) <= STAGGER_LEN_DIFF:
                 off = (max(la) + min(la)) * 0.5 - (max(lb) + min(lb)) * 0.5
                 if abs(off) >= STAGGER_MIN:
                     stagger = round(off)
             # footbridges (as tools/build_el_platforms.py): bridge footways that span both platforms, not pavements of road bridges, crossings or private ways
             foot = []
             bridges = []
-            if arrangement == "side":
+            if arrangement == "side" and not partial:
                 for w in st["ways"]:
                     t = w.get("tags", {})
                     hw = t.get("highway")

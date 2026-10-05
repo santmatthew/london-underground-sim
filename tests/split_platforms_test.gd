@@ -20,10 +20,13 @@ func run():
 	for nm in ["Gidea Park", "Abbey Wood", "Shenfield", "Amersham", "Oxford Circus"]:
 		check(not StationPlan.is_split(_id(nm)), "%s is not drawn as a split pair" % nm)
 	# the Underground's: side platforms where the data says so and the doors are on the left; an island, a door side that says otherwise, or no data leaves the generator's island
-	for pr in [["Buckhurst Hill", "central"], ["Harlesden", "bakerloo"], ["Hornchurch", "ss"], ["Queensbury", "jubilee"], ["Snaresbrook", "central"], ["Sudbury Hill", "piccadilly"], ["East Acton", "central"]]:
+	for pr in [["Buckhurst Hill", "central"], ["Harlesden", "bakerloo"], ["Hornchurch", "ss"], ["Queensbury", "jubilee"], ["Snaresbrook", "central"], ["Sudbury Hill", "piccadilly"], ["East Acton", "central"],
+			["Dagenham East", "ss"], ["Plaistow", "ss"],          # (OpenStreetMap: a pair, but the outlines are of unlike length)
+			["West Acton", "central"], ["West Finchley", "northern"], ["Totteridge & Whetstone", "northern"], ["Chorleywood", "ss"]]:          # (no outlines to read: both platforms' doors are on the left)
 		check(StationPlan.is_split(_id(pr[0]), pr[1]), "%s (%s) is drawn as a split pair" % [pr[0], pr[1]])
 		check(not StationPlan.is_split(_id(pr[0])), "%s is not an Elizabeth line split pair" % pr[0])
-	for pr in [["Greenford", "central"], ["Hendon Central", "northern"], ["South Ealing", "piccadilly"], ["Debden", "central"], ["Barons Court", "piccadilly"], ["Oxford Circus", "victoria"], ["Epping", "central"]]:
+	for pr in [["Greenford", "central"], ["Hendon Central", "northern"], ["South Ealing", "piccadilly"], ["Debden", "central"], ["Barons Court", "piccadilly"], ["Oxford Circus", "victoria"], ["Epping", "central"],
+			["Turnham Green", "piccadilly"], ["Wembley Park", "jubilee"], ["Finchley Road", "jubilee"], ["White City", "central"], ["Ruislip Manor", "ss"]]:          # (platforms of another line beside them, a gap the data does not settle, a face with the doors on the right)
 		check(not StationPlan.is_split(_id(pr[0]), pr[1]), "%s (%s) is not drawn as a split pair" % [pr[0], pr[1]])
 	var n := 0
 	for i in Net.stations.size():
@@ -71,8 +74,15 @@ func run():
 		if stag == 0.0:
 			check(absf(dx) < 0.01, "%s: the platforms lie side by side (same x)" % nm)
 		else:
-			check(absf(absf(dx) - absf(stag)) < 0.01, "%s: the platforms are staggered as the data says (%.1f m, data %.0f m)" % [nm, dx, stag])
-		check(true, "%s: modules flagged split" % nm)
+			# (the data's stagger is along its own axis, whose sign is arbitrary: read against the direction the first platform's trains leave in, from the neighbouring station)
+			var lay: Dictionary = RealData.platform_layout(_id(nm), grp)
+			var nb: String = PlatformCurve.neighbours(_id(nm), String(pair[0]["faces"][0]["pid"]))[1]
+			var s0: Dictionary = Net.stations[Net.name_to_idx[nm]]
+			var s1: Dictionary = Net.stations[Net.id_to_idx[nb]]
+			var east := (float(s1["lon"]) - float(s0["lon"])) * 111320.0 * cos(deg_to_rad(float(s0["lat"])))
+			var north := (float(s1["lat"]) - float(s0["lat"])) * 110574.0
+			var sgn := 1.0 if east * float(lay["axis"][0]) + north * float(lay["axis"][1]) >= 0.0 else -1.0
+			check(absf(dx - sgn * stag) < 0.01, "%s: the platforms are staggered as the data says, the right way round (%.1f m, expected %.1f m)" % [nm, dx, sgn * stag])
 		var sf0: Array = pair[0]["spec"]["faces"]
 		var sf1: Array = pair[1]["spec"]["faces"]
 		check(sf0.size() == 2 and sf0[0] != null and sf0[1] == null and sf1.size() == 2 and sf1[0] == null and sf1[1] != null, "%s: each module has its one face in its own slot" % nm)
@@ -84,11 +94,13 @@ func run():
 	var g := _id("Gidea Park")
 	var p_ss := TrackPath.between(a, b, 3000.0, 100.0, 130.0)
 	var worst := 0.0
+	var n_ss := 0
 	for s in [0.0, 50.0, 150.0, 400.0, 1000.0, 2000.0, 2600.0, 2950.0]:
 		var sp := p_ss.spacing_at(float(s))
 		if (p_ss.cell_scene(int(roundf(float(s) / 12.0))) & RunScenery.PAIR) != 0:
+			n_ss += 1
 			worst = maxf(worst, absf(sp - RunScenery.SPLIT_SPACING))
-	check(worst < 0.01, "split to split: the two tracks stay %.1f m apart where there is a pair (worst error %.3f m)" % [RunScenery.SPLIT_SPACING, worst])
+	check(n_ss > 0 and worst < 0.01, "split to split: the two tracks stay %.1f m apart where there is a pair (worst error %.3f m)" % [RunScenery.SPLIT_SPACING, worst])
 	var p_sg := TrackPath.between(a, g, 3000.0, 100.0, 130.0)
 	check(absf(p_sg.spacing_at(100.0) - RunScenery.SPLIT_SPACING) < 0.01, "leaving a split station: %.1f m at 100 m" % p_sg.spacing_at(100.0))
 	check(p_sg.spacing_at(2950.0) > RunScenery.TRACK_SPACING - 0.3, "arriving at an island station: the station's spacing again (%.1f m)" % p_sg.spacing_at(2950.0))

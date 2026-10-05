@@ -134,22 +134,33 @@ static func group_of(naptan: String, line: String) -> String:
 ## (RunScenery.cell_scenes).
 static func is_split(naptan: String, group := "elizabeth") -> bool:
 	var i: int = Net.id_to_idx.get(naptan, -1)
-	if i < 0 or String(RealData.platform_layout(naptan, group).get("arrangement", "")) != "side":
+	if i < 0:
 		return false
+	var lay: Dictionary = RealData.platform_layout(naptan, group)
+	# (no data for the group - OpenStreetMap does not map its platforms, or not so that the outlines tell which is which: a pair whose doors are both on the left is side platforms, as an island's are on the right;
+	#  data that says "unsettled", "island" or anything else is not overruled. The Elizabeth line has data for all its stations.)
+	var inferred := lay.is_empty() and group != "elizabeth"
+	if not inferred and String(lay.get("arrangement", "")) != "side":
+		return false
+	var several := false          # (the station has platforms of another group)
 	var st: Dictionary = Net.stations[i]
 	if String(st["kind"]) != "surface" or not RealData.layout_spec(naptan).is_empty():
 		return false
 	var n := 0
 	for pid in st["platforms"]:
 		var p: Dictionary = st["platforms"][pid]
+		if String(p["group"]) != group:
+			several = true
 		if String(p["group"]) == group:
 			if bool(p["terminal"]):
 				return false
 			# (side platforms of a line that runs on the left have their platforms on the left of the trains: a door side the data gives that says otherwise - Stratford's - is not a pair of side platforms)
-			if not String(PlatformCurve.face_side(naptan, String(pid))) in ["", "L"]:
+			var side := String(PlatformCurve.face_side(naptan, String(pid)))
+			if side != "L" and (inferred or side != ""):
 				return false
 			n += 1
-	return n == 2
+	# (the Underground's other groups: a station of several groups may have platforms shared with another line or an interchange across a platform - Turnham Green, Barons Court - which a pair of side platforms per group draws wrongly: left to the generator's modules. The Elizabeth line's own data covers Ealing Broadway, Stratford ...)
+	return n == 2 and (group == "elizabeth" or not several)
 
 
 func generate(station_idx: int) -> void:
