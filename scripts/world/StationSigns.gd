@@ -29,11 +29,49 @@ static func place(station: Station) -> void:
 	for mi in plan.modules.size():
 		await _module_signs(station, root, plan, mi)
 		await station._slice()
+	_bridge_signs(station, root, plan)
 	cull(root, 42.0)
 	for pm in station.modules:
 		for c in pm.get_children():
 			if c is Node3D and not (c is MeshInstance3D) and c.name not in ["Collision", "EdgeGuard", "Lights", "Props"] and not (c is Train):
 				cull(c, 42.0)
+
+
+## the signs of a footbridge (Footbridge, StationPlan.bridges): on the wall of each landing's plinth that faces the platform "Footbridge to Platform N" (with the way to the lift tower where it is drawn; for a
+## step-free journey, whose steps are closed, only the lift), and two blades hung from the deck's roof, one each way, naming the platform that end leads to
+static func _bridge_signs(station: Station, root: Node3D, plan: StationPlan) -> void:
+	for br in plan.bridges:
+		var d: float = br["d"]
+		var xp: float = br["x"]
+		var y0: float = br["y0"]
+		var Y := Footbridge.DECK_Y
+		var nos: Array = []
+		for fl in br["flights"]:
+			nos.append(int(plan.platform_no.get(String(plan.faces[String(fl["face"])]["pid"]), 0)))
+		for f in 2:
+			var fl: Dictionary = br["flights"][f]
+			var sg: float = fl["sg"]
+			var zc: float = fl["zc"]
+			var rows: Array = []
+			var other: int = nos[1 - f]
+			if not StationPlan.step_free_mode:
+				rows.append({"text": "Footbridge", "bold": true, "arrow": 1})
+				rows.append({"text": "to Platform %d" % other})
+			if station.has_lifts():
+				var view := Vector3(0, 0, -sg)          # (the passenger faces the plinth)
+				rows.append({"text": "Lift to Platform %d" % other if StationPlan.step_free_mode else "Lift", "bold": StationPlan.step_free_mode, "arrow": _arrow_for(view, Vector3(-d, 0, 0)), "arrow_side": "left" if _arrow_for(view, Vector3(-d, 0, 0)) == 2 else "right"})
+			if rows.is_empty():
+				continue
+			mount_wall(root, Signs.board(rows, 2.0, 0.3), Vector3(xp, y0 + 1.9, zc + sg * Footbridge.HW), Vector3(0, 0, sg), 2.2, 1.2)
+		# on the deck: one blade for each way along it, hung just under the roof in the middle (the room is 45 cm: a one-row board)
+		var za: float = (br["flights"][0] as Dictionary)["zc"]
+		var zb: float = (br["flights"][1] as Dictionary)["zc"]
+		var zm := (za + zb) * 0.5
+		for w in 2:
+			var toward := 1 - w          # (the blade seen by someone walking toward platform `toward`'s end: A is the +z... end at z = za, B at zb > za)
+			var face := Vector3(0, 0, -1.0 if toward == 1 else 1.0)
+			var zz := zm + (0.12 if toward == 1 else -0.12)
+			hang_room(root, Signs.board([{"text": "Platform %d" % nos[toward], "bold": true, "arrow": 1}], 1.6, 0.26), Vector3(xp, y0 + Y + 2.35, zz), face, y0 + Y, y0 + Y + Footbridge.HEAD, 1.8)
 
 
 static func _lines_here(plan: StationPlan) -> Array:
