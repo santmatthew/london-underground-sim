@@ -273,7 +273,12 @@ static func _columns(pm: PlatformModule, st: Dictionary, spans: Array, x0: float
 	if not st.has("spans"):
 		var cx := x0 + 5.0
 		while cx < x1 - 3.0:
-			xs.append(cx)
+			var under := false          # (a roof all along, but cut where a footbridge stands: no column in the cut)
+			for sp in spans:
+				if cx >= (sp as Vector2).x and cx <= (sp as Vector2).y:
+					under = true
+			if under:
+				xs.append(cx)
 			cx += pitch
 	else:
 		for sp in spans:

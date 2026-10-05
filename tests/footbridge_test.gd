@@ -73,7 +73,8 @@ func _plans() -> void:
 					cut_ok = true
 			check(cut_ok, "%s: the canopy is cut over the bridge at x %.0f" % [nm, float(f["x"])])
 		for m in plan.modules:
-			check(((m["spec"] as Dictionary).get("cuts", []) as Array).size() == cuts.size(), "%s: both modules have the cuts" % nm)
+			if bool((m["spec"] as Dictionary).get("split", false)):
+				check(((m["spec"] as Dictionary).get("cuts", []) as Array).size() == cuts.size(), "%s: both modules of the pair have the cuts" % nm)
 	check(with_data >= 12 and drawn == with_data, "footbridges are drawn at %d of %d stations whose data has one" % [drawn, with_data])
 
 
@@ -109,10 +110,10 @@ func _walk(nm: String) -> void:
 		var zb: float = f["zb"]
 		var Y := Footbridge.DECK_Y
 		var hw := Footbridge.HW
-		var foot := hw + Footbridge.RUN + 1.2
+		var foot := hw + Footbridge.RUN + 0.5          # (the plan's own foot nodes: the canopy is cut round them, a column would be a metre away anywhere else)
 		var xa := pa.x + xb
 		var route: Array = [
-			Vector3(xa + d * (foot + 2.0), pa.y, pa.z + 2.8),
+			Vector3(xa + d * foot, pa.y, pa.z + 3.9),
 			Vector3(xa + d * foot, pa.y, pa.z + za),
 			Vector3(xa + d * (hw + 0.2), pa.y + Y, pa.z + za),
 			Vector3(xa, pa.y + Y, pa.z + za),
@@ -120,7 +121,7 @@ func _walk(nm: String) -> void:
 			Vector3(xa, pa.y + Y, pa.z + zb),
 			Vector3(xa + d * (hw + 0.2), pa.y + Y, pa.z + zb),
 			Vector3(xa + d * foot, pa.y, pa.z + zb),
-			Vector3(xa + d * (foot + 2.0), pa.y, pb.z - 3.0),
+			Vector3(xa + d * foot, pa.y, pb.z - 3.9),
 		]
 		var err := _sweep(route, 0.3)
 		check(err == "", "%s, bridge %d: the way from one platform to the other is free (%s)" % [nm, bi, err])

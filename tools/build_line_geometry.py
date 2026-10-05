@@ -59,6 +59,11 @@ class Graph:
                 best = (d, k)
         return best[1] if best and best[0] <= tol else None
 
+    def near(self, p, radius, n):
+        """the n vertices nearest p within radius (the tracks beside the one a station is nearest to: parallel lines of a main line)"""
+        c = sorted((math.dist(p, q), k) for k, q in self.pts.items() if math.dist(p, q) <= radius)
+        return [k for _, k in c[:n]]
+
     def path(self, ka, kb):
         dist = {ka: 0.0}
         prev = {}
@@ -188,15 +193,19 @@ def load_sections():
     """{kind: SegIndex} of the tunnel / cutting / embankment / bridge ways (tools/fetch_line_sections.py), empty when not fetched"""
     out = {}
     for kind in ("tunnel", "cutting", "embankment", "bridge"):
-        fp = os.path.join(GEOM, "ways_%s.json" % kind)
-        if not os.path.exists(fp):
-            continue
         ix = SegIndex()
-        for e in json.load(open(fp)):
-            pts = [xy(p["lat"], p["lon"]) for p in e.get("geometry", []) if p]
-            if len(pts) >= 2:
-                ix.add_way(pts)
-        out[kind] = ix
+        found = False
+        for suffix in ("", "_berks"):          # (the Greater London extract, and the same kinds west of it: Slough - Twyford)
+            fp = os.path.join(GEOM, "ways_%s%s.json" % (kind, suffix))
+            if not os.path.exists(fp):
+                continue
+            found = True
+            for e in json.load(open(fp)):
+                pts = [xy(p["lat"], p["lon"]) for p in e.get("geometry", []) if p]
+                if len(pts) >= 2:
+                    ix.add_way(pts)
+        if found:
+            out[kind] = ix
     return out
 
 
@@ -251,14 +260,20 @@ def classify_path(poly, secs):
 def supplement_elizabeth(net, sxy, pairs, secs):
     """The Elizabeth line's relation has no track ways in the core tunnels (and none at Heathrow): the hops it lacks are found over the line's own ways (tools/fetch_line_sections.py, kind
     "elizabeth", tagged line=Elizabeth), the shortest way between the track nearest each station"""
-    fp = os.path.join(GEOM, "ways_elizabeth.json")
-    if not os.path.exists(fp):
+    graphs = []
+    # the ways tagged as the line's own first, then (ways_elizabeth_gaps.json: tools/fetch_line_sections.py) every running rail way around the hops they do not cover
+    for fname in ("ways_elizabeth.json", "ways_elizabeth_gaps.json"):
+        fp = os.path.join(GEOM, fname)
+        if not os.path.exists(fp):
+            continue
+        g = Graph()
+        for e in json.load(open(fp)):
+            poly = [xy(p["lat"], p["lon"]) for p in e.get("geometry", []) if p]
+            if len(poly) >= 2:
+                g.add_way(poly)
+        graphs.append(g)
+    if not graphs:
         return 0
-    g = Graph()
-    for e in json.load(open(fp)):
-        poly = [xy(p["lat"], p["lon"]) for p in e.get("geometry", []) if p]
-        if len(poly) >= 2:
-            g.add_way(poly)
     added = 0
     hops = set()
     for svc in net["lines"]["elizabeth"]["services"]:
@@ -267,19 +282,37 @@ def supplement_elizabeth(net, sxy, pairs, secs):
     for a, b in sorted(hops):
         if a + ">" + b in pairs or b + ">" + a in pairs or a not in sxy or b not in sxy:
             continue
-        ka, kb = g.snap(sxy[a], 300.0) or g.snap(sxy[a], 800.0), g.snap(sxy[b], 300.0) or g.snap(sxy[b], 800.0)          # (some stations are marked at their entrance, far from the platforms)
-        if ka is None or kb is None:
-            print("  elizabeth: no track near", net["stations"][a]["name"] if ka is None else net["stations"][b]["name"])
-            continue
-        pa = g.path(ka, kb)
-        straight = math.dist(g.pts[ka], g.pts[kb])
-        if pa is None or len(pa) < 2:
-            print("  elizabeth: no path", net["stations"][a]["name"], "->", net["stations"][b]["name"])
+        pa = None
+        for g in graphs:
+            ka, kb = g.snap(sxy[a], 300.0) or g.snap(sxy[a], 800.0), g.snap(sxy[b], 300.0) or g.snap(sxy[b], 800.0)          # (some stations are marked at their entrance, far from the platforms)
+            if ka is None or kb is None:
+                print("  elizabeth: no track near", net["stations"][a]["name"] if ka is None else net["stations"][b]["name"])
+                continue
+            cand = g.path(ka, kb)
+            if (cand is None or cum(cand)[-1] > math.dist(g.pts[ka], g.pts[kb]) * 1.8 + 200.0) and g is not graphs[0]:
+                # (the rail ways around the hop: the nearest track at each end may be on different parallel lines that only join far away; take the shortest way between any of the tracks beside them)
+                best = None
+                for ka2 in g.near(sxy[a], 120.0, 10):
+                    for kb2 in g.near(sxy[b], 120.0, 10):
+                        c2 = g.path(ka2, kb2)
+                        if c2 is not None and len(c2) >= 2 and (best is None or cum(c2)[-1] < cum(best)[-1]):
+                            best = c2
+                if best is not None:
+                    cand = best
+                    ka = key(cand[0])
+                    kb = key(cand[-1])
+            straight = math.dist(g.pts[ka], g.pts[kb])
+            if cand is None or len(cand) < 2:
+                print("  elizabeth: no path", net["stations"][a]["name"], "->", net["stations"][b]["name"])
+                continue
+            if cum(cand)[-1] > straight * 1.8 + 200.0:
+                print("  elizabeth: path too long", net["stations"][a]["name"], "->", net["stations"][b]["name"], round(cum(cand)[-1]), "m for", round(straight), "m")
+                continue
+            pa = cand
+            break
+        if pa is None:
             continue
         length = cum(pa)[-1]
-        if length > straight * 1.8 + 200.0:
-            print("  elizabeth: path too long", net["stations"][a]["name"], "->", net["stations"][b]["name"], round(length), "m for", round(straight), "m")
-            continue
         ss, hh = heading_profile(pa)
         k = a + ">" + b
         pairs[k] = {"len": round(ss[-1], 1), "h": [int(round(math.degrees(h - hh[0]) * 10.0)) for h in hh], "line": "elizabeth"}

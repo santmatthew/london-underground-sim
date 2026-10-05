@@ -14,6 +14,7 @@
   "across": {
    "elizabeth:Eastbound": -2.3
   },
+  "stagger": 0,
   "bridges": [
    24
   ],
@@ -50,6 +51,7 @@
    "elizabeth:Westbound": -6.2,
    "elizabeth:Eastbound": 5.1
   },
+  "stagger": 0,
   "bridges": [
    54
   ],
@@ -77,6 +79,7 @@
    "elizabeth:Eastbound": 5.1,
    "elizabeth:Westbound": -8.3
   },
+  "stagger": 0,
   "bridges": [
    -62
   ],
@@ -104,6 +107,7 @@
    "elizabeth:Westbound": -3.2,
    "elizabeth:Eastbound": 3.0
   },
+  "stagger": 0,
   "bridges": [],
   "footbridges": [],
   "stairs": []
@@ -124,8 +128,42 @@
    "elizabeth:Westbound": -5.5,
    "elizabeth:Eastbound": 6.3
   },
+  "stagger": 0,
   "bridges": [],
   "footbridges": [],
+  "stairs": []
+ },
+ "940GZZLUEBY": {
+  "name": "Ealing Broadway",
+  "arrangement": "side",
+  "gap": 5.8,
+  "length": {
+   "elizabeth:Westbound": 205,
+   "elizabeth:Eastbound": 156
+  },
+  "axis": [
+   0.9985,
+   0.0546
+  ],
+  "across": {
+   "elizabeth:Westbound": -5.9,
+   "elizabeth:Eastbound": 6.8
+  },
+  "stagger": 0,
+  "bridges": [
+   -84,
+   79
+  ],
+  "footbridges": [
+   {
+    "x": -84,
+    "covered": false
+   },
+   {
+    "x": 79,
+    "covered": false
+   }
+  ],
   "stairs": []
  },
  "910GFRSTGT": {
@@ -144,6 +182,7 @@
    "elizabeth:Westbound": -4.7,
    "elizabeth:Eastbound": 7.6
   },
+  "stagger": 0,
   "bridges": [],
   "footbridges": [],
   "stairs": []
@@ -153,17 +192,18 @@
   "arrangement": "island",
   "gap": 0.0,
   "length": {
-   "elizabeth:Westbound": 236,
-   "elizabeth:Eastbound": 236
+   "elizabeth:Eastbound": 236,
+   "elizabeth:Westbound": 236
   },
   "axis": [
    0.84,
    0.5426
   ],
   "across": {
-   "elizabeth:Westbound": -1.7,
-   "elizabeth:Eastbound": 1.2
+   "elizabeth:Eastbound": 1.2,
+   "elizabeth:Westbound": -1.7
   },
+  "stagger": 0,
   "bridges": [
    -36
   ],
@@ -196,6 +236,7 @@
    "elizabeth:Westbound": -6.5,
    "elizabeth:Eastbound": 4.9
   },
+  "stagger": 0,
   "bridges": [
    -116
   ],
@@ -232,6 +273,7 @@
    "elizabeth:Eastbound": 3.8,
    "elizabeth:Westbound": -6.0
   },
+  "stagger": 0,
   "bridges": [],
   "footbridges": [],
   "stairs": []
@@ -252,6 +294,7 @@
    "elizabeth:Eastbound": 3.5,
    "elizabeth:Westbound": -7.4
   },
+  "stagger": 0,
   "bridges": [
    -96,
    -57
@@ -289,6 +332,7 @@
    "elizabeth:Eastbound": 5.6,
    "elizabeth:Westbound": -5.6
   },
+  "stagger": 0,
   "bridges": [
    -23
   ],
@@ -333,6 +377,7 @@
    "elizabeth:Eastbound": 4.2,
    "elizabeth:Westbound": -6.9
   },
+  "stagger": 0,
   "bridges": [
    -66
   ],
@@ -360,6 +405,7 @@
    "elizabeth:Eastbound": 4.1,
    "elizabeth:Westbound": -5.2
   },
+  "stagger": 0,
   "bridges": [
    42
   ],
@@ -387,6 +433,7 @@
    "elizabeth:Eastbound": 5.0,
    "elizabeth:Westbound": -5.4
   },
+  "stagger": 0,
   "bridges": [
    -76,
    7
@@ -428,6 +475,7 @@
    "elizabeth:Westbound": -6.0,
    "elizabeth:Eastbound": 6.8
   },
+  "stagger": 0,
   "bridges": [],
   "footbridges": [],
   "stairs": []
@@ -448,6 +496,7 @@
    "elizabeth:Eastbound": 7.3,
    "elizabeth:Westbound": -3.4
   },
+  "stagger": 41,
   "bridges": [],
   "footbridges": [],
   "stairs": []
@@ -468,6 +517,7 @@
    "elizabeth:Westbound": -4.4,
    "elizabeth:Eastbound": 5.1
   },
+  "stagger": 0,
   "bridges": [
    -93,
    3,
@@ -499,6 +549,7 @@
    "elizabeth:Eastbound": 6.3,
    "elizabeth:Westbound": -4.9
   },
+  "stagger": 0,
   "bridges": [],
   "footbridges": [],
   "stairs": []
@@ -519,6 +570,7 @@
    "elizabeth:Eastbound": 5.1,
    "elizabeth:Westbound": -6.1
   },
+  "stagger": 0,
   "bridges": [
    114
   ],
@@ -544,6 +596,7 @@
   "across": {
    "elizabeth:Eastbound": 2.7
   },
+  "stagger": 0,
   "bridges": [],
   "footbridges": [],
   "stairs": []
@@ -564,6 +617,7 @@
    "elizabeth:Westbound": -5.4,
    "elizabeth:Eastbound": 8.1
   },
+  "stagger": 0,
   "bridges": [
    -56,
    23
@@ -601,6 +655,7 @@
    "elizabeth:Eastbound": 5.6,
    "elizabeth:Westbound": -6.2
   },
+  "stagger": -8,
   "bridges": [
    -28
   ],
@@ -614,6 +669,52 @@
    [
     2,
     -7.3
+   ]
+  ]
+ },
+ "940GZZLUSTD": {
+  "name": "Stratford",
+  "arrangement": "side",
+  "gap": 9.2,
+  "length": {
+   "elizabeth:Westbound": 251,
+   "elizabeth:Eastbound": 270
+  },
+  "axis": [
+   0.6581,
+   0.7529
+  ],
+  "across": {
+   "elizabeth:Westbound": -8.1,
+   "elizabeth:Eastbound": 6.3
+  },
+  "stagger": 17,
+  "bridges": [
+   -76,
+   81
+  ],
+  "footbridges": [
+   {
+    "x": -76,
+    "covered": false
+   },
+   {
+    "x": 81,
+    "covered": false
+   }
+  ],
+  "stairs": [
+   [
+    113,
+    -12.1
+   ],
+   [
+    124,
+    0.6
+   ],
+   [
+    131,
+    0.1
    ]
   ]
  },
@@ -633,6 +734,7 @@
    "elizabeth:Westbound": -9.7,
    "elizabeth:Eastbound": 4.3
   },
+  "stagger": 0,
   "bridges": [
    55
   ],
@@ -660,6 +762,7 @@
    "elizabeth:Eastbound": 5.0,
    "elizabeth:Westbound": -10.0
   },
+  "stagger": 0,
   "bridges": [
    11
   ],
@@ -687,6 +790,7 @@
    "elizabeth:Eastbound": 7.0,
    "elizabeth:Westbound": -4.7
   },
+  "stagger": 0,
   "bridges": [
    -3
   ],
@@ -714,6 +818,7 @@
    "elizabeth:Eastbound": 4.9,
    "elizabeth:Westbound": -7.0
   },
+  "stagger": -8,
   "bridges": [
    17
   ],

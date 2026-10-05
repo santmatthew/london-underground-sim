@@ -165,8 +165,9 @@ func build(p_spec: Dictionary, p_async := false) -> void:
 		meta["bend"] = bd
 	await _brk(p_async)
 	var mi := MeshInstance3D.new()
-	if p_async and is_inside_tree():
-		# (the surfaces of a deep platform's shell are 40 - 60 ms of vertex copying: on a worker thread, the frames go on meanwhile)
+	if p_async and is_inside_tree() and DisplayServer.get_name() != "headless":
+		# (the surfaces of a deep platform's shell are 40 - 60 ms of vertex copying: on a worker thread, the frames go on meanwhile. Not headless: the dummy rendering server's RID owners are not
+		# thread safe - "Attempting to initialize the wrong RID" in the tests - where the real one queues the calls)
 		var built: Array = [null]
 		var task_b := WorkerThreadPool.add_task(func(): built[0] = kit.build(mats), false, "build platform shell")
 		while not WorkerThreadPool.is_task_completed(task_b):

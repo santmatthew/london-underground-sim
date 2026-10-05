@@ -25,15 +25,21 @@ func run():
 			n += 1
 	check(n >= 20, "most of the surface stations are split pairs (%d)" % n)
 	# the plan: two modules, a face each, the platforms outboard and the tracks SPLIT_SPACING apart
-	for nm in ["Romford", "Hanwell", "Goodmayes"]:
+	for nm in ["Romford", "Hanwell", "Goodmayes", "Manor Park", "West Ealing", "Ealing Broadway"]:
 		var plan := StationPlan.for_station(Net.name_to_idx[nm])
-		check(plan.modules.size() == 2, "%s: one module per platform (%d)" % [nm, plan.modules.size()])
-		if plan.modules.size() != 2:
+		var pair: Array = []          # (the split modules: a station of other lines has more modules, Ealing Broadway)
+		for m in plan.modules:
+			if bool((m["spec"] as Dictionary).get("split", false)):
+				pair.append(m)
+		check(pair.size() == 2, "%s: one module per platform (%d)" % [nm, pair.size()])
+		if pair.size() != 2:
 			continue
 		var fa: Dictionary = {}
 		var fb: Dictionary = {}
 		for fk in plan.faces:
 			var f: Dictionary = plan.faces[fk]
+			if not String(f["pid"]).begins_with("elizabeth"):
+				continue          # (a station of other lines has their faces too)
 			if int(f["face"]) == 0:
 				fa = f
 			else:
@@ -51,12 +57,17 @@ func run():
 		var out_a := ea < ta if ta == lo else ea > ta
 		var out_b := eb < tb if tb == lo else eb > tb
 		check((ea < lo or ea > hi) and (eb < lo or eb > hi) and out_a == out_b and ((ea < lo) != (eb < lo)), "%s: each platform edge lies outside the pair of tracks, one on each side" % nm)
-		check(absf(float(plan.modules[0]["pos"].x) - float(plan.modules[1]["pos"].x)) < 0.01, "%s: the platforms lie side by side (same x)" % nm)
-		check(bool(plan.modules[0]["spec"]["split"]) and bool(plan.modules[1]["spec"]["split"]), "%s: modules flagged split" % nm)
-		var sf0: Array = plan.modules[0]["spec"]["faces"]
-		var sf1: Array = plan.modules[1]["spec"]["faces"]
+		var stag: float = float(RealData.el_platforms(_id(nm)).get("stagger", 0.0))
+		var dx := float(pair[0]["pos"].x) - float(pair[1]["pos"].x)
+		if stag == 0.0:
+			check(absf(dx) < 0.01, "%s: the platforms lie side by side (same x)" % nm)
+		else:
+			check(absf(absf(dx) - absf(stag)) < 0.01, "%s: the platforms are staggered as the data says (%.1f m, data %.0f m)" % [nm, dx, stag])
+		check(true, "%s: modules flagged split" % nm)
+		var sf0: Array = pair[0]["spec"]["faces"]
+		var sf1: Array = pair[1]["spec"]["faces"]
 		check(sf0.size() == 2 and sf0[0] != null and sf0[1] == null and sf1.size() == 2 and sf1[0] == null and sf1[1] != null, "%s: each module has its one face in its own slot" % nm)
-		var e1: Array = plan.modules[1]["ext"]
+		var e1: Array = pair[1]["ext"]
 		check(e1.size() == 2 and e1[0] == null and e1[1] != null, "%s: the second module's running track is read by slot" % nm)
 	# a ride out of a split station keeps the spacing there; at an ordinary stop it starts at the station's
 	var a := _id("Romford")

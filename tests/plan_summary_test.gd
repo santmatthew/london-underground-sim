@@ -23,7 +23,7 @@ func run():
 		for mi in plan.modules.size():
 			var m: Dictionary = plan.modules[mi]
 			var sp: Dictionary = m["spec"]
-			print("  module %d: length %.0f style %s faces %s dir_sign %s depth %.1f" % [mi, sp["length"], sp.get("style", "?"), str((m["faces"] as Array).map(func(f): return f["pid"])), str(m.get("dir_sign", 1)), -float(m["pos"].y)])
+			print("  module %d: length %.0f style %s faces %s dir_sign %s depth %.1f at x %.1f z %.1f" % [mi, sp["length"], sp.get("style", "?"), str((m["faces"] as Array).map(func(f): return f["pid"])), str(m.get("dir_sign", 1)), -float(m["pos"].y), float(m["pos"].x), float(m["pos"].z)])
 			if sp.has("footbridges"):
 				print("    footbridges: %s cuts %s" % [str(sp["footbridges"]), str(sp.get("cuts", []))])
 			if not (m.get("bend", {}) as Dictionary).is_empty():

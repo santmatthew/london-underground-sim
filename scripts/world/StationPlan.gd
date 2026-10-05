@@ -133,6 +133,9 @@ static func is_split(naptan: String) -> bool:
 		if String(p["group"]) == "elizabeth":
 			if bool(p["terminal"]):
 				return false
+			# (side platforms of a line that runs on the left have their platforms on the left of the trains: a door side the data gives that says otherwise - Stratford's - is not a pair of side platforms)
+			if not String(PlatformCurve.face_side(naptan, String(pid))) in ["", "L"]:
+				return false
 			n += 1
 	return n == 2
 
@@ -181,10 +184,13 @@ func generate(station_idx: int) -> void:
 				facelist.append({"pid": pid, "face": 1})
 		# the Elizabeth line's surface stations with two side platforms (data/el_platforms.json, from OpenStreetMap): one module a platform, the tracks between them (see PlatformModule.split)
 		if g == "elizabeth" and facelist.size() == 2 and is_split(naptan):
+			# the platforms' stagger along the line (data/el_platforms.json, only where it is firm): the one further along has the longer passage
+			var el_here: Dictionary = RealData.el_platforms(naptan)
+			var dx_ab := _axis_sign_pid(String(facelist[0]["pid"]), 1, el_here) * float(el_here.get("stagger", 0.0))          # (module A's middle minus module B's, along the modules' x)
 			for k in 2:
 				var fd0: Dictionary = (facelist[k] as Dictionary).duplicate()
 				fd0["slot"] = k          # (which side of its module's middle the platform lies: 0 = +z, 1 = -z; the two modules then have their tracks side by side)
-				mod_defs.append({"group": g, "faces": [fd0], "split": true})
+				mod_defs.append({"group": g, "faces": [fd0], "split": true, "shift": maxf(dx_ab if k == 0 else -dx_ab, 0.0)})
 			continue
 		var i := 0
 		while i < facelist.size():
@@ -220,7 +226,8 @@ func generate(station_idx: int) -> void:
 	# cluster modules into levels: those within 4 m share a level (max 2 per level)
 	var lvl: Array = []
 	for md in mod_defs:
-		if lvl.size() > 0 and lvl[-1]["mods"].size() < 2 and absf(md["depth"] - lvl[-1]["depth"]) < 4.5:
+		# (a pair of side platforms shares its level with nothing but its partner, and a module of another line never takes the place of the partner)
+		if lvl.size() > 0 and lvl[-1]["mods"].size() < 2 and absf(md["depth"] - lvl[-1]["depth"]) < 4.5 and bool(md.get("split", false)) == bool((lvl[-1]["mods"][0] as Dictionary).get("split", false)):
 			lvl[-1]["mods"].append(md)
 			lvl[-1]["depth"] = (lvl[-1]["depth"] + md["depth"]) * 0.5
 		else:
@@ -302,7 +309,7 @@ func generate(station_idx: int) -> void:
 			if bool(md.get("split", false)):
 				if split_corr < 0.0:
 					split_corr = corr_len
-				corr_len = split_corr          # (a pair of side platforms lies opposite each other)
+				corr_len = split_corr + float(md.get("shift", 0.0))          # (a pair of side platforms lies opposite each other, or staggered as the data says)
 			var is_box: bool = StationCharacter.platform_is_box(name, line_id, kind)
 			var spine_x0 := -L * 0.5 if is_box else -L * 0.5 - 6.0
 			var mx: float = rect[1] + corr_len - spine_x0
@@ -492,7 +499,7 @@ func finish_common(rng: RandomNumberGenerator = null) -> void:
 	if real_no.size() == platform_no.size():
 		platform_no = real_no
 	for mi in modules.size():
-		modules[mi]["dir_sign"] = PlatformCurve.dir_sign_for(self, mi)    # which side of the train the platform is on (doors left / right)
+		modules[mi]["dir_sign"] = 1 if bool(modules[mi].get("split", false)) else PlatformCurve.dir_sign_for(self, mi)    # which side of the train the platform is on (doors left / right; a side platform's is the left)
 	for mi in modules.size():
 		modules[mi]["bend"] = PlatformCurve.for_module(self, mi)         # curved platforms (Bank, Liverpool Street ...): {} for a straight one
 	for mi in modules.size():
@@ -504,9 +511,14 @@ func finish_common(rng: RandomNumberGenerator = null) -> void:
 
 ## +1 when module `m`'s +x runs along the platforms' axis in data/el_platforms.json (whose sign is arbitrary), else -1: the neighbour the module's +x leads to is compared with the axis
 func _axis_sign(m: Dictionary, el: Dictionary) -> float:
+	return _axis_sign_pid(String((m["faces"][0] as Dictionary)["pid"]), int(m.get("dir_sign", 1)), el)
+
+
+## ... for the module whose slot 0 is platform `pid` with direction sign `ds`
+func _axis_sign_pid(pid: String, ds: int, el: Dictionary) -> float:
 	var sid: String = Net.station_ids[idx]
-	var nb := PlatformCurve.neighbours(sid, String((m["faces"][0] as Dictionary)["pid"]))
-	var east: String = nb[1] if int(m.get("dir_sign", 1)) > 0 else nb[0]          # (the module's first face is its slot 0, as in _ext_for)
+	var nb := PlatformCurve.neighbours(sid, pid)
+	var east: String = nb[1] if ds > 0 else nb[0]          # (the module's first face is its slot 0, as in _ext_for)
 	if east == "" or not Net.id_to_idx.has(east):
 		return 1.0
 	var s0: Dictionary = Net.stations[idx]
@@ -543,6 +555,9 @@ func _add_footbridges() -> void:
 	for ox in (spec_a["openings_x"] as Array):
 		west_lim = maxf(west_lim, float(ox) + 4.0)
 	var east_lim := L * 0.5 - 3.0
+	var dxb: float = (modules[b]["pos"] as Vector3).x - (ma["pos"] as Vector3).x          # (where the other platform's middle is, in this module's x: the bridge must stand over both)
+	west_lim = maxf(west_lim, west_lim + dxb)
+	east_lim = minf(east_lim, east_lim + dxb)
 	var pitch: float = (modules[b]["pos"] as Vector3).z - (ma["pos"] as Vector3).z
 	var xs: Array = []
 	for f in fbs:
@@ -565,12 +580,15 @@ func _add_footbridges() -> void:
 		if clash or lo > hi:
 			continue
 		out.append({"x": xb, "d": d, "za": -0.5, "zb": pitch + 0.5})
-		cuts.append([fp.x - 0.6, fp.y + 0.6])
+		cuts.append([fp.x - 1.5, fp.y + 1.5])          # (the crossing from the foot of the steps to the platform's walking line is half a metre inside the end: no column within a metre of it)
 	if out.is_empty():
 		return
 	spec_a["footbridges"] = out
 	spec_a["cuts"] = cuts
-	(modules[b]["spec"] as Dictionary)["cuts"] = cuts
+	var cuts_b: Array = []
+	for c in cuts:
+		cuts_b.append([float(c[0]) - dxb, float(c[1]) - dxb])          # (in the other module's own x)
+	(modules[b]["spec"] as Dictionary)["cuts"] = cuts_b
 	for k in out.size():
 		_bridge_graph(k, out[k], a, b)
 

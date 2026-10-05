@@ -7,6 +7,7 @@ TfL's platform numbers (data/platform_numbers.json). Writes data/el_platforms.js
                "length": {"<pid>": metres of the platform outline along the track},
                "axis": [east, north]      unit vector along the platforms (its sign is arbitrary: the offsets below use the same one; the game turns it toward the neighbour a module's trains head for),
                "across": {"<pid>": metres},    where each platform's middle lies, perpendicular to `axis` (to the left of it, looking along `axis`, positive)
+               "stagger": metres      the eastbound platform's middle minus the westbound's along `axis` (0 unless the outlines are alike in length and 150 m or more: Manor Park, West Ealing, Southall)
                "bridges": [metres from the middle of the platforms along `axis`, ...]     every bridge footway / steps that spans both platforms (road bridges' pavements too)
                "footbridges": [{"x": metres along `axis`, "covered": bool}, ...]     the footbridges proper among them (no pavements of road bridges, crossings, private ways)
                "stairs": [[metres along `axis`, metres across], ...]   steps ways that touch a platform outline }
@@ -61,12 +62,15 @@ def main():
     lg = json.load(open(os.path.join(ROOT, "data", "line_geometry.json")))
     out = {"_comment": "Layout of the Elizabeth line's surface stations from OpenStreetMap platform outlines and footways (tools/build_el_platforms.py). Derived numbers only; (c) OpenStreetMap contributors, ODbL."}
     for sid, st in sorted(geo.items(), key=lambda kv: kv[1]["name"]):
-        if not sid.startswith("910G") or sid not in pn or net.get(sid, {}).get("kind") != "surface":
+        # (the Elizabeth line's own stops are 910G..., but where it shares a station with the Underground (Ealing Broadway) the stop has that station's id)
+        if sid not in pn or net.get(sid, {}).get("kind") != "surface" or "elizabeth" not in (net[sid]["lines"] if isinstance(net[sid]["lines"], list) else list(net[sid]["lines"].keys())):
             continue
         lat0, lon0 = st["lat"], st["lon"]
         nums = pn[sid]
         want = {}
         for key, refs in nums.items():
+            if not key.startswith("elizabeth|"):
+                continue          # (other lines' platforms at a shared station)
             pid = key.replace("|", ":")
             for r in refs:
                 want.setdefault(str(r), set()).add(pid)
@@ -92,6 +96,7 @@ def main():
         arrangement = "island" if gap < 2.0 else "side"
         axis, centre = pca_axis(A + B)
         length = {}
+        centre_of = {}
         across_of = {}
         perp = (-axis[1], axis[0])
         for ref, poly in polys.items():
@@ -99,6 +104,7 @@ def main():
             cs = [(p[0] - centre[0]) * perp[0] + (p[1] - centre[1]) * perp[1] for p in poly]
             for pid in want[ref]:
                 length[pid] = round(max(ps) - min(ps))
+                centre_of[pid] = (max(ps) + min(ps)) * 0.5
                 across_of[pid] = round(sum(cs) / len(cs), 1)
         # footbridges and steps
         bridges, stairs, foot = [], [], []
@@ -127,8 +133,15 @@ def main():
                 fb[-1]["covered"] = fb[-1]["covered"] or cov
             else:
                 fb.append({"x": along_v, "covered": cov})
+        # the platforms' stagger along the axis (the eastbound platform's middle minus the westbound's), only where the two outlines are about as long as each other and long enough to be the
+        # whole platform (an outline that is cut short or runs on past the platform would make a stagger that is not there)
+        stagger = 0
+        ea, we = centre_of.get("elizabeth:Eastbound"), centre_of.get("elizabeth:Westbound")
+        la, lw = length.get("elizabeth:Eastbound", 0), length.get("elizabeth:Westbound", 0)
+        if arrangement == "side" and ea is not None and we is not None and min(la, lw) >= 150 and abs(la - lw) <= 25 and abs(ea - we) >= 5.0:
+            stagger = round(ea - we)
         out[sid] = {"name": st["name"], "arrangement": arrangement, "gap": round(gap, 1), "length": length, "axis": [round(axis[0], 4), round(axis[1], 4)], "across": across_of,
-                    "bridges": sorted(set(bridges)), "footbridges": fb, "stairs": sorted(stairs)}
+                    "stagger": stagger, "bridges": sorted(set(bridges)), "footbridges": fb, "stairs": sorted(stairs)}
         print("%-22s %-6s gap %.1f  lengths %s  bridges %s  stairs %s" % (st["name"], arrangement, gap, length, sorted(set(bridges)), sorted(stairs)[:6]))
     json.dump(out, open(OUT, "w"), indent=1)
     print("wrote", OUT, len(out) - 1, "stations")
