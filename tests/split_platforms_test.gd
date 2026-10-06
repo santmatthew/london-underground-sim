@@ -22,11 +22,12 @@ func run():
 	# the Underground's: side platforms where the data says so and the doors are on the left; an island, a door side that says otherwise, or no data leaves the generator's island
 	for pr in [["Buckhurst Hill", "central"], ["Harlesden", "bakerloo"], ["Hornchurch", "ss"], ["Queensbury", "jubilee"], ["Snaresbrook", "central"], ["Sudbury Hill", "piccadilly"], ["East Acton", "central"],
 			["Dagenham East", "ss"], ["Plaistow", "ss"],          # (OpenStreetMap: a pair, but the outlines are of unlike length)
-			["West Acton", "central"], ["West Finchley", "northern"], ["Totteridge & Whetstone", "northern"], ["Chorleywood", "ss"]]:          # (no outlines to read: both platforms' doors are on the left)
+			["West Acton", "central"], ["West Finchley", "northern"], ["Totteridge & Whetstone", "northern"], ["Chorleywood", "ss"],          # (the outlines carry no numbers: the pair is the two big ones)
+			["Debden", "central"], ["Ruislip Manor", "ss"], ["Boston Manor", "piccadilly"], ["Fairlop", "central"], ["Kew Gardens", "ss"], ["South Harrow", "piccadilly"], ["South Woodford", "central"]]:          # (the stop node between the two platforms: door side "B", not "right")
 		check(StationPlan.is_split(_id(pr[0]), pr[1]), "%s (%s) is drawn as a split pair" % [pr[0], pr[1]])
 		check(not StationPlan.is_split(_id(pr[0])), "%s is not an Elizabeth line split pair" % pr[0])
-	for pr in [["Greenford", "central"], ["Hendon Central", "northern"], ["South Ealing", "piccadilly"], ["Debden", "central"], ["Barons Court", "piccadilly"], ["Oxford Circus", "victoria"], ["Epping", "central"],
-			["Turnham Green", "piccadilly"], ["Wembley Park", "jubilee"], ["Finchley Road", "jubilee"], ["White City", "central"], ["Ruislip Manor", "ss"]]:          # (platforms of another line beside them, a gap the data does not settle, a face with the doors on the right)
+	for pr in [["Greenford", "central"], ["Hendon Central", "northern"], ["South Ealing", "piccadilly"], ["Colindale", "northern"], ["Barons Court", "piccadilly"], ["Oxford Circus", "victoria"], ["Epping", "central"],
+			["Turnham Green", "piccadilly"], ["Wembley Park", "jubilee"], ["Finchley Road", "jubilee"], ["White City", "central"]]:          # (platforms of another line beside them, a gap the data does not settle; Colindale: an island, in CULG [IP])
 		check(not StationPlan.is_split(_id(pr[0]), pr[1]), "%s (%s) is not drawn as a split pair" % [pr[0], pr[1]])
 	var n := 0
 	for i in Net.stations.size():

@@ -194,6 +194,48 @@
    }
   }
  },
+ "940GZZLUCYD": {
+  "name": "Chorleywood",
+  "groups": {
+   "ss": {
+    "arrangement": "side",
+    "gap": 5.6,
+    "axis": [
+     0.7497,
+     -0.6618
+    ],
+    "length": {
+     "ss:Eastbound": 155,
+     "ss:Westbound": 165
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUCND": {
+  "name": "Colindale",
+  "groups": {
+   "northern": {
+    "arrangement": "island",
+    "gap": 0.0,
+    "axis": [
+     0.6963,
+     -0.7177
+    ],
+    "length": {
+     "northern:Northbound": 129,
+     "northern:Southbound": 129
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
  "940GZZLUCXY": {
   "name": "Croxley",
   "groups": {
@@ -1494,6 +1536,27 @@
    }
   }
  },
+ "940GZZLUSHH": {
+  "name": "South Harrow",
+  "groups": {
+   "piccadilly": {
+    "arrangement": "side",
+    "gap": 5.9,
+    "axis": [
+     0.5991,
+     -0.8007
+    ],
+    "length": {
+     "piccadilly:Eastbound": 178,
+     "piccadilly:Westbound": 183
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
  "940GZZLUSKT": {
   "name": "South Kenton",
   "groups": {
@@ -1539,6 +1602,34 @@
     "stagger": 0,
     "bridges": [],
     "footbridges": []
+   }
+  }
+ },
+ "940GZZLUSWF": {
+  "name": "South Woodford",
+  "groups": {
+   "central": {
+    "arrangement": "side",
+    "gap": 5.5,
+    "axis": [
+     0.1457,
+     0.9893
+    ],
+    "length": {
+     "central:Eastbound": 152,
+     "central:Westbound": 151
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [
+     65
+    ],
+    "footbridges": [
+     {
+      "x": 65,
+      "covered": false
+     }
+    ]
    }
   }
  },
@@ -1681,6 +1772,27 @@
    }
   }
  },
+ "940GZZLUTAW": {
+  "name": "Totteridge & Whetstone",
+  "groups": {
+   "northern": {
+    "arrangement": "side",
+    "gap": 5.7,
+    "axis": [
+     0.0042,
+     -1.0
+    ],
+    "length": {
+     "northern:Northbound": 114,
+     "northern:Southbound": 114
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
  "940GZZLUTNG": {
   "name": "Turnham Green",
   "groups": {
@@ -1747,6 +1859,48 @@
      "ss:Eastbound": 2.1,
      "ss:Westbound": -3.1
     },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUWTA": {
+  "name": "West Acton",
+  "groups": {
+   "central": {
+    "arrangement": "side",
+    "gap": 5.4,
+    "axis": [
+     0.6542,
+     0.7563
+    ],
+    "length": {
+     "central:Eastbound": 157,
+     "central:Westbound": 155
+    },
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUWFN": {
+  "name": "West Finchley",
+  "groups": {
+   "northern": {
+    "arrangement": "side",
+    "gap": 8.3,
+    "axis": [
+     0.2752,
+     0.9614
+    ],
+    "length": {
+     "northern:Northbound": 114,
+     "northern:Southbound": 112
+    },
+    "across": {},
     "stagger": 0,
     "bridges": [],
     "footbridges": []
@@ -1825,6 +1979,27 @@
      "bakerloo:Northbound": -5.4,
      "bakerloo:Southbound": 6.8
     },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
+   }
+  }
+ },
+ "940GZZLUWOP": {
+  "name": "Woodside Park",
+  "groups": {
+   "northern": {
+    "arrangement": "side",
+    "gap": 9.9,
+    "axis": [
+     0.2392,
+     0.971
+    ],
+    "length": {
+     "northern:Northbound": 109,
+     "northern:Southbound": 116
+    },
+    "across": {},
     "stagger": 0,
     "bridges": [],
     "footbridges": []

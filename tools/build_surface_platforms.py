@@ -32,6 +32,13 @@ def ints(s):
     return set(int(t) for t in re.findall(r"\d+", str(s)))
 
 
+def olen(o):
+    """the length of an outline along its own axis"""
+    ax, c = pca_axis(o["pts"])
+    al = [(p[0] - c[0]) * ax[0] + (p[1] - c[1]) * ax[1] for p in o["pts"]]
+    return max(al) - min(al)
+
+
 def main():
     geo = json.load(open(GEOM))
     net = json.load(open(os.path.join(ROOT, "data", "network.json")))["stations"]
@@ -99,13 +106,8 @@ def main():
             pa, pb = sorted(pids)
             ra, rb = pid_refs[pa], pid_refs[pb]
             unmapped = not ra or not rb
-            if unmapped:
-                # (no numbers from TfL: a station whose only group this is and that has exactly two platform outlines has them as its pair - which outline is which platform is not known, so no stagger, and no `across`)
-                if len(groups) != 1 or len(outlines) != 2:
-                    skip("no platform numbers")
-                    continue
-                oa, ob = [outlines[0]], [outlines[1]]
-            else:
+            big = [o for o in outlines if olen(o) >= MIN_LEN]          # (stairs and fragments are not platforms)
+            if not unmapped:
                 if any(g2 != g and (group_refs[g2] & (ra | rb)) for g2 in group_refs):
                     unsettled(g, "a number another group uses")
                     done_any = True
@@ -113,12 +115,17 @@ def main():
                 oa = [o for o in outlines if o["refs"] & ra]
                 ob = [o for o in outlines if o["refs"] & rb]
                 if not oa or not ob:
-                    skip("outline not found")
-                    continue
-                if any(len(used[o["id"]]) > 1 for o in oa + ob):
+                    unmapped = True          # (the outlines carry no numbers: as below)
+                elif any(len(used[o["id"]]) > 1 for o in oa + ob):
                     unsettled(g, "an outline another group's numbers fit")
                     done_any = True
                     continue
+            if unmapped:
+                # (no numbers that tell the outlines apart: a station whose only group this is and that has exactly two platform outlines has them as its pair - which outline is which platform is not known, so no stagger, and no `across`)
+                if len(groups) != 1 or len(big) != 2:
+                    skip("no platform numbers" if not ra or not rb else "outline not found")
+                    continue
+                oa, ob = [big[0]], [big[1]]
             # one outline for both (an island's: one polygon carrying both numbers) or one per platform
             A = [p for o in oa for p in o["pts"]]
             B = [p for o in ob for p in o["pts"]]

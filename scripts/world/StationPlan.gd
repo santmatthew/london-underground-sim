@@ -156,7 +156,8 @@ static func is_split(naptan: String, group := "elizabeth") -> bool:
 				return false
 			# (side platforms of a line that runs on the left have their platforms on the left of the trains: a door side the data gives that says otherwise - Stratford's - is not a pair of side platforms)
 			var side := String(PlatformCurve.face_side(naptan, String(pid)))
-			if side != "L" and (inferred or side != ""):
+			# ("B": the stop node lies between the two platforms, a pair 6 m apart has an outline on each side within 1.5 m of its distance: with the outlines saying side platforms, the door side is not known, not "right")
+			if side != "L" and (inferred or (side != "" and side != "B")):
 				return false
 			n += 1
 	# (the Underground's other groups: a station of several groups may have platforms shared with another line or an interchange across a platform - Turnham Green, Barons Court - which a pair of side platforms per group draws wrongly: left to the generator's modules. The Elizabeth line's own data covers Ealing Broadway, Stratford ...)
