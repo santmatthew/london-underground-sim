@@ -2,8 +2,8 @@ class_name Oncoming
 extends Node3D
 ## The trains that come the other way on the second track of a ride (RunScenery PAIR): the timetable's trains from the destination to the origin, each at the place its own run puts it, drawn only where that
 ## track is in view (open land, cuttings, embankments, viaducts - the other bore of a deep tube is out of sight). They are scenery: no colliders, never boarded, never a visit of a station.
-## Ride frame: path distance s runs from the origin's stop (0) to the destination's (dist); the second track lies to the right of the path (SIDE; TunnelRun's cells put it there for rides of either door side) at the spacing the
-## path has there (TrackPath.spacing_at), a train on it travels toward lower s.
+## Ride frame: path distance s runs from the origin's stop (0) to the destination's (dist); the second track lies to the right of the path (TunnelRun's cells put it there for rides of either door side) except near a
+## station module whose other face is on the left, and across the crossing where it changes sides (TrackPath.offset_at gives the place, with its sign), a train on it travels toward lower s.
 
 const BUILD_RANGE := 700.0          # a train is built (hidden) when its middle is this close to the player's car
 const AHEAD := 110.0                # a car is shown while its middle is no more than this far ahead of the player's car (TunnelRun draws the cells to about 120 m ahead and 132 m behind: the car's own half length too)
@@ -14,8 +14,12 @@ const GUST_LEAD := 3.5
 const RUMBLE := ["distant_train_rumble_c", "distant_train_rumble_a"]          # (the other bore of a deep tube, or the next box: nothing to see, a rumble that peaks about 4.8 s in)
 const RUMBLE_LEAD := 4.8
 
+const CROSS_PAD := 10.0             # a car within this far of the crossing (TrackPath._plan_sides, RunScenery CROSS) is left out while the player's train is on it or near it: two trains would stand in one another
 var path: TrackPath
-const SIDE := 1.0                   # the second track lies on the right of the path (path z): British trains keep left and meet the others on the right (TunnelRun builds the pair that way whatever side the doors are on)
+var player_half := 0.0              # half the length of the player's train (Ride sets it)
+var _cross_lo := 1e9                # the path distances the crossing covers (none: lo > hi)
+var _cross_hi := -1e9
+const SIDE := 1.0                   # the sign TrackPath.offset_at is taken with: + is the right of the path (path z). British trains keep left and meet the others on the right (TunnelRun builds the pair that way whatever side the doors are on, but see TrackPath._plan_sides)
 var dist := 0.0
 var entries: Array = []             # {"info", "pr", "T", "scale", "train": Train or null, "skip": bool, "len": float}
 var shown := 0                      # trains in view now (tests)
@@ -28,6 +32,10 @@ func setup(p_path: TrackPath, a_idx: int, b_idx: int, t_dep: float, t_arr: float
 	dist = p_dist
 	if path.single:
 		return          # (a single track: nothing comes the other way)
+	for k in range(path.k_first(), path.k_last() + 1):
+		if (path.cell_scene(k) & RunScenery.CROSS) != 0:
+			_cross_lo = minf(_cross_lo, float(k) * RunScenery.CELL - RunScenery.CELL * 0.5)
+			_cross_hi = maxf(_cross_hi, float(k) * RunScenery.CELL + RunScenery.CELL * 0.5)
 	var group: String = String(Net.lines[line]["group"]) if Net.lines.has(line) else ""
 	for info in Timetable.oncoming(a_idx, b_idx, t_dep, t_arr):
 		var T: float = float(info["arr"]) - float(info["dep"])
@@ -89,12 +97,19 @@ func update(s_p: float, now: float, world: Transform3D, v_p := 0.0) -> void:
 		tr.follow_oncoming(path, s_mid, world, SIDE)
 		for i in tr.cars.size():
 			var sc := s_mid - float(tr.car_x[i])
-			var vis := sc - s_p < AHEAD and s_p - sc < BEHIND and (path.cell_scene(int(roundf(sc / RunScenery.CELL))) & RunScenery.PAIR) != 0
+			var vis := sc - s_p < AHEAD and s_p - sc < BEHIND and (path.cell_scene(int(roundf(sc / RunScenery.CELL))) & RunScenery.PAIR) != 0 and not crossing_hides(sc, s_p)
 			(tr.cars[i] as Node3D).visible = vis
 			any = any or vis
 		tr.visible = any
 		if any:
 			shown += 1
+
+
+## is a car at path distance `sc` left out because the player's train (its middle at `s_p`) is on the crossing where the second track changes sides, or close to it?
+func crossing_hides(sc: float, s_p: float) -> bool:
+	if _cross_hi < _cross_lo:
+		return false
+	return s_p + player_half > _cross_lo - CROSS_PAD and s_p - player_half < _cross_hi + CROSS_PAD and sc > _cross_lo - CROSS_PAD and sc < _cross_hi + CROSS_PAD
 
 
 ## a train that is done with: freed, and not looked at again

@@ -17,6 +17,10 @@ func run():
 	# (open country with a train every few minutes both ways; a line of the other group, mirrored)
 	for hop in [["Amersham", "Chalfont & Latimer", false, 600.0], ["Chalfont & Latimer", "Amersham", true, 700.0], ["Colindale", "Hendon Central", false, 400.0]]:
 		await _hop(hop[0], hop[1], hop[2], hop[3], t0)
+	# (a station module with two faces whose platforms are on the left of the trains has its other face on the left, and the second track follows it there: Epping's, then it crosses over to the right for
+	#  Theydon Bois', whose other face is on the right; the camera in the left stretch, in the crossing and in the right; a mirrored ride too)
+	for hop in [["Epping", "Theydon Bois", false, 300.0, true, false], ["Epping", "Theydon Bois", false, -1.0, true, false], ["Epping", "Theydon Bois", false, 2000.0, true, false], ["Epping", "Theydon Bois", true, 300.0, true, false], ["Epping", "Theydon Bois", true, -1.0, true, false], ["Theydon Bois", "Epping", false, 300.0, false, true], ["Theydon Bois", "Epping", true, 2300.0, false, true]]:
+		await _hop(hop[0], hop[1], hop[2], hop[3], t0, hop[4], hop[5])
 	await _extras(t0)
 	print("OK" if ok else "FAILED")
 
@@ -69,14 +73,24 @@ func _extras(t0: float) -> void:
 	check(PlatformModule.ext_scene(scn, false) == scn, "a module with one face keeps the pair")
 
 
-func _hop(na: String, nb: String, mirror: bool, cam_s: float, t0: float) -> void:
+func _hop(na: String, nb: String, mirror: bool, cam_s_in: float, t0: float, left_a := false, left_b := false) -> void:
 	var ia: int = Net.name_to_idx[na]
 	var ib: int = Net.name_to_idx[nb]
 	var ida: String = Net.station_ids[ia]
 	var idb: String = Net.station_ids[ib]
 	var prof: Array = TrackPath.profile(ida, idb)
 	var dist: float = float(prof[0])
-	var path := TrackPath.between(ida, idb, dist, 120.0, 120.0)
+	var path := TrackPath.between(ida, idb, dist, 120.0, 120.0, [], [], [], [], false, 0.0, 0.0, "", left_a, left_b)
+	var cam_s := cam_s_in
+	if cam_s < 0.0:
+		# the second cell of the crossing, where the other track is a few metres off this one
+		for k in range(0, int(dist / 12.0)):
+			if (path.cell_scene(k) & RunScenery.CROSS) != 0:
+				cam_s = float(k + 1) * 12.0
+				break
+		check(cam_s >= 0.0, "%s -> %s: the second track changes sides in a crossing (%s)" % [na, nb, path.side_change])
+		if cam_s < 0.0:
+			return
 	var t1 := t0 + 900.0
 	# --- the query against a search of every run
 	var found: Array = Timetable.oncoming(ia, ib, t0, t1)
@@ -97,7 +111,17 @@ func _hop(na: String, nb: String, mirror: bool, cam_s: float, t0: float) -> void
 	add_child(onc)
 	onc.setup(path, ia, ib, t0, t1, dist)
 	check(onc.entries.size() > 0, "%s -> %s: the ride has oncoming trains" % [na, nb])
-	check(Oncoming.SIDE == 1.0, "the trains run on the right of the path")
+	check(Oncoming.SIDE == 1.0, "the trains' lateral place is TrackPath.offset_at as it is (+ is the right of the path)")
+	if path.side_change == "cross":
+		# (the player's train on the crossing: the cars near it are left out, or two trains would stand in one another)
+		var cmid := (onc._cross_lo + onc._cross_hi) * 0.5
+		check(onc._cross_hi - onc._cross_lo >= 70.0, "the crossing covers %.0f m" % (onc._cross_hi - onc._cross_lo))
+		check(onc.crossing_hides(cmid, cmid), "a car on the crossing is left out while the player is on it")
+		check(onc.crossing_hides(cmid, cmid - 40.0), "... or about to be")
+		check(not onc.crossing_hides(cmid, cmid - 600.0), "... but not while the player is far from it")
+		check(not onc.crossing_hides(onc._cross_lo - 80.0, cmid), "a car well clear of the crossing stays")
+	else:
+		check(not onc.crossing_hides(300.0, 300.0), "no crossing, no car is left out")
 	# --- each goes from the destination to the origin in its run's time
 	var last_s := 1e9
 	for e in onc.entries:
@@ -116,6 +140,12 @@ func _hop(na: String, nb: String, mirror: bool, cam_s: float, t0: float) -> void
 	var tun := TunnelRun.new()
 	add_child(tun)
 	tun.setup(path, mirror, cam_s)
+	tun.place(cam_s)
+	var t_wait := Time.get_ticks_msec() + 30000
+	while tun.busy() and Time.get_ticks_msec() < t_wait:
+		await get_tree().process_frame          # (a bent cell is built by a worker: wait for the real mesh, in real time: the frames of a headless run go by far faster)
+	tun.place(cam_s)
+	await get_tree().process_frame
 	var e0: Dictionary = {}
 	for e in onc.entries:
 		if onc.s_of(e, float(e["info"]["dep"]) + float(e["T"]) * 0.5) < dist:
@@ -147,14 +177,14 @@ func _hop(na: String, nb: String, mirror: bool, cam_s: float, t0: float) -> void
 			var vs: PackedVector3Array = mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]
 			for v in vs:
 				var lz := (pose_cam.affine_inverse() * (mi.global_transform * v)).z
-				if absf(lz) > 2.5 and absf(lz) < 18.0 and mesh.surface_get_material(si) == Mats.get_mat("rail"):
+				if absf(lz) > 1.6 and absf(lz) < 18.0 and mesh.surface_get_material(si) == Mats.get_mat("rail"):
 					zsum += lz
 					zn += 1
 	check(zn > 0, "%s -> %s: the scenery has rails of a second track" % [na, nb])
 	if zn > 0:
 		var zmean := zsum / float(zn)
-		var want_sp := path.spacing_at(float(kc) * 12.0)
-		check(signf(zmean) == Oncoming.SIDE and absf(absf(zmean) - want_sp) < 1.5, "the second track of the scenery is on the right (whatever side the doors are on) and the trains run on it, at its spacing (rails at %.1f m, trains at %.1f m)" % [zmean, Oncoming.SIDE * want_sp])
+		var want_off := path.offset_at(float(kc) * 12.0)
+		check(signf(zmean) == signf(want_off) and absf(zmean - want_off) < 1.5, "the second track of the scenery is where the path puts it (right of the train mostly, left near a module whose other face is, whatever side the doors are on) and the trains run on it (rails at %.1f m, trains at %.1f m; %s)" % [zmean, want_off, path.side_change])
 	var worst_lat := 0.0
 	var worst_dir := -1.0
 	var shown_max := 0
@@ -184,7 +214,7 @@ func _hop(na: String, nb: String, mirror: bool, cam_s: float, t0: float) -> void
 		for i in tr.cars.size():
 			var car := tr.cars[i] as Node3D
 			var sc := s_mid - float(tr.car_x[i])
-			var want_vis := sc - cam_s < Oncoming.AHEAD and cam_s - sc < Oncoming.BEHIND and (path.cell_scene(int(roundf(sc / 12.0))) & RunScenery.PAIR) != 0
+			var want_vis := sc - cam_s < Oncoming.AHEAD and cam_s - sc < Oncoming.BEHIND and (path.cell_scene(int(roundf(sc / 12.0))) & RunScenery.PAIR) != 0 and not onc.crossing_hides(sc, cam_s)
 			check(car.visible == want_vis or not tr.visible, "car %d at s %.0f: shown %s, should be %s" % [i, sc, str(car.visible), str(want_vis)])
 			if not car.visible:
 				continue
@@ -193,7 +223,7 @@ func _hop(na: String, nb: String, mirror: bool, cam_s: float, t0: float) -> void
 			var p := path.pose(sc)
 			var local := p.affine_inverse() * car.global_position
 			# a car stands on the second track (a bend moves the middle of a long car off the chord by a few centimetres)
-			worst_lat = maxf(worst_lat, absf(local.z - Oncoming.SIDE * path.spacing_at(sc)))
+			worst_lat = maxf(worst_lat, absf(local.z - Oncoming.SIDE * path.offset_at(sc)))
 			check(absf(local.y - (PlatformModule.RAIL_Y)) < 0.9, "car %d stands at rail level (y %.2f)" % [i, local.y])
 			var fwd := car.global_transform.basis.x * (-1.0 if i == tr.cars.size() - 1 else 1.0)
 			worst_dir = maxf(worst_dir, fwd.dot(p.basis.x))

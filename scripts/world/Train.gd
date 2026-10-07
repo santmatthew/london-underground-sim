@@ -230,7 +230,8 @@ func follow_path(path: TrackPath, s_c: float, world: Transform3D) -> void:
 		(cars[i] as Node3D).transform = t
 
 
-## A train on the second track of a ride (Oncoming): its middle is at path distance `s_mid`, the track `side` (+1 / -1) of the path (path z) at the spacing the path has there (`TrackPath.spacing_at`), and it runs
+## A train on the second track of a ride (Oncoming): its middle is at path distance `s_mid`, the track at the lateral place the path gives it there (`TrackPath.offset_at`: to the right of the train mostly, to the left near a
+## station module whose other face is on the left, across a crossing from one side to the other; `side` +1 takes it as it is), and it runs
 ## toward lower s, so the front of the train is the end at the lower s. `world` is where the path's frame is in the world.
 func follow_oncoming(path: TrackPath, s_mid: float, world: Transform3D, side: float) -> void:
 	_articulated = true
@@ -250,7 +251,7 @@ func follow_oncoming(path: TrackPath, s_mid: float, world: Transform3D, side: fl
 ## the point of the second track beside the path at distance s
 static func _beside(path: TrackPath, s: float, side: float) -> Vector3:
 	var p := path.pose(s)
-	return p.origin + p.basis * Vector3(0.0, 0.0, side * path.spacing_at(s))
+	return p.origin + p.basis * Vector3(0.0, 0.0, side * path.offset_at(s))
 
 
 ## the car a world point belongs to: the one whose walkable box holds it, else the nearest

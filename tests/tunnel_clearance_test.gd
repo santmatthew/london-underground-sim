@@ -22,9 +22,13 @@ func run():
 			scenes_c.append(sc0 | RunScenery.PAIR | (15 << 13) | (15 << 17))          # ... also when it has come as close as the line has it
 			scenes_c.append(sc0 | RunScenery.PAIR | RunScenery.PAIR_RIGHT)          # ... and on the right (the ride of a train with its doors on the left)
 			scenes_c.append(sc0 | RunScenery.PAIR | RunScenery.PAIR_RIGHT | (15 << 13) | (15 << 17))
+	for code in [0, 7]:
+		for pp in [[0, 3], [6, 9], [12, 15]]:
+			for pr in [0, RunScenery.PAIR_RIGHT]:
+				scenes_c.append(RunScenery.OPEN | RunScenery.PAIR | RunScenery.CROSS | pr | (int(pp[0]) << 13) | (int(pp[1]) << 17) | (code << RunScenery.CROSS_S_SHIFT))          # (a crossing: the other track's rails run across this one's, the furniture of both sides must stay clear)
 	for scene in scenes_c:
 		for v in 2 * TunnelRun.N_VAR:                 # (bending keeps every offset from the track: the straight cell is the one to measure)
-			var kit: MeshKit = run._cell_kit((16 << 25) | (scene << 3) | v)
+			var kit: MeshKit = run._cell_kit((16 << TunnelRun.KEY_CLS) | (scene << 3) | v)
 			for mat in kit.surfaces:
 				if mat in ["tunnel_lining", "trackbed", "rail", "track_sleepers", "ballast"]:
 					continue

@@ -282,7 +282,10 @@ func _build_tunnel(s: float, x0: float, x1: float, zwall: float, zedge: float, z
 					oz["ns"] = 1.0          # (the other track lies on the far side from the platform, SPLIT_SPACING away: ground between ends half way)
 					oz["flat0"] = ztrack + RunScenery.SPLIT_SPACING * 0.5
 					oz["flat1"] = ztrack + RunScenery.SPLIT_SPACING * 0.5
-				RunScenery.add_scene(tmp, ext_scene(int(r[0]), two_faces or split), (0 if posmod(kk, 2) == 0 else 3) + posmod(kk, 3), float(r[3]), float(r[4]), ztrack, oz)
+				var scn := ext_scene(int(r[0]), two_faces or split)
+				if _other_right(s):
+					scn |= RunScenery.PAIR_RIGHT          # (a lone platform on the left of its trains: the other track is on the right, as in the ride)
+				RunScenery.add_scene(tmp, scn, (0 if posmod(kk, 2) == 0 else 3) + posmod(kk, 3), float(r[3]), float(r[4]), ztrack, oz)
 				if west:
 					tmp.mirror_x()
 				if s < 0.0:
@@ -455,6 +458,13 @@ func _run_detail(s: float, west: bool, lo: float, hi: float, plat_end: float, zw
 	for lp in lights:
 		if absf((lp as Vector3).x - plat_end) < 45.0 and not Station.debug_off("tunnel_lights"):
 			_lights.append([lp, 1.3, 9.0])
+
+
+## does the face on side `s` (+1 / -1 in z) have its other track on the far side from its platform in the running track beyond the platform ends (spec "ext" `other_right`: StationPlan._ext_for)
+func _other_right(s: float) -> bool:
+	var ext: Array = spec.get("ext", [])
+	var fi := 0 if s > 0.0 else 1
+	return fi < ext.size() and ext[fi] != null and bool((ext[fi] as Dictionary).get("other_right", false))
 
 
 ## the scene of an ext cell as the module builds it: with two faces the other face is the pair's second track, so the cell's own PAIR bit is cleared (RunScenery.add_scene would draw it twice)

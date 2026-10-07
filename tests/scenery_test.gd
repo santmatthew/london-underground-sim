@@ -94,7 +94,7 @@ func run():
 	for scene in scenes_t:
 		for v in 2 * TunnelRun.N_VAR:
 			for cls in [0, 5]:
-				var kit: MeshKit = run_node._cell_kit(((cls + 16) << 25) | (scene << 3) | v)
+				var kit: MeshKit = run_node._cell_kit(((cls + 16) << TunnelRun.KEY_CLS) | (scene << 3) | v)
 				worst = maxi(worst, kit.triangle_count())
 				if (scene & RunScenery.PAIR) != 0 and cls == 0:
 					# the other track lies on the platform side, a full track spacing off: rails there, ground out to either side
@@ -272,7 +272,7 @@ func run():
 	# a bent cell keeps the other track beside this one (the whole cell bends about the track, its stub and headwalls with it)
 	for cls_b in [5, -5, 14]:
 		for scene_b in [RunScenery.OPEN | RunScenery.PAIR, RunScenery.CUTTING | RunScenery.PAIR | (3 << 3) | (3 << 5) | (1 << 8), RunScenery.EMBANK | RunScenery.PAIR | (3 << 3) | (3 << 5) | (1 << 9) | (1 << 11)]:
-			var kb: MeshKit = TunnelRun._cell_kit(((cls_b + 16) << 25) | (scene_b << 3) | 1)
+			var kb: MeshKit = TunnelRun._cell_kit(((cls_b + 16) << TunnelRun.KEY_CLS) | (scene_b << 3) | 1)
 			var zp := 0.0
 			var np := 0
 			var zm := 0.0
@@ -290,7 +290,7 @@ func run():
 	# the other track on the right: its rails lie the spacing to the +z side, the main track's tunnel mouth is the bore's own (platform side wide, on the -z side), whichever side the pair is on
 	for right in [false, true]:
 		var sc_r := RunScenery.OPEN | RunScenery.PAIR | (1 << 8) | (RunScenery.PAIR_RIGHT if right else 0)
-		var kr: MeshKit = TunnelRun._cell_kit((16 << 25) | (sc_r << 3) | 1)
+		var kr: MeshKit = TunnelRun._cell_kit((16 << TunnelRun.KEY_CLS) | (sc_r << 3) | 1)
 		var zt := PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE
 		var got_l := false
 		var got_r := false
@@ -327,9 +327,9 @@ func run():
 	check(_prof(wat.call(390.0)) == RunScenery.VIADUCT and ((int(wat.call(390.0)) >> 10) & 1) == 1, "the viaduct cell over the river has the water flag")
 	check(((int(wat.call(250.0)) >> 10) & 1) == 0 and ((int(wat.call(520.0)) >> 10) & 1) == 0, "the viaduct cells away from it do not")
 	check(((int(wat.call(180.0)) >> 10) & 1) == 0, "an embankment is not flagged")
-	var wk: MeshKit = TunnelRun._cell_kit((16 << 25) | (int(wat.call(390.0)) << 3) | 1)
+	var wk: MeshKit = TunnelRun._cell_kit((16 << TunnelRun.KEY_CLS) | (int(wat.call(390.0)) << 3) | 1)
 	check(wk.surfaces.has("water"), "the cell builds its water")
-	var dk: MeshKit = TunnelRun._cell_kit((16 << 25) | (int(wat.call(250.0)) << 3) | 1)
+	var dk: MeshKit = TunnelRun._cell_kit((16 << TunnelRun.KEY_CLS) | (int(wat.call(250.0)) << 3) | 1)
 	check(not dk.surfaces.has("water"), "a dry viaduct cell does not")
 	# the data: Putney Bridge - East Putney crosses the Thames on the Fulham railway bridge; one direction is the other seen from the far end
 	var w_f := TrackPath.water(Net.station_ids[Net.name_to_idx["Putney Bridge"]], Net.station_ids[Net.name_to_idx["East Putney"]])

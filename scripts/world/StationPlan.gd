@@ -707,7 +707,12 @@ func _ext_for(mi: int) -> Array:
 		var west: String = nb[0] if canon > 0 else nb[1]
 		var lines: Array = Net.stations[idx]["platforms"][pid]["lines"]
 		var ss: bool = lines.size() > 0 and String(Net.lines[lines[0]]["group"]) == "ss"
+		# (a module with one face that is not one of a pair (the only platform of its group, a lone side platform): with the platform on the left of its trains the other track is on the right, beyond the track)
+		var slot_f := int(m["faces"][fi].get("slot", fi))
+		var side_f := 1.0 if slot_f == 0 else -1.0
+		var doors_left := (-side_f) * float(canon) <= 0.0
 		out.append({
+			"other_right": (m["faces"] as Array).size() == 1 and not bool(m.get("split", false)) and doors_left,
 			"w": TrackPath.sections(sid, west) if west != "" else [], "e": TrackPath.sections(sid, east) if east != "" else [],
 			"ss": ss, "seed_w": TrackPath.pair_seed(sid, west), "seed_e": TrackPath.pair_seed(sid, east),
 			"single_w": west != "" and TrackPath.is_single(sid, west), "single_e": east != "" and TrackPath.is_single(sid, east),
@@ -731,6 +736,22 @@ func _ext_for(mi: int) -> Array:
 		else:
 			out.append(null)
 	return out
+
+
+## are the platforms on the LEFT of the trains at platform face `key` (a `faces` key; doors left), in a module with two faces that is not one of a pair of side platforms? Then the module's other face lies across the
+## platform, on the left, and the running track beyond the platform has the other track there (PlatformModule._ext_runs); a ride keeps it there near that stop (TrackPath._plan_sides). A module with one face
+## (a side platform: its other track is on the right, PlatformModule) and a pair's modules (likewise) have it on the right.
+func other_track_left(key: String) -> bool:
+	if not faces.has(key):
+		return false
+	var f: Dictionary = faces[key]
+	var m: Dictionary = modules[f["module"]]
+	if bool(m.get("split", false)):
+		return false
+	var sf: Array = m["spec"]["faces"]
+	if sf.size() < 2 or sf[0] == null or sf[1] == null:
+		return false
+	return (-float(f["side"])) * float(canon_of(f)) <= 0.0
 
 
 ## the direction along its module (+1 / -1 in x) in which the trains of platform face `f` (a `faces` entry) travel: face 0 runs one way, face 1 the other, and a module whose platforms are on the right

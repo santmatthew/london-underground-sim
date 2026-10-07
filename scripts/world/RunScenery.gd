@@ -152,6 +152,10 @@ static func add(kit: MeshKit, prof: int, x0: float, x1: float, t: float, o: Dict
 const CELL := 12.0
 const PAIR_RIGHT := 1 << 21     # scene bit (a ride sets it, never the data): the other track lies to the +z side of this one (a ride whose train has its doors on the left runs on the left and meets its trains on the right); without it, to the -z side
 const PAIR := 1 << 12          # scene bit: the other track of the pair lies beside this one (12.9 m off, on the platform side, the same distance as the two tracks of a station): in the open the line is double track
+const CROSS := 1 << 22         # scene bit (TrackPath's, with PAIR): in this cell of open land the other track changes sides, a flat crossing: the cell's entry / exit fields (bits 13 - 16, 17 - 20) are how far across it is (0..15 of 15)
+                               # and bits 23 - 25 the spacing it crosses at (cross_spacing); PAIR_RIGHT is the side it ends on, in the cell's own frame
+const CROSS_S_SHIFT := 23
+const SIDE_LEFT := 1 << 26     # scene bit (TrackPath's, in path terms, never in a cell's key): the other track is on the LEFT of the train (a station module whose platforms are on the left has its other face there), or ends the crossing on the left
 
 const TRACK_SPACING := 2.0 * (PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE)          # (the two tracks of a station module)
 const SPLIT_SPACING := 3.5     # the two tracks between a pair of side platforms (StationPlan.is_split): module pitch = TRACK_SPACING + this; the ride keeps it out to the first bend
@@ -159,6 +163,27 @@ const SPACING_MIN := SPLIT_SPACING       # ... and of the line between the stati
 const PAIR_LEVELS := 15
 const RAMP_STATION := 200.0    # within this far of a stop (the module's own running track) the two tracks keep the station's spacing
 const RAMP_LEN := 180.0        # ... and, coming out of a tunnel, they narrow over this far (scene bits 13-16: spacing level at the cell's entry, 17-20: at its exit)
+
+
+## the pair levels a crossing can happen at (3 bits of the scene pick one): the cells either side of it are flattened to the same level, so the tracks meet it at exactly its spacing
+const CROSS_LEVELS := [15, 12, 9, 7, 5, 3, 1, 0]
+
+
+static func cross_level(scene: int) -> int:
+	return CROSS_LEVELS[(scene >> CROSS_S_SHIFT) & 7]
+
+
+static func cross_spacing(scene: int) -> float:
+	return spacing_of_level(cross_level(scene))
+
+
+## the code of the crossing level nearest to pair level `level`
+static func cross_code(level: int) -> int:
+	var best := 0
+	for i in CROSS_LEVELS.size():
+		if absi(int(CROSS_LEVELS[i]) - level) < absi(int(CROSS_LEVELS[best]) - level):
+			best = i
+	return best
 
 
 static func scene_prof(sc: int) -> int:
@@ -294,6 +319,9 @@ static func cell_scenes(secs: Array, ss: bool, seed: int, k0: int, k1: int, dist
 ## With the PAIR bit the other track of the line is built too: the same scene mirrored across the spine (z = 0, where t = ztrack of a module), rails and sleepers included - a station module builds that
 ## track itself (its other face), so it clears the bit there.
 static func add_scene(kit: MeshKit, scene: int, v: int, x0: float, x1: float, t: float, o: Dictionary = {}) -> void:
+	if (scene & CROSS) != 0 and (scene & 7) == OPEN:
+		_add_cross(kit, scene, v, x0, x1, t, o)
+		return
 	var pair := (scene & PAIR) != 0 and not enclosed(scene & 7)
 	var oo := o.duplicate()
 	var ns := 1.0 if (scene & PAIR_RIGHT) != 0 else -1.0          # which side the other track is on
@@ -318,6 +346,78 @@ static func add_scene(kit: MeshKit, scene: int, v: int, x0: float, x1: float, t:
 		if absf(sh0) > 0.0001 or absf(sh1) > 0.0001:
 			other.shear_z(x0, x1, sh0, sh1)
 		kit.merge(other)
+
+
+## A cell of open land where the other track crosses this one (a flat crossover: TrackPath._plan_sides puts it where the other end of the hop wants the track on the other side): this track as a single one with
+## the lineside of both sides, the other's rails and sleepers sheared across it from one side to the other, and the ground cut away from both formations wherever they lie.
+const CROSS_SLICES := 8
+const CROSS_LIFT := 0.012          # the other track lies this much above this one's where they cross (no z-fighting; the ballast under it a little below this one's)
+
+
+## where the other track is in the cell's frame (+z = the side PAIR_RIGHT names) at the entry and at the exit: [offset at x0, offset at x1]
+static func cross_offsets(scene: int) -> Vector2:
+	var s := cross_spacing(scene)
+	var d := 1.0 if (scene & PAIR_RIGHT) != 0 else -1.0
+	return Vector2(d * s * (2.0 * float((scene >> 13) & 15) / 15.0 - 1.0), d * s * (2.0 * float((scene >> 17) & 15) / 15.0 - 1.0))
+
+
+static func _add_cross(kit: MeshKit, scene: int, v: int, x0: float, x1: float, t: float, o: Dictionary) -> void:
+	var off := cross_offsets(scene)
+	var oo := o.duplicate()
+	oo["cross"] = true
+	var main_scene := scene & ~(PAIR | PAIR_RIGHT | CROSS | (15 << 13) | (15 << 17) | (7 << CROSS_S_SHIFT))
+	_scene_kit(kit, main_scene, v, x0, x1, t, oo, false, false)
+	var bed := PlatformModule.BED_Y
+	for i in CROSS_SLICES:
+		var fa := float(i) / float(CROSS_SLICES)
+		var fb := float(i + 1) / float(CROSS_SLICES)
+		var xa := lerpf(x0, x1, fa)
+		var xb := lerpf(x0, x1, fb)
+		var oa := lerpf(off.x, off.y, fa)
+		var ob := lerpf(off.x, off.y, fb)
+		for sg: float in [1.0, -1.0]:
+			# on this side (u = distance out from the track's own line): its formation ends at 2.9, the other's spans c - 2.9 .. c + 2.9
+			var ca := sg * oa
+			var cb := sg * ob
+			# the ground between the two formations, when the other lies clear of this one
+			var ia0 := 2.9
+			var ia1 := maxf(ca - 2.9, 2.9)
+			var ib0 := 2.9
+			var ib1 := maxf(cb - 2.9, 2.9)
+			if ia1 > ia0 + 0.001 or ib1 > ib0 + 0.001:
+				_strip(kit, "grass", xa, xb, t + sg * ia0, G, t + sg * ib0, G, t + sg * ia1, G, t + sg * ib1, G)
+			# ... and out beyond the outer one
+			var oa0 := maxf(2.9, ca + 2.9)
+			var ob0 := maxf(2.9, cb + 2.9)
+			_strip(kit, "grass", xa, xb, t + sg * oa0, G, t + sg * ob0, G, t + sg * GW, G, t + sg * GW, G)
+			# the edge of this formation, where the other's does not cover it
+			if not (ca - 2.9 < 2.9 and ca + 2.9 > 2.9 and cb - 2.9 < 2.9 and cb + 2.9 > 2.9):
+				_wallq(kit, "ballast", Vector3(xa, G, t + sg * 2.9), Vector3(xa, bed, t + sg * 2.9), Vector3(xb, bed, t + sg * 2.9), Vector3(xb, G, t + sg * 2.9), Vector3(0, 0, -sg))
+			# the other formation's edges on this side, where they stand in the grass (outside this formation): the outer one faces in, the inner one (when it is clear of this) out
+			for e: float in [-1.0, 1.0]:
+				var za := ca + e * 2.9
+				var zb := cb + e * 2.9
+				if za > 2.9 and zb > 2.9:
+					_wallq(kit, "ballast", Vector3(xa, G, t + sg * za), Vector3(xa, bed, t + sg * za), Vector3(xb, bed, t + sg * zb), Vector3(xb, G, t + sg * zb), Vector3(0, 0, -sg * e))
+	# the other track itself: bed, sleepers and rails, sheared across
+	var other := MeshKit.new()
+	other.seed_rng(11 + v)
+	other.horiz("ballast", x0, x1, t - 2.9, t + 2.9, bed - 0.006, true, bed)
+	var rails := MeshKit.new()
+	track(rails, x0, x1, t)
+	_lift(rails, CROSS_LIFT)
+	other.merge(rails)
+	other.shear_z(x0, x1, off.x, off.y)
+	kit.merge(other)
+
+
+## every point of a kit moves up by dy
+static func _lift(kit: MeshKit, dy: float) -> void:
+	for name in kit.surfaces:
+		var vv: PackedVector3Array = kit.surfaces[name]["v"]
+		for i in vv.size():
+			vv[i] = Vector3(vv[i].x, vv[i].y + dy, vv[i].z)
+		kit.surfaces[name]["v"] = vv
 
 
 static func _scene_kit(kit: MeshKit, scene: int, v: int, x0: float, x1: float, t: float, o: Dictionary, near_flat: bool, stub: bool) -> MeshKit:
@@ -443,8 +543,8 @@ static func _open(kit: MeshKit, x0: float, x1: float, t: float, o: Dictionary) -
 	var fl := _flat(o)
 	var gap := near_flat and _gap(fl, t + ns * 2.9, ns)
 	_formation(kit, x0, x1, t)
-	# the ground, a step above the ballast
-	for sg: float in [1.0, -1.0]:
+	# the ground, a step above the ballast (a crossing builds its own: the other track's formation is a hole in it that moves)
+	for sg: float in ([] if bool(o.get("cross", false)) else [1.0, -1.0]):
 		if sg == ns and near_flat:
 			if gap:
 				_strip(kit, "grass", x0, x1, t + ns * 2.9, G, t + ns * 2.9, G, fl.x, G, fl.y, G)

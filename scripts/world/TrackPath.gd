@@ -28,6 +28,9 @@ var _th := PackedFloat32Array()      # heading at the start of each cell (n + 1 
 var _p := PackedVector3Array()       # position at the start of each cell (n + 1 values)
 var single := false                  # the track is a single one (data/single_track.json): no second track beside it
 var ss := false                      # a sub-surface line: its tunnels are cut-and-cover boxes
+var left_a := false                  # the other face of the module at the start lies on the LEFT of the train (StationPlan.other_track_left): the second track follows it there (_plan_sides)
+var left_b := false                  # ... at the end
+var side_change := ""                # what _plan_sides did: "" (both ends want the right), "left" (the left all along, both ends want it), "tunnel" / "cross" (changes sides there), "none" (no place to change: stays on the right)
 var _line := "elizabeth"             # the line of the ride (a station may be a pair of side platforms for one group and not for another, and a platform's group is not always its line's: StationPlan.group_of)
 var secs: Array = []                 # what the track runs through, [[sec code, metres], ...] (data "sec": 0 open, 1 tunnel, 2 cutting, 3 embankment, 4 viaduct), scaled to the ride's length
 var _scenes := PackedInt32Array()    # per cell, from k_first(): RunScenery's scene number
@@ -70,7 +73,7 @@ static func is_single(a: String, b: String) -> bool:
 ## the path of the track from station `a` to station `b` (NaPTAN ids) as the train sets off from a (distance 0 = where its centre stands), `dist` metres long.
 ## Without data for the pair, a straight path. `head` / `tail` are the exact curves of curved platforms at the two ends, [[length, curvature], ...] in the direction of travel: `head` from distance 0,
 ## `tail` ending at `dist` (they replace the real profile there; the fades keep the profile off their neighbourhood).
-static func between(a: String, b: String, dist: float, fade_in: float, fade_out: float, head: Array = [], tail: Array = [], back: Array = [], after: Array = [], p_ss := false, v_pad_in := 0.0, v_pad_out := 0.0, p_line := "") -> TrackPath:
+static func between(a: String, b: String, dist: float, fade_in: float, fade_out: float, head: Array = [], tail: Array = [], back: Array = [], after: Array = [], p_ss := false, v_pad_in := 0.0, v_pad_out := 0.0, p_line := "", p_left_a := false, p_left_b := false) -> TrackPath:
 	var h: Array = profile(a, b)
 	var tp := TrackPath.new()
 	tp.length = dist
@@ -78,6 +81,8 @@ static func between(a: String, b: String, dist: float, fade_in: float, fade_out:
 	var kmax := int(ceil((dist + 6.0) / CELL)) + AHEAD
 	tp.ss = p_ss
 	tp._line = p_line if p_line != "" else "elizabeth"
+	tp.left_a = p_left_a
+	tp.left_b = p_left_b
 	tp._set_scenes(a, b, dist, kmin, kmax, h)
 	tp._plan_pitch = tp._plan_grade(a, b, p_line, dist, fade_in + v_pad_in, fade_out + v_pad_out, kmin, kmax)
 	var n := kmax - kmin + 1
@@ -323,6 +328,7 @@ func plan_scenes(p_secs: Array, p_ss: bool, seed: int, kmin: int, kmax: int, p_d
 	secs = p_secs
 	ss = p_ss
 	_scenes = RunScenery.cell_scenes(secs, ss, seed, kmin, kmax, p_dist, single, split_a, split_b, p_water)
+	_plan_sides(kmin, p_dist)
 
 
 ## RunScenery's scene number of cell k (the bore beyond the cells that were planned)
@@ -333,6 +339,128 @@ func cell_scene(k: int) -> int:
 	if i >= _scenes.size():
 		return _scenes[_scenes.size() - 1] if not _scenes.is_empty() else RunScenery.BORE
 	return _scenes[i]
+
+
+## Which side of the train the second track is on, cell by cell. British trains keep left and meet the others on the right, so it is on the right (the way the cells are built); but a station module with two faces
+## whose platforms lie on the left of the trains (doors left) has its other face across the platform, on the LEFT, and the stations' running track beyond the platform is built with it there: a ride that starts or
+## ends at such a stop keeps the second track on the left near it, or the track would drop out at the hand-over. Between two ends that want different sides the track changes sides once: where the line runs
+## through a tunnel (the cells there have no second track: free), else in a flat crossing over a stretch of open land (RunScenery CROSS), else not at all (then it stays on the right, as every ride did).
+## Scene bit SIDE_LEFT says it in path terms; TunnelRun turns it into the cell's own PAIR_RIGHT.
+func _plan_sides(kmin: int, dist: float) -> void:
+	if dist < 0.0 or single or (not left_a and not left_b) or _scenes.is_empty():
+		return
+	var n := _scenes.size()
+	var is_pair := func(i: int) -> bool:
+		return (_scenes[i] & RunScenery.PAIR) != 0 and not RunScenery.enclosed(_scenes[i] & 7)
+	if left_a and left_b:
+		side_change = "left"
+		for i in n:
+			if is_pair.call(i):
+				_scenes[i] |= RunScenery.SIDE_LEFT
+		return
+	# the two ends want different sides: the first one's before the change, the other's after it
+	var start_left := left_a
+	var lo := minf(260.0, dist * 0.2)
+	var hi := dist - lo
+	var mid := dist * 0.5
+	var change := -1.0          # path distance of the change (cells with their centre before it have the first end's side)
+	# (1) the middle of a run of cells with no second track (a tunnel) between the stations' own stretches
+	var best := 1e18
+	var i := 0
+	while i < n:
+		if RunScenery.enclosed(_scenes[i] & 7):
+			var j := i
+			while j + 1 < n and RunScenery.enclosed(_scenes[j + 1] & 7):
+				j += 1
+			var c := (float(kmin + i) + float(kmin + j)) * 0.5 * CELL
+			if c >= lo and c <= hi and absf(c - mid) < best:
+				best = absf(c - mid)
+				change = c
+			i = j + 1
+		else:
+			i += 1
+	var cross_k := -1
+	var cross_n := 0
+	if change < 0.0:
+		# (2) a flat crossing over open land
+		for len_n: int in [12, 8, 6]:
+			var best_c := 1e18
+			for k0 in range(0, n - len_n - 1):
+				var c := (float(kmin + k0) + float(len_n - 1) * 0.5) * CELL
+				if c < lo or c > hi or absf(c - mid) >= best_c:
+					continue
+				var ok: bool = is_pair.call(k0 - 1) if k0 > 0 else false
+				ok = ok and is_pair.call(k0 + len_n)
+				for q in len_n:
+					ok = ok and (_scenes[k0 + q] & 7) == RunScenery.OPEN and (_scenes[k0 + q] & (RunScenery.PAIR)) != 0
+				if ok:
+					best_c = absf(c - mid)
+					cross_k = k0
+					cross_n = len_n
+			if cross_k >= 0:
+				break
+		if cross_k < 0:
+			side_change = "none"
+			return          # nowhere to change: the second track stays on the right
+		change = (float(kmin + cross_k) - 0.5) * CELL + float(cross_n) * CELL * 0.5
+		side_change = "cross"
+	if side_change == "":
+		side_change = "tunnel"
+	for ci in n:
+		if not is_pair.call(ci):
+			continue
+		var before := float(kmin + ci) * CELL < change
+		var left := start_left if before else not start_left
+		if left:
+			_scenes[ci] |= RunScenery.SIDE_LEFT
+	if cross_k >= 0:
+		_make_crossing(cross_k, cross_n, start_left)
+
+
+## cells k0 .. k0 + len_n - 1 (indexes into _scenes) become a flat crossing from the side the ride began on to the other: the pair levels round it are flattened to the spacing at its middle, the cells'
+## own levels (a crossing's entry / exit fields) say how far across the other track is, the S-curve of the smoothstep
+func _make_crossing(k0: int, len_n: int, start_left: bool) -> void:
+	var n := _scenes.size()
+	var mid_i := k0 + len_n / 2
+	var level_mid := (_scenes[mid_i] >> 13) & 15
+	var code := RunScenery.cross_code(level_mid)
+	var lvl: int = RunScenery.CROSS_LEVELS[code]
+	# the levels round the crossing: boundary j is the entry of cell j and the exit of cell j - 1; the ones next to the crossing take its level, the ones further out blend back to their own
+	var blend := 4
+	for j in range(k0 - blend, k0 + len_n + blend + 1):
+		var w := 1.0
+		if j < k0:
+			w = 1.0 - float(k0 - j) / float(blend + 1)
+		elif j > k0 + len_n:
+			w = 1.0 - float(j - k0 - len_n) / float(blend + 1)
+		if j >= 0 and j < n and not (j >= k0 and j < k0 + len_n) and (_scenes[j] & RunScenery.PAIR) != 0 and not RunScenery.enclosed(_scenes[j] & 7):
+			var e := (_scenes[j] >> 13) & 15
+			_scenes[j] = (_scenes[j] & ~(15 << 13)) | (int(roundf(lerpf(float(e), float(lvl), w))) << 13)
+		var jx := j - 1
+		if jx >= 0 and jx < n and not (jx >= k0 and jx < k0 + len_n) and (_scenes[jx] & RunScenery.PAIR) != 0 and not RunScenery.enclosed(_scenes[jx] & 7):
+			var x := (_scenes[jx] >> 17) & 15
+			_scenes[jx] = (_scenes[jx] & ~(15 << 17)) | (int(roundf(lerpf(float(x), float(lvl), w))) << 17)
+	for q in len_n:
+		var ci := k0 + q
+		var p0 := int(roundf(15.0 * smoothstep(0.0, 1.0, float(q) / float(len_n))))
+		var p1 := int(roundf(15.0 * smoothstep(0.0, 1.0, float(q + 1) / float(len_n))))
+		var sc: int = _scenes[ci] & ~((15 << 13) | (15 << 17) | RunScenery.SIDE_LEFT)
+		sc |= RunScenery.CROSS | (p0 << 13) | (p1 << 17) | (code << RunScenery.CROSS_S_SHIFT)
+		if not start_left:
+			sc |= RunScenery.SIDE_LEFT          # (it ends on the left)
+		_scenes[ci] = sc
+
+
+## the lateral position of the second track at path distance s, + to the right of the train, - to the left (the sign RunScenery's SIDE_LEFT gives, across a crossing the S-curve from one to the other)
+func offset_at(s: float) -> float:
+	var k := int(roundf(s / CELL))
+	var sc := cell_scene(k)
+	var d := -1.0 if (sc & RunScenery.SIDE_LEFT) != 0 else 1.0
+	if (sc & RunScenery.CROSS) != 0 and (sc & 7) == RunScenery.OPEN:
+		var f := clampf((s - (float(k) * CELL - CELL * 0.5)) / CELL, 0.0, 1.0)
+		var p := lerpf(float((sc >> 13) & 15), float((sc >> 17) & 15), f) / 15.0
+		return d * RunScenery.cross_spacing(sc) * (2.0 * p - 1.0)
+	return d * spacing_at(s)
 
 
 ## how far the other track of the pair lies from this one at path distance s (RunScenery: the station's spacing near the stops and the tunnel mouths, narrowing to the line's between; the cells' own levels, linear across a cell)

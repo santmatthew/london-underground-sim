@@ -9,6 +9,8 @@ extends Node3D
 const SEG_LEN := 12.0
 const N_SEG := 22
 const N_VAR := 3
+const KEY_CLS := 29                   # a mesh key: curvature class + 16 (bits 29-), scene (bits 3-28: RunScenery's bits 0-25) and variant (bits 0-2)
+const KEY_SC_MASK := 0x3ffffff
 const MAX_TRIS := 1500000             # the shared mesh cache is cleared when it holds more triangles than this (a long session: start afresh rather than keep every curve of every line)
 
 var path: TrackPath
@@ -95,11 +97,14 @@ static func _store(key: int, kit: MeshKit) -> void:
 	_cache[key] = _finish(kit)
 
 
-## the scene of cell k as this ride builds it: the other track of the pair lies on the right of the train whatever side its doors are on (British trains keep left and meet the others on the right), which
-## in the cross-section built with the platform on the left (-z) is the +z side, and in the mirrored one (the platform on the right) the side the mirror brings to the right, the -z side the pair is built on by default
+## the scene of cell k as this ride builds it: the path says which side of the train the second track is on (SIDE_LEFT: on the left; British trains keep left and meet the others on the right, so mostly it is not, see
+## TrackPath._plan_sides), which in the cross-section built with the platform on the left (-z) is the +z side when it is on the right, and in the mirrored one (the platform on the right) the side the mirror brings
+## to the right, the -z side the pair is built on by default. A crossing (CROSS) ends on the side it names, in the cell's own frame likewise.
 func _scene_of(k: int) -> int:
 	var sc := path.cell_scene(k)
-	if not mirror and (sc & RunScenery.PAIR) != 0:
+	var left := (sc & RunScenery.SIDE_LEFT) != 0
+	sc &= ~RunScenery.SIDE_LEFT
+	if (sc & RunScenery.PAIR) != 0 and (not left) != mirror:
 		sc |= RunScenery.PAIR_RIGHT
 	return sc
 
@@ -117,14 +122,14 @@ func _key_of(k: int) -> int:
 		v = (0 if lit else N_VAR) + posmod(k, N_VAR)        # (a box tunnel: lamps in the lit ones)
 	else:
 		v = posmod(k, N_VAR)                                  # (in the open: the backdrops repeat every three cells, nothing else to vary)
-	return ((cls + 16) << 25) | (sc << 3) | v
+	return ((cls + 16) << KEY_CLS) | (sc << 3) | v
 
 
 ## the cell of mesh key `key` as a MeshKit with the track at z = _ztrack; bent about the cell's entry when its class is not 0
 static func _cell_kit(key: int) -> MeshKit:
 	var v := key & 7
-	var sc := (key >> 3) & 0x3fffff
-	var cls := (key >> 25) - 16
+	var sc := (key >> 3) & KEY_SC_MASK
+	var cls := (key >> KEY_CLS) - 16
 	var zfar := PlatformModule.GAP * 0.5 + PlatformModule.PW_RUN + PlatformModule.TRACK_TO_EDGE + PlatformModule.TRACK_TO_WALL
 	var ztrack := zfar - PlatformModule.TRACK_TO_WALL
 	var zwall_run := zfar - (PlatformModule.TRACK_TO_WALL + PlatformModule.TRACK_TO_EDGE + PlatformModule.PW_RUN)
@@ -233,11 +238,11 @@ func place(s: float) -> void:
 			_request(key)
 			# (not built yet: the same scene straight, else the bore)
 			var v := key & 7
-			var alt := (16 << 25) | (sc << 3) | v
+			var alt := (16 << KEY_CLS) | (sc << 3) | v
 			cls = 0
-			key = alt if _cache.has(alt) else ((16 << 25) | (RunScenery.BORE << 3) | v)
+			key = alt if _cache.has(alt) else ((16 << KEY_CLS) | (RunScenery.BORE << 3) | v)
 			if not _cache.has(key):
-				key = (16 << 25) | (RunScenery.BORE << 3) | (v % N_VAR)
+				key = (16 << KEY_CLS) | (RunScenery.BORE << 3) | (v % N_VAR)
 				if not _cache.has(key):
 					_store(key, _cell_kit(key))
 		mi.mesh = _cache[key]

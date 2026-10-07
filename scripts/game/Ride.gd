@@ -123,7 +123,10 @@ func start(p_game: Node3D, p_train: Train, p_run: int, p_k: int, p_origin: Stati
 	var half_train := train.length * 0.5
 	var need_in := _origin_module_length() * 0.5 - car_offset + 20.0 + half_train + 10.0
 	var need_out := dest_face_length * 0.5 + car_offset + 26.0 + half_train + 10.0
-	path = TrackPath.between(id_a, id_b, dist, fade_in, fade_out, head, tail, back, after, Net.lines.has(train.line_id) and String(Net.lines[train.line_id]['group']) == 'ss', maxf(0.0, need_in - fade_in), maxf(0.0, need_out - fade_out), train.line_id)
+	var origin_key := "%s#%d" % [Timetable.plat_pid[gps[k_from]], faces[k_from]]
+	var left_a := StationPlan.for_station(stops[k_from]).other_track_left(origin_key)          # (the second track of the pair is on the left near a module whose other face is: TrackPath._plan_sides)
+	var left_b := dest_plan.other_track_left(dest_face_key)
+	path = TrackPath.between(id_a, id_b, dist, fade_in, fade_out, head, tail, back, after, Net.lines.has(train.line_id) and String(Net.lines[train.line_id]['group']) == 'ss', maxf(0.0, need_in - fade_in), maxf(0.0, need_out - fade_out), train.line_id, left_a, left_b)
 	_path_straight = path.is_straight() and train.bend == null
 	# the frame of the path in the world: the player's car is where it is, whatever shape the train has
 	p0 = ref_world * (train.car_pose_on_path(path, ref_car, 0.0) * Transform3D(Basis.IDENTITY, Vector3(0.0, PlatformModule.RAIL_Y, 0.0))).affine_inverse()
@@ -310,6 +313,7 @@ func _start_tunnel(travelled: float) -> void:
 	if not Station.debug_off("oncoming"):          # (UG_OFF=oncoming: no trains on the second track, for A/B frame-time runs)
 		oncoming = Oncoming.new()
 		add_child(oncoming)
+		oncoming.player_half = train.length * 0.5
 		oncoming.setup(path, stops[k_from], stops[k_from + 1], t_dep, t_arr, dist, train.line_id)
 		oncoming.begin(travelled + float(train.car_x[ref_car]), Clock.now)
 	if origin.crowd != null:
