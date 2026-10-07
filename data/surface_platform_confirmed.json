@@ -1,0 +1,4 @@
+{
+ "_comment": "Pairs of side platforms that an outside source settles where the map data cannot (tools/build_surface_platforms.py writes them into data/surface_platforms.json with \"confirmed\": the door sides are then not asked). Sources: Clive's Underground Line Guide (davros.org/rail/culg), the layout codes.",
+ "940GZZLUUPK": {"name": "Upton Park", "group": "ss", "source": "CULG district [=0we0=1WE2=]: the served faces 1 and 2 face each other across the two District tracks (face 0 is a disused former main-line face)"}
+}

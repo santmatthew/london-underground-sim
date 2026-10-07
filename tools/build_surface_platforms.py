@@ -182,10 +182,41 @@ def main():
                     dB = min(poly_dist([p], B) for p in gpts)
                     al = along(gpts)
                     ac = across(gpts)
-                    if dA < 25 and dB < 25 and (max(ac) - min(ac)) >= gap + 4.0:
+                    if dA < 25 and dB < 25 and (max(ac) - min(ac)) >= gap + 4.0 and (max(ac) - min(ac)) <= gap + 26.0:          # (a real footbridge spans the tracks and the two platforms; a footway a good deal longer is the path over a road bridge)
                         bridges.append(round(sum(al) / len(al)))
                         if hw != "steps" and t.get("footway") not in ("sidewalk", "crossing") and t.get("access") not in ("no", "private"):
                             foot.append((round(sum(al) / len(al)), t.get("covered") == "yes"))
+                # (a footbridge that is mapped as several ways, or as one that is shorter than "the gap and four metres" - Eastcote's is three pieces at one place, West Finchley's and Woodside Park's end on both platforms
+                # but are a metre short of the rule above): the footway pieces near one place along the platforms that together touch both platforms and cover the gap
+                if True:
+                    pieces = []
+                    for w in st["ways"]:
+                        t = w.get("tags", {})
+                        hw = t.get("highway")
+                        if t.get("bridge") != "yes" or hw not in ("footway", "steps", "pedestrian") or not w.get("geometry"):
+                            continue
+                        if t.get("footway") in ("sidewalk", "crossing") or t.get("access") in ("no", "private"):
+                            continue
+                        gpts = [xy(p, lat0, lon0) for p in w["geometry"] if p]
+                        dA = min(poly_dist([p], A) for p in gpts)
+                        dB = min(poly_dist([p], B) for p in gpts)
+                        if min(dA, dB) > 12.0:
+                            continue
+                        al = along(gpts)
+                        ac = across(gpts)
+                        pieces.append({"x": sum(al) / len(al), "dA": dA, "dB": dB, "lo": min(ac), "hi": max(ac), "hw": hw, "cov": t.get("covered") == "yes"})
+                    pieces.sort(key=lambda q: q["x"])
+                    cl = []
+                    for q in pieces:
+                        if cl and q["x"] - cl[-1][-1]["x"] < 5.0:
+                            cl[-1].append(q)
+                        else:
+                            cl.append([q])
+                    for c in cl:
+                        x = round(sum(q["x"] for q in c) / len(c))
+                        if (min(q["dA"] for q in c) < 3.5 and min(q["dB"] for q in c) < 3.5 and max(q["hi"] for q in c) - min(q["lo"] for q in c) >= gap + 1.0
+                                and any(q["hw"] != "steps" for q in c) and not any(abs(x - f[0]) < 12 for f in foot)):
+                            foot.append((x, any(q["cov"] for q in c)))
             foot.sort()
             fb = []
             for x, cov in foot:
@@ -202,6 +233,18 @@ def main():
         if done_any:
             out[sid] = entry
             stats["stations"] += 1
+    # pairs an outside source settles where the map data cannot (data/surface_platform_confirmed.json): written as side platforms, "confirmed"
+    conf = json.load(open(os.path.join(ROOT, "data", "surface_platform_confirmed.json")))
+    for sid, c in conf.items():
+        if sid.startswith("_"):
+            continue
+        e = out.setdefault(sid, {"name": c["name"], "groups": {}})
+        g = e["groups"].get(c["group"], {})
+        if g.get("arrangement") != "side":
+            g = {"arrangement": "side", "gap": 6.0, "axis": [1.0, 0.0], "length": {}, "across": {}, "stagger": 0, "bridges": [], "footbridges": []}
+        g["confirmed"] = c["source"]
+        e["groups"][c["group"]] = g
+        stats["confirmed"] = stats.get("confirmed", 0) + 1
     json.dump(out, open(OUT, "w"), indent=1)
     print(stats)
     print("wrote", OUT)

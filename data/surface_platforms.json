@@ -102,8 +102,7 @@
     },
     "stagger": 0,
     "bridges": [
-     60,
-     66
+     60
     ],
     "footbridges": []
    }
@@ -444,7 +443,12 @@
     },
     "stagger": 0,
     "bridges": [],
-    "footbridges": []
+    "footbridges": [
+     {
+      "x": -60,
+      "covered": true
+     }
+    ]
    }
   }
  },
@@ -590,8 +594,7 @@
     },
     "stagger": 0,
     "bridges": [
-     52,
-     71
+     52
     ],
     "footbridges": [
      {
@@ -642,9 +645,7 @@
     },
     "across": {},
     "stagger": 0,
-    "bridges": [
-     111
-    ],
+    "bridges": [],
     "footbridges": [
      {
       "x": 111,
@@ -1082,15 +1083,8 @@
      "ss:Southbound": 5.0
     },
     "stagger": 0,
-    "bridges": [
-     53
-    ],
-    "footbridges": [
-     {
-      "x": 53,
-      "covered": false
-     }
-    ]
+    "bridges": [],
+    "footbridges": []
    }
   }
  },
@@ -1307,8 +1301,7 @@
     },
     "stagger": 0,
     "bridges": [
-     69,
-     81
+     69
     ],
     "footbridges": [
      {
@@ -1347,8 +1340,23 @@
   "name": "Rayners Lane",
   "groups": {
    "ss": {
-    "arrangement": "unsettled",
-    "why": "a number another group uses"
+    "arrangement": "side",
+    "gap": 5.6,
+    "axis": [
+     0.9657,
+     -0.2598
+    ],
+    "length": {
+     "ss:Eastbound": 120,
+     "ss:Westbound": 120
+    },
+    "across": {
+     "ss:Eastbound": 6.9,
+     "ss:Westbound": -6.0
+    },
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": []
    }
   }
  },
@@ -1420,13 +1428,10 @@
      "ss:Westbound": -7.6
     },
     "stagger": 0,
-    "bridges": [
-     -76,
-     -65
-    ],
+    "bridges": [],
     "footbridges": [
      {
-      "x": -76,
+      "x": -17,
       "covered": false
      }
     ]
@@ -1767,6 +1772,10 @@
      {
       "x": -76,
       "covered": false
+     },
+     {
+      "x": 19,
+      "covered": false
      }
     ]
    }
@@ -1903,7 +1912,12 @@
     "across": {},
     "stagger": 0,
     "bridges": [],
-    "footbridges": []
+    "footbridges": [
+     {
+      "x": 38,
+      "covered": false
+     }
+    ]
    }
   }
  },
@@ -2002,7 +2016,31 @@
     "across": {},
     "stagger": 0,
     "bridges": [],
-    "footbridges": []
+    "footbridges": [
+     {
+      "x": 34,
+      "covered": false
+     }
+    ]
+   }
+  }
+ },
+ "940GZZLUUPK": {
+  "name": "Upton Park",
+  "groups": {
+   "ss": {
+    "arrangement": "side",
+    "gap": 6.0,
+    "axis": [
+     1.0,
+     0.0
+    ],
+    "length": {},
+    "across": {},
+    "stagger": 0,
+    "bridges": [],
+    "footbridges": [],
+    "confirmed": "CULG district [=0we0=1WE2=]: the served faces 1 and 2 face each other across the two District tracks (face 0 is a disused former main-line face)"
    }
   }
  }

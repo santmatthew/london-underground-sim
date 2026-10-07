@@ -153,7 +153,14 @@ func _physics_process(delta: float) -> void:
 				_wp_sides = 0
 			_wp_sides += 1
 			_stuck_t = 0.0
-			if (_wp_sides == 3 or _wp_sides % 8 == 0) and mode in ["walk", "exit"]:
+			# an intermediate waypoint that people stand on (the passengers waiting at the platform's entry end line the edge with the way through): within two metres of it, it is as good as reached
+			if _wp_sides >= 3 and wp_i < wps.size() - 1 and player.global_position.distance_to(wps[wp_i]) < 2.0 and mode in ["walk", "exit", "board"]:
+				_log("close enough to waypoint %d (people stand on it), on to the next" % wp_i)
+				wp_i += 1
+				_wp_sides = 0
+				_sidesteps = 0
+				_stuck_total = 0.0
+			elif (_wp_sides == 3 or _wp_sides % 8 == 0) and mode in ["walk", "exit"]:
 				_repath()
 			if _sidesteps % 6 == 0:
 				var stn := _station()

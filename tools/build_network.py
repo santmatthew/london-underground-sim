@@ -118,9 +118,8 @@ for lid, dd in raw.items():
     lines[lid] = {"name": name, "color": color, "group": group, "services": services}
 
 # ---- platforms ----------------------------------------------------------------------------------
-# Stations where two groups' trains use the same platforms: the Piccadilly line shares the Metropolitan line's two platforms at the stations of the Uxbridge branch where both call and have the same neighbours
-# (Rayners Lane, where they part, and Uxbridge, the terminus, are not here). A platform is then one "ss:<Direction>" with both lines, not two (the generator drew four platforms for two).
-SHARED_WITH_SS = {("piccadilly", sid) for sid in ("940GZZLUEAE", "940GZZLURSM", "940GZZLURSP", "940GZZLUICK", "940GZZLUHGD")}   # Eastcote, Ruislip Manor, Ruislip, Ickenham, Hillingdon
+# Stations where two groups' trains use the same platforms: the Piccadilly line shares the Metropolitan line's two platforms at the stations of the Uxbridge branch where both call (Uxbridge, the terminus, is not here). A platform is then one "ss:<Direction>" with both lines, not two (the generator drew four platforms for two).
+SHARED_WITH_SS = {("piccadilly", sid) for sid in ("940GZZLUEAE", "940GZZLURSM", "940GZZLURSP", "940GZZLUICK", "940GZZLUHGD", "940GZZLURYL")}   # Eastcote, Ruislip Manor, Ruislip, Ickenham, Hillingdon, Rayners Lane (where the two lines join: the same two platforms, checked in the Underground Line Guide's layout codes)
 for lid, ln in lines.items():
     for svc in ln["services"]:
         ids = svc["stops"]

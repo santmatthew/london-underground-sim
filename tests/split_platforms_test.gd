@@ -23,7 +23,7 @@ func run():
 	for pr in [["Buckhurst Hill", "central"], ["Harlesden", "bakerloo"], ["Hornchurch", "ss"], ["Queensbury", "jubilee"], ["Snaresbrook", "central"], ["Sudbury Hill", "piccadilly"], ["East Acton", "central"],
 			["Dagenham East", "ss"], ["Plaistow", "ss"],          # (OpenStreetMap: a pair, but the outlines are of unlike length)
 			["West Acton", "central"], ["West Finchley", "northern"], ["Totteridge & Whetstone", "northern"], ["Chorleywood", "ss"],          # (the outlines carry no numbers: the pair is the two big ones)
-			["Debden", "central"], ["Ruislip Manor", "ss"], ["Boston Manor", "piccadilly"], ["Fairlop", "central"], ["Kew Gardens", "ss"], ["South Harrow", "piccadilly"], ["South Woodford", "central"]]:          # (the stop node between the two platforms: door side "B", not "right")
+			["Rayners Lane", "ss"], ["Upton Park", "ss"], ["Debden", "central"], ["Ruislip Manor", "ss"], ["Boston Manor", "piccadilly"], ["Fairlop", "central"], ["Kew Gardens", "ss"], ["South Harrow", "piccadilly"], ["South Woodford", "central"]]:          # (the stop node between the two platforms: door side "B", not "right")
 		check(StationPlan.is_split(_id(pr[0]), pr[1]), "%s (%s) is drawn as a split pair" % [pr[0], pr[1]])
 		check(not StationPlan.is_split(_id(pr[0])), "%s is not an Elizabeth line split pair" % pr[0])
 	for pr in [["Greenford", "central"], ["Hendon Central", "northern"], ["South Ealing", "piccadilly"], ["Colindale", "northern"], ["Barons Court", "piccadilly"], ["Oxford Circus", "victoria"], ["Epping", "central"],
@@ -120,7 +120,7 @@ func run():
 	for nm in ["Eastcote", "Ruislip", "Ickenham", "Hillingdon"]:
 		check(StationPlan.group_of(_id(nm), "piccadilly") == "ss" and StationPlan.group_of(_id(nm), "metropolitan") == "ss", "%s: both lines' trains use the same group of platforms" % nm)
 		check(StationPlan.is_split(_id(nm), "ss") and (Net.stations[Net.name_to_idx[nm]]["platforms"] as Dictionary).size() == 2, "%s: two platforms, drawn as a split pair" % nm)
-	check(StationPlan.group_of(_id("Rayners Lane"), "piccadilly") == "piccadilly" and StationPlan.group_of(_id("Acton Town"), "district") == "ss", "elsewhere a line's platforms are its own group's")
+	check(StationPlan.group_of(_id("Rayners Lane"), "piccadilly") == "ss" and StationPlan.group_of(_id("Acton Town"), "piccadilly") == "piccadilly" and StationPlan.group_of(_id("Acton Town"), "district") == "ss", "Rayners Lane's platforms are shared too; elsewhere a line's platforms are its own group's")
 	for ln in ["piccadilly", "metropolitan"]:
 		var p_e := TrackPath.between(_id("Eastcote"), _id("Ruislip"), 2400.0, 100.0, 130.0, [], [], [], [], false, 0.0, 0.0, ln)
 		worst = 0.0
